@@ -14,16 +14,54 @@ from knowledge_base import add_document_to_kb, clear_knowledge_base, get_knowled
 from web_scraper import get_website_text_content, get_all_links, fetch_page_content
 
 
-ANNA_WEBSITE_URLS = [
-    "https://annakitney.com/",
-    "https://annakitney.com/about/",
-    "https://annakitney.com/services/",
-    "https://annakitney.com/contact/",
-    "https://annakitney.com/testimonials/",
+ANNA_MAIN_PAGES = [
+    "https://www.annakitney.com/",
+    "https://www.annakitney.com/work-with-me/",
+    "https://www.annakitney.com/contact/",
+    "https://www.annakitney.com/clarity-call/",
+    "https://www.annakitney.com/privacy-policy/",
+    "https://www.annakitney.com/terms-and-conditions/",
+]
+
+ANNA_PROGRAM_PAGES = [
+    "https://www.annakitney.com/all-the-things/",
+    "https://www.annakitney.com/the-ascend-collective/",
+    "https://www.annakitney.com/soul-align-business-course/",
+    "https://www.annakitney.com/vip-day/",
+    "https://www.annakitney.com/elite-private-advisory/",
+    "https://www.annakitney.com/soulalign-heal/",
+    "https://www.annakitney.com/soulalign-manifestation-mastery/",
+    "https://www.annakitney.com/soulalign-money/",
+    "https://www.annakitney.com/divine-abundance-codes/",
+    "https://www.annakitney.com/more-love-and-money-intensive/",
+    "https://www.annakitney.com/avatar-unleash-your-divine-brilliance/",
+    "https://www.annakitney.com/launch-and-grow-live/",
+    "https://www.annakitney.com/get-clients-fast-masterclass/",
+]
+
+ANNA_PORTAL_PAGES = [
+    "https://www.annakitneyportal.com/soulaligncoach",
+]
+
+ANNA_BLOG_PAGES = [
+    "https://www.annakitney.com/blog/",
+    "https://www.annakitney.com/making-the-impossible-possible/",
+    "https://www.annakitney.com/is-nervous-system-regulation-treating-a-symptom-rather-than-the-cause/",
+    "https://www.annakitney.com/the-evolution-of-consciousness-into-the-god-zone-how-to-escape-the-matrix-and-manifest-as-source/",
+    "https://www.annakitney.com/escaping-the-matrix-and-accessing-the-god-zone-a-new-paradigm-for-manifestation/",
+    "https://www.annakitney.com/the-root-of-feast-famine-cycles-in-your-business/",
+    "https://www.annakitney.com/how-to-coach-anyone-on-anything/",
+    "https://www.annakitney.com/the-one-universal-law-that-will-amplify-your-manifestations/",
+    "https://www.annakitney.com/from-entrepreneur-to-ceo-evolving-the-strategy-mindset-to-achieve-50k-months-and-beyond/",
+    "https://www.annakitney.com/from-entrepreneur-to-enterprise-evolving-the-mindset-to-achieve-50k-months-and-beyond/",
+    "https://www.annakitney.com/the-art-of-doing-less-to-achieve-more/",
+    "https://www.annakitney.com/the-manifestation-secret-no-one-teaches/",
+    "https://www.annakitney.com/how-we-did-1million-in-pandemic/",
 ]
 
 ADDITIONAL_PAGES_TO_DISCOVER = True
 BASE_DOMAIN = "annakitney.com"
+MAX_DISCOVERY_PAGES = 100
 
 
 def ingest_url(url: str, source_name: str = None) -> bool:
@@ -91,8 +129,17 @@ def discover_pages(base_url: str, base_domain: str, max_pages: int = 50) -> list
                 links = get_all_links(url, base_domain, html)
                 for link in links:
                     if link not in discovered:
-                        discovered.add(link)
-                        to_visit.append(link)
+                        skip_patterns = [
+                            '/wp-content/', '/wp-admin/', '/wp-includes/',
+                            '.jpg', '.png', '.gif', '.pdf', '.css', '.js',
+                            '#', '?', 'facebook.com', 'instagram.com', 
+                            'youtube.com', 'linkedin.com', 'twitter.com',
+                            '/cart/', '/checkout/', '/my-account/',
+                        ]
+                        should_skip = any(pattern in link.lower() for pattern in skip_patterns)
+                        if not should_skip:
+                            discovered.add(link)
+                            to_visit.append(link)
         except Exception as e:
             print(f"  Error discovering from {url}: {e}")
     
@@ -109,41 +156,72 @@ def main():
     print("\nClearing existing knowledge base...")
     clear_knowledge_base()
     
-    urls_to_ingest = list(ANNA_WEBSITE_URLS)
+    all_urls = set()
+    
+    print("\n--- Adding Main Pages ---")
+    for url in ANNA_MAIN_PAGES:
+        all_urls.add(url)
+    
+    print("\n--- Adding Program Pages ---")
+    for url in ANNA_PROGRAM_PAGES:
+        all_urls.add(url)
+    
+    print("\n--- Adding Portal Pages ---")
+    for url in ANNA_PORTAL_PAGES:
+        all_urls.add(url)
+    
+    print("\n--- Adding Blog Pages ---")
+    for url in ANNA_BLOG_PAGES:
+        all_urls.add(url)
     
     if ADDITIONAL_PAGES_TO_DISCOVER:
+        print("\n--- Discovering Additional Pages ---")
         discovered = discover_pages(
-            "https://annakitney.com/",
+            "https://www.annakitney.com/",
+            BASE_DOMAIN,
+            max_pages=MAX_DISCOVERY_PAGES
+        )
+        for url in discovered:
+            all_urls.add(url)
+        
+        discovered_blog = discover_pages(
+            "https://www.annakitney.com/blog/",
             BASE_DOMAIN,
             max_pages=30
         )
-        for url in discovered:
-            if url not in urls_to_ingest:
-                urls_to_ingest.append(url)
+        for url in discovered_blog:
+            all_urls.add(url)
     
-    print(f"\nIngesting {len(urls_to_ingest)} pages...")
-    print("-" * 40)
+    urls_to_ingest = sorted(list(all_urls))
+    
+    print(f"\n{'=' * 60}")
+    print(f"Total pages to ingest: {len(urls_to_ingest)}")
+    print(f"{'=' * 60}")
     
     success_count = 0
-    fail_count = 0
+    error_count = 0
     
-    for url in urls_to_ingest:
+    for i, url in enumerate(urls_to_ingest, 1):
+        print(f"\n[{i}/{len(urls_to_ingest)}] ", end="")
         if ingest_url(url):
             success_count += 1
         else:
-            fail_count += 1
+            error_count += 1
     
     print("\n" + "=" * 60)
-    print("Ingestion Complete!")
-    print(f"  Successfully ingested: {success_count}")
-    print(f"  Failed/Skipped: {fail_count}")
+    print("INGESTION COMPLETE")
     print("=" * 60)
+    print(f"Successfully ingested: {success_count} pages")
+    print(f"Failed/Skipped: {error_count} pages")
     
     stats = get_knowledge_base_stats()
     print(f"\nKnowledge Base Stats:")
-    print(f"  Total documents: {stats.get('total_documents', 0)}")
-    print(f"  Total chunks: {stats.get('total_chunks', 0)}")
+    print(f"  - Total chunks: {stats.get('total_chunks', 'N/A')}")
+    print(f"  - Collection: {stats.get('collection_name', 'N/A')}")
+    
+    return success_count > 0
 
 
 if __name__ == "__main__":
-    main()
+    success = main()
+    sys.exit(0 if success else 1)
