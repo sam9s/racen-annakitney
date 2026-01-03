@@ -2,6 +2,7 @@ import type { Express, Request, Response } from "express";
 import { createServer, type Server } from "http";
 
 const FLASK_API_URL = process.env.FLASK_API_URL || "http://localhost:8080";
+const INTERNAL_API_KEY = process.env.INTERNAL_API_KEY;
 
 export async function registerRoutes(
   httpServer: Server,
@@ -16,6 +17,7 @@ export async function registerRoutes(
         method: "POST",
         headers: {
           "Content-Type": "application/json",
+          ...(INTERNAL_API_KEY && { "X-Internal-Api-Key": INTERNAL_API_KEY }),
         },
         body: JSON.stringify({
           message,
@@ -49,6 +51,7 @@ export async function registerRoutes(
         method: "POST",
         headers: {
           "Content-Type": "application/json",
+          ...(INTERNAL_API_KEY && { "X-Internal-Api-Key": INTERNAL_API_KEY }),
         },
         body: JSON.stringify({
           message,
@@ -93,6 +96,7 @@ export async function registerRoutes(
         method: "POST",
         headers: {
           "Content-Type": "application/json",
+          ...(INTERNAL_API_KEY && { "X-Internal-Api-Key": INTERNAL_API_KEY }),
         },
         body: JSON.stringify({ session_id }),
       });

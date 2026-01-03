@@ -45,6 +45,14 @@ export default function Home() {
     setIsLoading(true);
 
     try {
+      const conversationHistory = [
+        ...messages.map((m) => ({
+          role: m.role,
+          content: m.content,
+        })),
+        { role: userMessage.role, content: userMessage.content },
+      ];
+
       const response = await fetch("/api/chat", {
         method: "POST",
         headers: {
@@ -53,10 +61,7 @@ export default function Home() {
         body: JSON.stringify({
           message: userMessage.content,
           session_id: sessionId,
-          conversation_history: messages.map((m) => ({
-            role: m.role,
-            content: m.content,
-          })),
+          conversation_history: conversationHistory,
         }),
       });
 
@@ -152,7 +157,7 @@ export default function Home() {
               <Card
                 className={`max-w-[80%] p-3 ${
                   message.role === "user"
-                    ? "bg-primary text-primary-foreground"
+                    ? "bg-accent"
                     : "bg-muted"
                 }`}
               >
