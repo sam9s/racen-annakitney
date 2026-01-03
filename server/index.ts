@@ -2,9 +2,48 @@ import express, { type Request, Response, NextFunction } from "express";
 import { registerRoutes } from "./routes";
 import { serveStatic } from "./static";
 import { createServer } from "http";
+import { spawn } from "child_process";
 
 const app = express();
 const httpServer = createServer(app);
+
+function startFlaskServer() {
+  const flask = spawn("python3", ["webhook_server.py"], {
+    cwd: process.cwd(),
+    stdio: ["ignore", "pipe", "pipe"],
+    detached: false,
+  });
+
+  flask.stdout?.on("data", (data) => {
+    const output = data.toString().trim();
+    if (output) {
+      console.log(`[flask] ${output}`);
+    }
+  });
+
+  flask.stderr?.on("data", (data) => {
+    const output = data.toString().trim();
+    if (output) {
+      console.error(`[flask] ${output}`);
+    }
+  });
+
+  flask.on("close", (code) => {
+    console.log(`[flask] Flask server exited with code ${code}`);
+    setTimeout(() => {
+      console.log("[flask] Restarting Flask server...");
+      startFlaskServer();
+    }, 2000);
+  });
+
+  flask.on("error", (err) => {
+    console.error(`[flask] Failed to start Flask server: ${err}`);
+  });
+
+  return flask;
+}
+
+startFlaskServer();
 
 declare module "http" {
   interface IncomingMessage {
