@@ -73,10 +73,10 @@ def health_check():
     if not KNOWLEDGE_BASE_READY:
         return jsonify({
             "status": "unhealthy",
-            "service": "R.A.C.E.N API Server",
+            "service": "Anna Kitney API Server",
             "reason": "Knowledge base not initialized"
         }), 503
-    return jsonify({"status": "healthy", "service": "R.A.C.E.N API Server"})
+    return jsonify({"status": "healthy", "service": "Anna Kitney API Server"})
 
 
 @app.route("/api/channels/status", methods=["GET"])
@@ -470,14 +470,14 @@ def api_chat_stream():
 
 
 # ============================================================================
-# SOMERA ENDPOINTS - Empathetic Coaching Assistant
+# ANNA ENDPOINTS - Empathetic Coaching Assistant
 # ============================================================================
 
 somera_conversation_histories = {}
 
 @app.route("/api/somera", methods=["POST"])
 def api_somera():
-    """SOMERA coaching endpoint - empathetic responses using Shweta's coaching style."""
+    """ANNA coaching endpoint - empathetic responses using Anna's coaching style."""
     data = request.get_json()
     
     if not data:
@@ -519,7 +519,7 @@ def api_somera():
 
 @app.route("/api/somera/stream", methods=["POST"])
 def api_somera_stream():
-    """Streaming SOMERA coaching endpoint using Server-Sent Events."""
+    """Streaming ANNA coaching endpoint using Server-Sent Events."""
     data = request.get_json()
     
     if not data:
@@ -621,7 +621,7 @@ def api_chat_manychat():
         return jsonify({
             "version": "v2",
             "content": {
-                "messages": [{"type": "text", "text": "Hi! I'm Jovee, your guide for JoveHeal's wellness programs. How can I help you today?"}],
+                "messages": [{"type": "text", "text": "Hi! I'm Anna, your guide for Anna Kitney's wellness programs. How can I help you today?"}],
                 "actions": [],
                 "quick_replies": []
             }
@@ -1100,9 +1100,9 @@ def vapi_webhook():
     """
     VAPI Voice AI Webhook Endpoint
     
-    Handles incoming requests from VAPI for SOMERA Voice Assistant.
+    Handles incoming requests from VAPI for ANNA Voice Assistant.
     Supports:
-    - tool-calls: Custom function calls to get SOMERA coaching responses
+    - tool-calls: Custom function calls to get ANNA coaching responses
     - conversation-update: Track conversation state
     - end-of-call-report: Log completed calls
     - Other events: Acknowledge without action
@@ -1161,7 +1161,7 @@ def handle_vapi_tool_calls(message: dict, call_id: str):
     Handle VAPI tool/function calls.
     
     When VAPI's LLM decides to call our custom tool (e.g., get_somera_response),
-    this function processes the request and returns the SOMERA response.
+    this function processes the request and returns the ANNA response.
     
     Uses response_type: "final" to make VAPI speak our response verbatim
     without LLM reformulation, ensuring guardrails are followed exactly.
@@ -1210,7 +1210,7 @@ def handle_vapi_tool_calls(message: dict, call_id: str):
                 history.append({"role": "assistant", "content": response_text})
                 vapi_conversation_histories[call_id] = history[-20:]
                 
-                print(f"[VAPI] SOMERA response (voice mode): {response_text[:100]}...")
+                print(f"[VAPI] ANNA response (voice mode): {response_text[:100]}...")
                 
                 results.append({
                     "toolCallId": tool_call_id,
@@ -1219,7 +1219,7 @@ def handle_vapi_tool_calls(message: dict, call_id: str):
                 })
                 
             except Exception as e:
-                print(f"[VAPI] SOMERA error: {e}")
+                print(f"[VAPI] ANNA error: {e}")
                 results.append({
                     "toolCallId": tool_call_id,
                     "result": "I'm having a moment. Could you share that with me again?"
@@ -1264,7 +1264,7 @@ def handle_vapi_assistant_request(message: dict, call_id: str):
     Handle dynamic assistant configuration request.
     
     This is called when VAPI needs to know which assistant to use.
-    We return a transient assistant configuration with SOMERA's persona.
+    We return a transient assistant configuration with ANNA's persona.
     """
     elevenlabs_voice_id = os.environ.get("ELEVENLABS_VOICE_ID", "")
     
@@ -1278,7 +1278,7 @@ def handle_vapi_assistant_request(message: dict, call_id: str):
     
     assistant_config = {
         "assistant": {
-            "name": "SOMERA Voice",
+            "name": "ANNA Voice",
             "firstMessage": "Hello, this is Somera. I'm here to listen and support you. What's on your mind today?",
             "model": {
                 "provider": "openai",
@@ -1297,7 +1297,7 @@ def handle_vapi_assistant_request(message: dict, call_id: str):
                         "type": "function",
                         "function": {
                             "name": "get_somera_response",
-                            "description": "Get a coaching response from SOMERA based on what the user shared. Call this for every user message to provide empathetic coaching.",
+                            "description": "Get a coaching response from ANNA based on what the user shared. Call this for every user message to provide empathetic coaching.",
                             "parameters": {
                                 "type": "object",
                                 "properties": {
@@ -1353,7 +1353,7 @@ def handle_vapi_assistant_request(message: dict, call_id: str):
 
 def get_somera_voice_system_prompt() -> str:
     """Get the system prompt optimized for voice interactions."""
-    return """You are SOMERA, Shweta's empathetic AI coaching assistant for JoveHeal, speaking with someone on a phone call.
+    return """You are ANNA, Anna's empathetic AI coaching assistant for Anna Kitney, speaking with someone on a phone call.
 
 YOUR VOICE PERSONA:
 - Warm, calm, and genuinely caring - like a trusted friend who truly sees them
@@ -1460,8 +1460,8 @@ custom_llm_conversation_histories = {}
 voice_call_turn_counts = {}
 
 # CRITICAL: Graceful error message for VAPI when backend fails
-# This ensures SOMERA speaks an error message instead of VAPI falling back to GPT
-SOMERA_ERROR_MESSAGE = "I'm sorry, I'm experiencing some technical difficulties right now. Please try again in a moment, or reach out to our team directly for support."
+# This ensures ANNA speaks an error message instead of VAPI falling back to GPT
+ANNA_ERROR_MESSAGE = "I'm sorry, I'm experiencing some technical difficulties right now. Please try again in a moment, or reach out to our team directly for support."
 
 
 def log_backend_error(error_type: str, endpoint: str, error_message: str, request_data: str = None, call_id: str = None):
@@ -1629,7 +1629,7 @@ def vapi_custom_llm():
     
     This endpoint REPLACES VAPI's LLM entirely. VAPI sends us:
     - Deepgram transcription in OpenAI message format
-    - We process with SOMERA engine
+    - We process with ANNA engine
     - Return response that VAPI speaks with ElevenLabs
     
     NO VAPI LLM INTERFERENCE - we have full control.
@@ -1645,7 +1645,7 @@ def vapi_custom_llm():
     def graceful_error_response(stream_mode=False, call_id_val=None):
         """Return a valid OpenAI response with error message - VAPI will speak this."""
         if stream_mode:
-            return stream_openai_response(SOMERA_ERROR_MESSAGE, call_id_val or "error", end_call=False)
+            return stream_openai_response(ANNA_ERROR_MESSAGE, call_id_val or "error", end_call=False)
         return jsonify({
             "id": f"chatcmpl-error-{timing_module.time()}",
             "object": "chat.completion",
@@ -1653,7 +1653,7 @@ def vapi_custom_llm():
             "model": "somera-voice-1",
             "choices": [{
                 "index": 0,
-                "message": {"role": "assistant", "content": SOMERA_ERROR_MESSAGE},
+                "message": {"role": "assistant", "content": ANNA_ERROR_MESSAGE},
                 "finish_reason": "stop"
             }],
             "usage": {"prompt_tokens": 0, "completion_tokens": 20, "total_tokens": 20}
@@ -1695,7 +1695,7 @@ def vapi_custom_llm():
                 break
         
         if not user_message:
-            response_text = "Hello! I'm SOMERA, your coaching companion. How are you feeling today?"
+            response_text = "Hello! I'm ANNA, your coaching companion. How are you feeling today?"
             save_voice_message_async(call_id, "assistant", response_text)
         else:
             history = custom_llm_conversation_histories.get(call_id, [])
@@ -1743,12 +1743,12 @@ def vapi_custom_llm():
                 history.append({"role": "assistant", "content": response_text})
                 custom_llm_conversation_histories[call_id] = history[-20:]
                 
-                print(f"[VAPI Custom LLM] SOMERA response: {response_text[:100]}...")
+                print(f"[VAPI Custom LLM] ANNA response: {response_text[:100]}...")
                 print(f"[VAPI Custom LLM] Readiness: {readiness_score:.0%} ({readiness_rec})")
                 print(f"[VAPI Custom LLM] Response latency: {elapsed_ms}ms")
                 
             except Exception as e:
-                print(f"[VAPI Custom LLM] SOMERA processing error: {e}")
+                print(f"[VAPI Custom LLM] ANNA processing error: {e}")
                 import traceback
                 log_backend_error(
                     error_type="somera_processing_error",
@@ -1935,7 +1935,7 @@ def stream_openai_response(response_text: str, call_id: str, end_call: bool = Fa
                 "object": "chat.completion.chunk",
                 "created": int(time.time()),
                 "model": "somera-voice-1",
-                "choices": [{"index": 0, "delta": {"content": SOMERA_ERROR_MESSAGE}, "finish_reason": None}]
+                "choices": [{"index": 0, "delta": {"content": ANNA_ERROR_MESSAGE}, "finish_reason": None}]
             }
             yield f"data: {json.dumps(error_content)}\n\n"
             
@@ -1962,7 +1962,7 @@ def stream_openai_response(response_text: str, call_id: str, end_call: bool = Fa
 
 @app.route("/api/admin/somera/stats", methods=["GET"])
 def somera_admin_stats():
-    """Get SOMERA Voice statistics for admin dashboard."""
+    """Get ANNA Voice statistics for admin dashboard."""
     try:
         range_param = request.args.get('range', '30d')
         days = 30
@@ -2056,13 +2056,13 @@ def somera_admin_stats():
         })
         
     except Exception as e:
-        print(f"[SOMERA Admin] Stats error: {e}")
+        print(f"[ANNA Admin] Stats error: {e}")
         return jsonify({"error": str(e)}), 500
 
 
 @app.route("/api/admin/somera/calls", methods=["GET"])
 def somera_admin_calls():
-    """Get list of SOMERA Voice calls for admin dashboard."""
+    """Get list of ANNA Voice calls for admin dashboard."""
     try:
         range_param = request.args.get('range', '30d')
         days = 30
@@ -2112,13 +2112,13 @@ def somera_admin_calls():
         return jsonify({"calls": calls})
         
     except Exception as e:
-        print(f"[SOMERA Admin] Calls error: {e}")
+        print(f"[ANNA Admin] Calls error: {e}")
         return jsonify({"error": str(e)}), 500
 
 
 @app.route("/api/admin/somera/calls/<call_id>", methods=["GET"])
 def somera_admin_call_detail(call_id):
-    """Get detailed transcript for a specific SOMERA Voice call."""
+    """Get detailed transcript for a specific ANNA Voice call."""
     try:
         conn = get_db_connection()
         if not conn:
@@ -2166,7 +2166,7 @@ def somera_admin_call_detail(call_id):
         })
         
     except Exception as e:
-        print(f"[SOMERA Admin] Call detail error: {e}")
+        print(f"[ANNA Admin] Call detail error: {e}")
         return jsonify({"error": str(e)}), 500
 
 
@@ -2183,7 +2183,7 @@ def get_db_connection():
 
 @app.route("/api/admin/somera/export", methods=["GET"])
 def somera_admin_export_csv():
-    """Export SOMERA Voice calls and transcripts as CSV."""
+    """Export ANNA Voice calls and transcripts as CSV."""
     try:
         import csv
         import io
@@ -2258,7 +2258,7 @@ def somera_admin_export_csv():
         )
         
     except Exception as e:
-        print(f"[SOMERA Admin] Export error: {e}")
+        print(f"[ANNA Admin] Export error: {e}")
         return jsonify({"error": str(e)}), 500
 
 

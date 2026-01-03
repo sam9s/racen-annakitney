@@ -2,8 +2,7 @@
   'use strict';
 
   function getApiEndpoint() {
-    if (window.JOVEE_API_URL) return window.JOVEE_API_URL;
-    if (window.RACEN_API_URL) return window.RACEN_API_URL;
+    if (window.ANNA_API_URL) return window.ANNA_API_URL;
     
     const scriptTag = document.querySelector('script[src*="widget.js"]');
     if (scriptTag && scriptTag.src) {
@@ -18,9 +17,9 @@
     const scriptTag = document.querySelector('script[src*="widget.js"]');
     if (scriptTag && scriptTag.src) {
       const scriptUrl = new URL(scriptTag.src);
-      return scriptUrl.origin + '/jovee-logo.png';
+      return scriptUrl.origin + '/anna-logo.png';
     }
-    return '/jovee-logo.png';
+    return '/anna-logo.png';
   }
 
   const WIDGET_CONFIG = {
@@ -31,12 +30,12 @@
   };
 
   const styles = `
-    #jovee-widget-container * {
+    #anna-widget-container * {
       box-sizing: border-box;
       font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
     }
 
-    #jovee-chat-bubble {
+    #anna-chat-bubble {
       position: fixed;
       bottom: 24px;
       right: 24px;
@@ -54,30 +53,30 @@
       border: none;
     }
 
-    #jovee-chat-bubble:hover {
+    #anna-chat-bubble:hover {
       transform: scale(1.1);
       box-shadow: 0 6px 30px rgba(3, 169, 244, 0.6);
     }
 
-    #jovee-chat-bubble svg {
+    #anna-chat-bubble svg {
       width: 28px;
       height: 28px;
       fill: white;
     }
 
-    #jovee-chat-bubble.open svg.chat-icon {
+    #anna-chat-bubble.open svg.chat-icon {
       display: none;
     }
 
-    #jovee-chat-bubble.open svg.close-icon {
+    #anna-chat-bubble.open svg.close-icon {
       display: block;
     }
 
-    #jovee-chat-bubble svg.close-icon {
+    #anna-chat-bubble svg.close-icon {
       display: none;
     }
 
-    #jovee-chat-window {
+    #anna-chat-window {
       position: fixed;
       bottom: 100px;
       right: 24px;
@@ -94,15 +93,15 @@
       display: none;
       flex-direction: column;
       overflow: hidden;
-      animation: joveeSlideUp 0.3s ease;
+      animation: annaSlideUp 0.3s ease;
       resize: both;
     }
 
-    #jovee-chat-window.open {
+    #anna-chat-window.open {
       display: flex;
     }
 
-    #jovee-resize-handle {
+    #anna-resize-handle {
       position: absolute;
       top: 0;
       left: 0;
@@ -112,7 +111,7 @@
       z-index: 1000000;
     }
 
-    #jovee-resize-handle::before {
+    #anna-resize-handle::before {
       content: '';
       position: absolute;
       top: 4px;
@@ -124,11 +123,11 @@
       border-radius: 2px 0 0 0;
     }
 
-    #jovee-resize-handle:hover::before {
+    #anna-resize-handle:hover::before {
       border-color: rgba(3, 169, 244, 0.8);
     }
 
-    @keyframes joveeSlideUp {
+    @keyframes annaSlideUp {
       from {
         opacity: 0;
         transform: translateY(20px);
@@ -139,7 +138,7 @@
       }
     }
 
-    #jovee-chat-header {
+    #anna-chat-header {
       padding: 16px 20px;
       background: linear-gradient(135deg, rgba(3, 169, 244, 0.15), rgba(3, 169, 244, 0.05));
       border-bottom: 1px solid rgba(3, 169, 244, 0.2);
@@ -148,7 +147,7 @@
       gap: 12px;
     }
 
-    #jovee-chat-header .avatar {
+    #anna-chat-header .avatar {
       width: 40px;
       height: 40px;
       border-radius: 50%;
@@ -160,26 +159,26 @@
       overflow: hidden;
     }
 
-    #jovee-chat-header .avatar img {
+    #anna-chat-header .avatar img {
       width: 100%;
       height: 100%;
       object-fit: cover;
     }
 
-    #jovee-chat-header .info h3 {
+    #anna-chat-header .info h3 {
       margin: 0;
       color: white;
       font-size: 16px;
       font-weight: 600;
     }
 
-    #jovee-chat-header .info p {
+    #anna-chat-header .info p {
       margin: 2px 0 0;
       color: rgba(255, 255, 255, 0.6);
       font-size: 12px;
     }
 
-    #jovee-chat-messages {
+    #anna-chat-messages {
       flex: 1;
       overflow-y: auto;
       padding: 16px;
@@ -188,34 +187,34 @@
       gap: 12px;
     }
 
-    #jovee-chat-messages::-webkit-scrollbar {
+    #anna-chat-messages::-webkit-scrollbar {
       width: 6px;
     }
 
-    #jovee-chat-messages::-webkit-scrollbar-track {
+    #anna-chat-messages::-webkit-scrollbar-track {
       background: rgba(0, 0, 0, 0.1);
     }
 
-    #jovee-chat-messages::-webkit-scrollbar-thumb {
+    #anna-chat-messages::-webkit-scrollbar-thumb {
       background: rgba(3, 169, 244, 0.5);
       border-radius: 3px;
     }
 
-    .jovee-message-wrapper {
+    .anna-message-wrapper {
       display: flex;
       gap: 8px;
-      animation: joveeFadeIn 0.3s ease;
+      animation: annaFadeIn 0.3s ease;
     }
 
-    .jovee-message-wrapper.user {
+    .anna-message-wrapper.user {
       justify-content: flex-end;
     }
 
-    .jovee-message-wrapper.assistant {
+    .anna-message-wrapper.assistant {
       justify-content: flex-start;
     }
 
-    .jovee-message-avatar {
+    .anna-message-avatar {
       width: 28px;
       height: 28px;
       min-width: 28px;
@@ -227,13 +226,13 @@
       justify-content: center;
     }
 
-    .jovee-message-avatar img {
+    .anna-message-avatar img {
       width: 100%;
       height: 100%;
       object-fit: cover;
     }
 
-    .jovee-message {
+    .anna-message {
       max-width: 80%;
       padding: 10px 14px;
       border-radius: 12px;
@@ -242,7 +241,7 @@
       word-wrap: break-word;
     }
 
-    @keyframes joveeFadeIn {
+    @keyframes annaFadeIn {
       from {
         opacity: 0;
         transform: translateY(8px);
@@ -253,53 +252,53 @@
       }
     }
 
-    .jovee-message.user {
+    .anna-message.user {
       background: rgba(3, 169, 244, 0.2);
       border: 1px solid rgba(3, 169, 244, 0.3);
       color: white;
     }
 
-    .jovee-message.assistant {
+    .anna-message.assistant {
       background: rgb(30, 30, 45);
       border: 1px solid rgba(3, 169, 244, 0.1);
       color: white;
     }
 
-    .jovee-message.assistant a {
+    .anna-message.assistant a {
       color: #03a9f4;
       text-decoration: underline;
     }
 
-    .jovee-message.assistant a:hover {
+    .anna-message.assistant a:hover {
       color: #4fc3f7;
     }
 
-    .jovee-welcome {
+    .anna-welcome {
       text-align: center;
       padding: 40px 20px;
       color: rgba(255, 255, 255, 0.7);
     }
 
-    .jovee-welcome h4 {
+    .anna-welcome h4 {
       margin: 0 0 8px;
       color: rgba(255, 255, 255, 0.9);
       font-size: 18px;
       font-weight: 400;
     }
 
-    .jovee-welcome p {
+    .anna-welcome p {
       margin: 0;
       font-size: 13px;
       color: rgba(255, 255, 255, 0.5);
     }
 
-    .jovee-typing-wrapper {
+    .anna-typing-wrapper {
       display: flex;
       gap: 8px;
       align-items: flex-start;
     }
 
-    .jovee-typing {
+    .anna-typing {
       display: flex;
       gap: 4px;
       padding: 12px 16px;
@@ -308,30 +307,30 @@
       border: 1px solid rgba(3, 169, 244, 0.1);
     }
 
-    .jovee-typing span {
+    .anna-typing span {
       width: 8px;
       height: 8px;
       background: rgba(3, 169, 244, 0.6);
       border-radius: 50%;
-      animation: joveeBounce 1.4s infinite ease-in-out;
+      animation: annaBounce 1.4s infinite ease-in-out;
     }
 
-    .jovee-typing span:nth-child(1) { animation-delay: 0s; }
-    .jovee-typing span:nth-child(2) { animation-delay: 0.2s; }
-    .jovee-typing span:nth-child(3) { animation-delay: 0.4s; }
+    .anna-typing span:nth-child(1) { animation-delay: 0s; }
+    .anna-typing span:nth-child(2) { animation-delay: 0.2s; }
+    .anna-typing span:nth-child(3) { animation-delay: 0.4s; }
 
-    @keyframes joveeBounce {
+    @keyframes annaBounce {
       0%, 60%, 100% { transform: translateY(0); }
       30% { transform: translateY(-6px); }
     }
 
-    #jovee-chat-input-container {
+    #anna-chat-input-container {
       padding: 12px 16px;
       border-top: 1px solid rgba(3, 169, 244, 0.1);
       background: rgb(20, 20, 30);
     }
 
-    #jovee-chat-input-wrapper {
+    #anna-chat-input-wrapper {
       display: flex;
       align-items: center;
       background: rgb(30, 30, 45);
@@ -341,12 +340,12 @@
       transition: border-color 0.2s ease;
     }
 
-    #jovee-chat-input-wrapper:focus-within {
+    #anna-chat-input-wrapper:focus-within {
       border-color: rgba(3, 169, 244, 0.6);
       box-shadow: 0 0 0 2px rgba(3, 169, 244, 0.2);
     }
 
-    #jovee-chat-input {
+    #anna-chat-input {
       flex: 1;
       padding: 12px 16px;
       background: transparent;
@@ -356,11 +355,11 @@
       outline: none;
     }
 
-    #jovee-chat-input::placeholder {
+    #anna-chat-input::placeholder {
       color: rgba(255, 255, 255, 0.4);
     }
 
-    #jovee-send-btn {
+    #anna-send-btn {
       width: 36px;
       height: 36px;
       margin-right: 6px;
@@ -374,17 +373,17 @@
       transition: background 0.2s ease, opacity 0.2s ease;
     }
 
-    #jovee-send-btn:hover {
+    #anna-send-btn:hover {
       background: #0288d1;
     }
 
-    #jovee-send-btn:disabled {
+    #anna-send-btn:disabled {
       background: #555;
       cursor: not-allowed;
       opacity: 0.5;
     }
 
-    #jovee-send-btn svg {
+    #anna-send-btn svg {
       width: 16px;
       height: 16px;
       fill: none;
@@ -394,7 +393,7 @@
       stroke-linejoin: round;
     }
 
-    #jovee-powered-by {
+    #anna-powered-by {
       text-align: center;
       padding: 8px;
       font-size: 10px;
@@ -402,12 +401,12 @@
       background: rgb(15, 15, 20);
     }
 
-    #jovee-powered-by a {
+    #anna-powered-by a {
       color: rgba(3, 169, 244, 0.6);
       text-decoration: none;
     }
 
-    #jovee-new-chat-btn {
+    #anna-new-chat-btn {
       background: transparent;
       border: none;
       cursor: pointer;
@@ -420,11 +419,11 @@
       transition: background 0.2s ease;
     }
 
-    #jovee-new-chat-btn:hover {
+    #anna-new-chat-btn:hover {
       background: rgba(255, 255, 255, 0.1);
     }
 
-    #jovee-new-chat-btn svg {
+    #anna-new-chat-btn svg {
       width: 18px;
       height: 18px;
       stroke: rgba(255, 255, 255, 0.6);
@@ -432,12 +431,12 @@
       stroke-width: 2;
     }
 
-    #jovee-new-chat-btn:hover svg {
+    #anna-new-chat-btn:hover svg {
       stroke: rgba(255, 255, 255, 0.9);
     }
 
     @media (max-width: 480px) {
-      #jovee-chat-window {
+      #anna-chat-window {
         width: calc(100vw - 20px);
         height: calc(100vh - 120px);
         right: 10px;
@@ -446,11 +445,11 @@
         resize: none;
       }
 
-      #jovee-resize-handle {
+      #anna-resize-handle {
         display: none;
       }
 
-      #jovee-chat-bubble {
+      #anna-chat-bubble {
         width: 54px;
         height: 54px;
         right: 16px;
@@ -461,7 +460,7 @@
 
   function injectStyles() {
     const styleEl = document.createElement('style');
-    styleEl.id = 'jovee-widget-styles';
+    styleEl.id = 'anna-widget-styles';
     styleEl.textContent = styles;
     document.head.appendChild(styleEl);
   }
@@ -472,7 +471,7 @@
     if (logoLoaded) return;
     logoLoaded = true;
     const logoUrl = WIDGET_CONFIG.logoUrl;
-    const avatars = document.querySelectorAll('#jovee-widget-container .avatar img, #jovee-widget-container .jovee-message-avatar img');
+    const avatars = document.querySelectorAll('#anna-widget-container .avatar img, #anna-widget-container .anna-message-avatar img');
     avatars.forEach(img => {
       if (!img.src || img.src.includes('data:')) {
         img.src = logoUrl;
@@ -482,9 +481,9 @@
 
   function createWidget() {
     const container = document.createElement('div');
-    container.id = 'jovee-widget-container';
+    container.id = 'anna-widget-container';
     container.innerHTML = `
-      <button id="jovee-chat-bubble" aria-label="Open chat">
+      <button id="anna-chat-bubble" aria-label="Open chat">
         <svg class="chat-icon" viewBox="0 0 24 24">
           <path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/>
         </svg>
@@ -492,38 +491,38 @@
           <path d="M18 6L6 18M6 6l12 12" stroke="white" stroke-width="2" stroke-linecap="round"/>
         </svg>
       </button>
-      <div id="jovee-chat-window">
-        <div id="jovee-resize-handle" title="Drag to resize"></div>
-        <div id="jovee-chat-header">
-          <div class="avatar"><img data-src="${WIDGET_CONFIG.logoUrl}" alt="Jovee" src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 40 40'%3E%3Ccircle cx='20' cy='20' r='20' fill='%2303a9f4'/%3E%3C/svg%3E" /></div>
+      <div id="anna-chat-window">
+        <div id="anna-resize-handle" title="Drag to resize"></div>
+        <div id="anna-chat-header">
+          <div class="avatar"><img data-src="${WIDGET_CONFIG.logoUrl}" alt="Anna" src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 40 40'%3E%3Ccircle cx='20' cy='20' r='20' fill='%2303a9f4'/%3E%3C/svg%3E" /></div>
           <div class="info">
-            <h3>Jovee</h3>
-            <p>Your JoveHeal Guide</p>
+            <h3>Anna</h3>
+            <p>Your Anna Kitney Guide</p>
           </div>
-          <button id="jovee-new-chat-btn" title="Start new chat">
+          <button id="anna-new-chat-btn" title="Start new chat">
             <svg viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round">
               <path d="M12 5v14M5 12h14"/>
             </svg>
           </button>
         </div>
-        <div id="jovee-chat-messages">
-          <div class="jovee-welcome">
-            <h4>Hi, I'm Jovee</h4>
-            <p>Your real-time guide for healing and coaching at JoveHeal. How can I help you today?</p>
+        <div id="anna-chat-messages">
+          <div class="anna-welcome">
+            <h4>Hi, I'm Anna</h4>
+            <p>Your real-time guide for healing and coaching at Anna Kitney. How can I help you today?</p>
           </div>
         </div>
-        <div id="jovee-chat-input-container">
-          <div id="jovee-chat-input-wrapper">
-            <input type="text" id="jovee-chat-input" placeholder="Ask me anything about JoveHeal..." />
-            <button id="jovee-send-btn" disabled aria-label="Send message">
+        <div id="anna-chat-input-container">
+          <div id="anna-chat-input-wrapper">
+            <input type="text" id="anna-chat-input" placeholder="Ask me anything about Anna Kitney..." />
+            <button id="anna-send-btn" disabled aria-label="Send message">
               <svg viewBox="0 0 24 24">
                 <path d="M14 5l7 7m0 0l-7 7m7-7H3"/>
               </svg>
             </button>
           </div>
         </div>
-        <div id="jovee-powered-by">
-          Powered by <a href="https://joveheal.com" target="_blank">JoveHeal</a>
+        <div id="anna-powered-by">
+          Powered by <a href="https://annakitney.com" target="_blank">Anna Kitney</a>
         </div>
       </div>
     `;
@@ -534,13 +533,13 @@
   let messages = [];
   let isLoading = false;
 
-  const STORAGE_KEY_SESSION = 'jovee_session_id';
-  const STORAGE_KEY_MESSAGES = 'jovee_messages';
-  const STORAGE_KEY_CHAT_OPEN = 'jovee_chat_open';
-  const STORAGE_KEY_NAV_TIME = 'jovee_nav_timestamp';
+  const STORAGE_KEY_SESSION = 'anna_session_id';
+  const STORAGE_KEY_MESSAGES = 'anna_messages';
+  const STORAGE_KEY_CHAT_OPEN = 'anna_chat_open';
+  const STORAGE_KEY_NAV_TIME = 'anna_nav_timestamp';
 
   function generateSessionId() {
-    return 'widget_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+    return 'anna_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
   }
 
   function getOrCreateSessionId() {
@@ -576,28 +575,28 @@
   function restoreMessages(storedMessages) {
     if (!storedMessages || storedMessages.length === 0) return;
     
-    const messagesContainer = document.getElementById('jovee-chat-messages');
-    const welcome = messagesContainer.querySelector('.jovee-welcome');
+    const messagesContainer = document.getElementById('anna-chat-messages');
+    const welcome = messagesContainer.querySelector('.anna-welcome');
     if (welcome) welcome.remove();
 
     for (const msg of storedMessages) {
       const { cleanContent } = extractNavigationUrl(msg.content);
       
       const wrapperEl = document.createElement('div');
-      wrapperEl.className = `jovee-message-wrapper ${msg.role}`;
+      wrapperEl.className = `anna-message-wrapper ${msg.role}`;
       
       if (msg.role === 'assistant') {
         const avatarEl = document.createElement('div');
-        avatarEl.className = 'jovee-message-avatar';
+        avatarEl.className = 'anna-message-avatar';
         const avatarImg = document.createElement('img');
         avatarImg.src = WIDGET_CONFIG.logoUrl;
-        avatarImg.alt = 'Jovee';
+        avatarImg.alt = 'Anna';
         avatarEl.appendChild(avatarImg);
         wrapperEl.appendChild(avatarEl);
       }
       
       const msgEl = document.createElement('div');
-      msgEl.className = `jovee-message ${msg.role}`;
+      msgEl.className = `anna-message ${msg.role}`;
       msgEl.appendChild(createSafeContent(cleanContent));
       wrapperEl.appendChild(msgEl);
       
@@ -623,16 +622,16 @@
       localStorage.setItem(STORAGE_KEY_SESSION, sessionId);
     } catch (e) {}
     
-    const messagesContainer = document.getElementById('jovee-chat-messages');
+    const messagesContainer = document.getElementById('anna-chat-messages');
     messagesContainer.innerHTML = `
-      <div class="jovee-welcome">
-        <h4>Hi, I'm Jovee</h4>
-        <p>Your real-time guide for healing and coaching at JoveHeal. How can I help you today?</p>
+      <div class="anna-welcome">
+        <h4>Hi, I'm Anna</h4>
+        <p>Your real-time guide for healing and coaching at Anna Kitney. How can I help you today?</p>
       </div>
     `;
     
     hideTyping();
-    const input = document.getElementById('jovee-chat-input');
+    const input = document.getElementById('anna-chat-input');
     input.value = '';
     updateSendButton();
     input.focus();
@@ -654,8 +653,8 @@
   }
 
   function toggleChat() {
-    const bubble = document.getElementById('jovee-chat-bubble');
-    const chatWindow = document.getElementById('jovee-chat-window');
+    const bubble = document.getElementById('anna-chat-bubble');
+    const chatWindow = document.getElementById('anna-chat-window');
     const isOpen = chatWindow.classList.contains('open');
     
     if (isOpen) {
@@ -665,7 +664,7 @@
       chatWindow.classList.add('open');
       bubble.classList.add('open');
       lazyLoadLogo();
-      document.getElementById('jovee-chat-input').focus();
+      document.getElementById('anna-chat-input').focus();
     }
   }
 
@@ -676,8 +675,8 @@
   }
 
   var ALLOWED_NAVIGATION_DOMAINS = [
-    'joveheal.com',
-    'www.joveheal.com',
+    'annakitney.com',
+    'www.annakitney.com',
     'bit.ly'
   ];
 
@@ -793,34 +792,34 @@
 
 
   function addMessage(role, content, skipNavigation = false) {
-    const messagesContainer = document.getElementById('jovee-chat-messages');
-    const welcome = messagesContainer.querySelector('.jovee-welcome');
+    const messagesContainer = document.getElementById('anna-chat-messages');
+    const welcome = messagesContainer.querySelector('.anna-welcome');
     if (welcome) welcome.remove();
 
     const { url: navigationUrl, cleanContent } = extractNavigationUrl(content);
     const displayContent = cleanContent;
 
     const wrapperEl = document.createElement('div');
-    wrapperEl.className = `jovee-message-wrapper ${role}`;
+    wrapperEl.className = `anna-message-wrapper ${role}`;
     
     if (role === 'assistant') {
       const avatarEl = document.createElement('div');
-      avatarEl.className = 'jovee-message-avatar';
+      avatarEl.className = 'anna-message-avatar';
       const avatarImg = document.createElement('img');
       avatarImg.src = WIDGET_CONFIG.logoUrl;
-      avatarImg.alt = 'Jovee';
+      avatarImg.alt = 'Anna';
       avatarEl.appendChild(avatarImg);
       wrapperEl.appendChild(avatarEl);
     }
     
     const msgEl = document.createElement('div');
-    msgEl.className = `jovee-message ${role}`;
+    msgEl.className = `anna-message ${role}`;
     msgEl.appendChild(createSafeContent(displayContent));
     wrapperEl.appendChild(msgEl);
     
     if (role === 'assistant' && navigationUrl && !skipNavigation) {
       const navIndicator = document.createElement('div');
-      navIndicator.className = 'jovee-nav-indicator';
+      navIndicator.className = 'anna-nav-indicator';
       navIndicator.innerHTML = '<span style="color: #03a9f4; font-size: 12px; display: flex; align-items: center; gap: 4px; margin-top: 8px;"><svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>Navigating...</span>';
       msgEl.appendChild(navIndicator);
       
@@ -842,21 +841,21 @@
   }
 
   function showTyping() {
-    const messagesContainer = document.getElementById('jovee-chat-messages');
+    const messagesContainer = document.getElementById('anna-chat-messages');
     const typingWrapper = document.createElement('div');
-    typingWrapper.className = 'jovee-typing-wrapper';
-    typingWrapper.id = 'jovee-typing-indicator';
+    typingWrapper.className = 'anna-typing-wrapper';
+    typingWrapper.id = 'anna-typing-indicator';
     
     const avatarEl = document.createElement('div');
-    avatarEl.className = 'jovee-message-avatar';
+    avatarEl.className = 'anna-message-avatar';
     const avatarImg = document.createElement('img');
     avatarImg.src = WIDGET_CONFIG.logoUrl;
-    avatarImg.alt = 'Jovee';
+    avatarImg.alt = 'Anna';
     avatarEl.appendChild(avatarImg);
     typingWrapper.appendChild(avatarEl);
     
     const typingEl = document.createElement('div');
-    typingEl.className = 'jovee-typing';
+    typingEl.className = 'anna-typing';
     typingEl.innerHTML = '<span></span><span></span><span></span>';
     typingWrapper.appendChild(typingEl);
     
@@ -865,19 +864,19 @@
   }
 
   function hideTyping() {
-    const typing = document.getElementById('jovee-typing-indicator');
+    const typing = document.getElementById('anna-typing-indicator');
     if (typing) typing.remove();
   }
 
   function updateSendButton() {
-    const input = document.getElementById('jovee-chat-input');
-    const btn = document.getElementById('jovee-send-btn');
+    const input = document.getElementById('anna-chat-input');
+    const btn = document.getElementById('anna-send-btn');
     btn.disabled = !input.value.trim() || isLoading;
   }
 
   function initResize() {
-    const resizeHandle = document.getElementById('jovee-resize-handle');
-    const chatWindow = document.getElementById('jovee-chat-window');
+    const resizeHandle = document.getElementById('anna-resize-handle');
+    const chatWindow = document.getElementById('anna-chat-window');
     
     if (!resizeHandle || !chatWindow) return;
     
@@ -952,7 +951,7 @@
   }
 
   async function sendMessage() {
-    const input = document.getElementById('jovee-chat-input');
+    const input = document.getElementById('anna-chat-input');
     const content = input.value.trim();
     
     if (!content || isLoading) return;
@@ -1010,7 +1009,7 @@
                   updateMessageContent(assistantMsgEl, streamedContent);
                 }
                 
-                const container = document.getElementById('jovee-chat-messages');
+                const container = document.getElementById('anna-chat-messages');
                 container.scrollTop = container.scrollHeight;
               } else if (data.type === 'done') {
                 const finalContent = data.full_response || streamedContent;
@@ -1022,7 +1021,7 @@
                   
                   if (navigationUrl) {
                     const navIndicator = document.createElement('div');
-                    navIndicator.className = 'jovee-nav-indicator';
+                    navIndicator.className = 'anna-nav-indicator';
                     navIndicator.innerHTML = '<span style="color: #03a9f4; font-size: 12px; display: flex; align-items: center; gap: 4px; margin-top: 8px;"><svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>Navigating...</span>';
                     assistantMsgEl.appendChild(navIndicator);
                     
@@ -1046,7 +1045,7 @@
       }
 
     } catch (error) {
-      console.error('Jovee Widget Error:', error);
+      console.error('Anna Widget Error:', error);
       hideTyping();
       addMessage('assistant', 'I apologize, but I encountered a connection issue. Please try again.');
     } finally {
@@ -1057,7 +1056,7 @@
   }
 
   function initWidget() {
-    if (document.getElementById('jovee-widget-container')) return;
+    if (document.getElementById('anna-widget-container')) return;
 
     injectStyles();
     createWidget();
@@ -1069,10 +1068,10 @@
       restoreMessages(storedMessages);
     }
 
-    document.getElementById('jovee-chat-bubble').addEventListener('click', toggleChat);
-    document.getElementById('jovee-new-chat-btn').addEventListener('click', startNewChat);
+    document.getElementById('anna-chat-bubble').addEventListener('click', toggleChat);
+    document.getElementById('anna-new-chat-btn').addEventListener('click', startNewChat);
     
-    const input = document.getElementById('jovee-chat-input');
+    const input = document.getElementById('anna-chat-input');
     input.addEventListener('input', updateSendButton);
     input.addEventListener('keydown', (e) => {
       if (e.key === 'Enter' && !e.shiftKey) {
@@ -1081,19 +1080,19 @@
       }
     });
 
-    document.getElementById('jovee-send-btn').addEventListener('click', sendMessage);
+    document.getElementById('anna-send-btn').addEventListener('click', sendMessage);
     
     initResize();
     
     if (shouldAutoOpenChat()) {
-      const bubble = document.getElementById('jovee-chat-bubble');
-      const chatWindow = document.getElementById('jovee-chat-window');
+      const bubble = document.getElementById('anna-chat-bubble');
+      const chatWindow = document.getElementById('anna-chat-window');
       chatWindow.classList.add('open');
       bubble.classList.add('open');
       lazyLoadLogo();
       
       setTimeout(function() {
-        const messagesContainer = document.getElementById('jovee-chat-messages');
+        const messagesContainer = document.getElementById('anna-chat-messages');
         messagesContainer.scrollTop = messagesContainer.scrollHeight;
       }, 100);
     }

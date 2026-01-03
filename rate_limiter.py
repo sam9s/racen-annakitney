@@ -1,12 +1,12 @@
 """
 =============================================================================
-RACEN Rate Limiter - Security Module for Conversational AI Chatbots
+ANNA Rate Limiter - Security Module for Conversational AI Chatbots
 =============================================================================
 
-Part of: RACEN (Rapid Automation Client Engagement Network)
+Part of: ANNA (Rapid Automation Client Engagement Network)
          A product line under Raven Solutions Business Process Automation
 
-Applicable Bots: Jovee, SOMERA, GRESTA, Naira, and all future RACEN chatbots
+Applicable Bots: Anna, ANNA, ANNA, Anna, and all future ANNA chatbots
 
 -----------------------------------------------------------------------------
 PROTECTS AGAINST:
@@ -72,7 +72,7 @@ USAGE:
 DEPENDENCIES: Python standard library only (no pip install needed)
 
 CREATED: December 27, 2024
-DOCUMENTATION: See docs/RACEN_SECURITY_ACTION_PLAN.md
+DOCUMENTATION: See docs/ANNA_SECURITY_ACTION_PLAN.md
 =============================================================================
 """
 

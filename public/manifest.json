@@ -1,7 +1,7 @@
 {
-  "name": "Jovee - JoveHeal Wellness Guide",
-  "short_name": "Jovee",
-  "description": "Your friendly wellness coaching assistant from JoveHeal",
+  "name": "Anna - Anna Kitney Wellness Guide",
+  "short_name": "Anna",
+  "description": "Your friendly wellness coaching assistant from Anna Kitney",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#1e1b4b",
@@ -9,19 +9,19 @@
   "orientation": "portrait-primary",
   "icons": [
     {
-      "src": "/jovee-logo.png",
+      "src": "/anna-logo.png",
       "sizes": "192x192",
       "type": "image/png",
       "purpose": "any"
     },
     {
-      "src": "/jovee-splash-512.png",
+      "src": "/anna-splash-512.png",
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "any"
     },
     {
-      "src": "/jovee-splash-512.png",
+      "src": "/anna-splash-512.png",
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "maskable"

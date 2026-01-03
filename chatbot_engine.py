@@ -1,5 +1,5 @@
 """
-Chatbot Engine for JoveHeal
+Chatbot Engine for Anna Kitney Wellness
 
 This module handles the core chatbot logic:
 - Query processing with RAG
@@ -100,11 +100,9 @@ def build_context_aware_query(user_message: str, conversation_history: List[dict
         return user_message
     
     program_names = [
-        "Balance Mastery", "Inner Mastery Lounge", "Elevate 360",
-        "Relationship Healing", "Career Healing", "Beyond the Hustle",
-        "Inner Reset", "Shed & Shine", "Shed and Shine",
-        "Healing Sessions", "Healing Circle", "Meta-U", 
-        "Money and Abundance", "1:1 Private Coaching"
+        "Wellness Coaching", "Holistic Health", "Mindfulness",
+        "Stress Management", "Life Balance", "Personal Transformation",
+        "Self-Care", "Mind-Body Wellness", "1:1 Coaching"
     ]
     
     message_lower = user_message.lower()
@@ -239,13 +237,13 @@ def generate_response(
     client = get_openai_client()
     if client is None:
         return {
-            "response": "I'm temporarily unavailable. Please try again later or contact us at https://www.joveheal.com/contact for assistance.",
+            "response": "I'm temporarily unavailable. Please try again later or contact us at https://www.annakitney.com/contact for assistance.",
             "sources": [],
             "safety_triggered": False,
             "error": "openai_not_configured"
         }
     
-    should_redirect, redirect_response = apply_safety_filters(user_message, is_somera=True)
+    should_redirect, redirect_response = apply_safety_filters(user_message, is_anna=True)
     
     if should_redirect:
         return {
@@ -295,11 +293,11 @@ ONLY say something like: "Great to see you back! How can I help you today?"
 {personalization_context}
 
 KNOWLEDGE BASE CONTEXT:
-The following information is from JoveHeal's official website and documents. Use this to answer the user's question accurately:
+The following information is from Anna Kitney's official website and documents. Use this to answer the user's question accurately:
 
 {context}
 
-IMPORTANT: Only use information from the context above. If the answer is not in the context, politely say you don't have that specific information and offer to help them contact us at https://www.joveheal.com/contact"""
+IMPORTANT: Only use information from the context above. If the answer is not in the context, politely say you don't have that specific information and offer to help them contact us at https://www.annakitney.com/contact"""
 
     messages = [{"role": "system", "content": augmented_system_prompt}]
     
@@ -355,7 +353,7 @@ IMPORTANT: Only use information from the context above. If the answer is not in 
             }
         
         return {
-            "response": "I apologize, but I'm having trouble processing your question right now. Please try again, or contact us at https://www.joveheal.com/contact for assistance.",
+            "response": "I apologize, but I'm having trouble processing your question right now. Please try again, or contact us at https://www.annakitney.com/contact for assistance.",
             "sources": [],
             "safety_triggered": False,
             "error": str(e)
@@ -381,7 +379,7 @@ def generate_response_stream(
         yield {"type": "error", "content": "I'm temporarily unavailable. Please try again later."}
         return
     
-    should_redirect, redirect_response = apply_safety_filters(user_message, is_somera=True)
+    should_redirect, redirect_response = apply_safety_filters(user_message, is_anna=True)
     
     if should_redirect:
         yield {"type": "content", "content": redirect_response}
@@ -428,11 +426,11 @@ ONLY say something like: "Great to see you back! How can I help you today?"
 {personalization_context}
 
 KNOWLEDGE BASE CONTEXT:
-The following information is from JoveHeal's official website and documents. Use this to answer the user's question accurately:
+The following information is from Anna Kitney's official website and documents. Use this to answer the user's question accurately:
 
 {context}
 
-IMPORTANT: Only use information from the context above. If the answer is not in the context, politely say you don't have that specific information and offer to help them contact us at https://www.joveheal.com/contact"""
+IMPORTANT: Only use information from the context above. If the answer is not in the context, politely say you don't have that specific information and offer to help them contact us at https://www.annakitney.com/contact"""
 
     messages = [{"role": "system", "content": augmented_system_prompt}]
     
@@ -490,7 +488,7 @@ IMPORTANT: Only use information from the context above. If the answer is not in 
 
 def get_greeting_message() -> str:
     """Return the initial greeting message for new conversations."""
-    return """Hi there, I'm Jovee — your friendly guide here at JoveHeal!
+    return """Hi there, I'm Anna — your friendly guide here at Anna Kitney!
 
 I'm here to help you explore our programs, understand our philosophy, and find what might be right for you.
 
@@ -535,7 +533,7 @@ CONVERSATION:
 
 Respond in this EXACT format (use "None" if not applicable):
 EMOTIONAL_THEMES: [List any emotional issues or feelings the user shared, e.g., "feeling disconnected from society", "stressed at work", "relationship struggles"]
-RECOMMENDED_PROGRAMS: [List any JoveHeal programs mentioned as recommendations, e.g., "Inner Mastery Lounge", "Balance Mastery", "Elevate 360"]
+RECOMMENDED_PROGRAMS: [List any Anna Kitney programs mentioned as recommendations, e.g., "Inner Mastery Lounge", "Balance Mastery", "Elevate 360"]
 LAST_TOPICS: [Summarize in 1-2 sentences what the conversation was about]
 CONVERSATION_STATUS: [One of: "exploring programs", "shared personal issue", "asked for contact info", "general inquiry", "follow-up needed"]
 

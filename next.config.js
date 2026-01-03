@@ -17,7 +17,7 @@ const nextConfig = {
         ],
       },
       {
-        source: '/jovee-logo.png',
+        source: '/anna-logo.png',
         headers: [
           { key: 'Cache-Control', value: 'public, max-age=86400' },
         ],

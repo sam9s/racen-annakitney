@@ -14,7 +14,7 @@ export async function GET() {
       const flaskData = await flaskHealth.json();
       return NextResponse.json({
         status: 'healthy',
-        service: 'JoveHeal Application',
+        service: 'Anna Kitney Application',
         components: {
           nextjs: 'healthy',
           flask: flaskData.status || 'healthy'
@@ -23,7 +23,7 @@ export async function GET() {
     } else {
       return NextResponse.json({
         status: 'degraded',
-        service: 'JoveHeal Application',
+        service: 'Anna Kitney Application',
         components: {
           nextjs: 'healthy',
           flask: 'unhealthy'
@@ -33,7 +33,7 @@ export async function GET() {
   } catch (error) {
     return NextResponse.json({
       status: 'degraded',
-      service: 'JoveHeal Application',
+      service: 'Anna Kitney Application',
       components: {
         nextjs: 'healthy',
         flask: 'unreachable'

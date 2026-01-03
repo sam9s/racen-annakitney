@@ -57,7 +57,7 @@ export default function VoiceDemo() {
 
     vapiInstance.on('message', (message: { type: string; transcript?: string; transcriptType?: string; role?: string }) => {
       if (message.type === 'transcript' && message.transcript) {
-        const role = message.role === 'user' ? 'You' : 'SOMERA';
+        const role = message.role === 'user' ? 'You' : 'Anna';
         
         if (message.transcriptType === 'final') {
           setTranscript(prev => [...prev, `${role}: ${message.transcript}`]);
@@ -160,7 +160,7 @@ export default function VoiceDemo() {
       case 'connecting': return 'Connecting...';
       case 'connected': return 'End Call';
       case 'disconnecting': return 'Ending...';
-      default: return 'Talk to SOMERA';
+      default: return 'Talk to Anna';
     }
   };
 
@@ -181,7 +181,7 @@ export default function VoiceDemo() {
       <div className="max-w-md w-full">
         <div className="text-center mb-12">
           <h1 className="text-5xl font-bold bg-gradient-to-r from-purple-400 via-pink-400 to-purple-400 bg-clip-text text-transparent mb-4">
-            SOMERA
+            Anna
           </h1>
           <p className="text-gray-400 text-lg">
             Your Empathetic Coaching Companion
@@ -268,7 +268,7 @@ export default function VoiceDemo() {
                   <div className="w-2 h-2 bg-purple-400 rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
                 </div>
               </div>
-              <p className="text-purple-300 text-sm">Connecting to SOMERA...</p>
+              <p className="text-purple-300 text-sm">Connecting to Anna...</p>
               <p className="text-gray-500 text-xs mt-1">Please allow microphone access</p>
             </div>
           )}
@@ -282,7 +282,7 @@ export default function VoiceDemo() {
                 <span className="text-sm font-medium">Connected</span>
               </div>
               {isAssistantSpeaking && (
-                <p className="text-purple-300 text-sm">SOMERA is speaking...</p>
+                <p className="text-purple-300 text-sm">Anna is speaking...</p>
               )}
               {isSpeaking && !isAssistantSpeaking && (
                 <p className="text-pink-300 text-sm">Listening to you...</p>
@@ -304,7 +304,7 @@ export default function VoiceDemo() {
                     <div className="w-3 h-3 bg-pink-400 rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
                     <div className="w-3 h-3 bg-purple-400 rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
                   </div>
-                  <p className="text-yellow-300 text-sm font-medium">Initializing SOMERA...</p>
+                  <p className="text-yellow-300 text-sm font-medium">Initializing Anna...</p>
                   <p className="text-gray-400 text-xs mt-1">Please wait, first response loading</p>
                 </div>
               )}
@@ -347,7 +347,7 @@ export default function VoiceDemo() {
 
         <div className="mt-12 text-center">
           <p className="text-gray-600 text-xs">
-            Powered by JoveHeal Wellness
+            Powered by Anna Kitney Wellness
           </p>
         </div>
       </div>

@@ -1,5 +1,5 @@
 """
-Conversation Logging Module for JoveHeal Chatbot
+Conversation Logging Module for Anna Kitney Chatbot
 
 Stores conversation logs in PostgreSQL database with fallback to file-based storage.
 Includes:

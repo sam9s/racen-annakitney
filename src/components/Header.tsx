@@ -34,10 +34,10 @@ export function Header({ onReset }: HeaderProps) {
           
           <div className="flex flex-col items-center flex-1">
             <h1 className="text-2xl md:text-3xl font-medium tracking-wider text-white">
-              Jovee
+              Anna
             </h1>
             <p className="hidden md:block text-[10px] md:text-xs tracking-wide text-gray-400 mt-0.5">
-              Your JoveHeal Wellness Guide
+              Your Anna Kitney Wellness Guide
             </p>
           </div>
           

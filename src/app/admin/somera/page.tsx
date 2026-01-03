@@ -91,7 +91,7 @@ export default function SomeraAdminDashboard() {
 
   useEffect(() => {
     if (isAuthenticated && calls.length > 0) {
-      const lastViewed = localStorage.getItem('somera_last_viewed_calls');
+      const lastViewed = localStorage.getItem('anna_last_viewed_calls');
       if (lastViewed) {
         const lastViewedDate = new Date(lastViewed);
         const newCalls = calls.filter(call => new Date(call.startedAt) > lastViewedDate);
@@ -104,7 +104,7 @@ export default function SomeraAdminDashboard() {
 
   useEffect(() => {
     if (activeTab === 'transcripts' && calls.length > 0) {
-      localStorage.setItem('somera_last_viewed_calls', new Date().toISOString());
+      localStorage.setItem('anna_last_viewed_calls', new Date().toISOString());
       setNewCallsCount(0);
     }
   }, [activeTab, calls]);
@@ -122,7 +122,7 @@ export default function SomeraAdminDashboard() {
     if (!isAuthenticated) return;
     
     const pollInterval = setInterval(() => {
-      fetch(`/api/admin/somera/calls?range=${timeRange}`)
+      fetch(`/api/admin/anna/calls?range=${timeRange}`)
         .then(res => res.ok ? res.json() : null)
         .then(data => data && setCalls(data.calls || []))
         .catch(() => {});
@@ -188,7 +188,7 @@ export default function SomeraAdminDashboard() {
   const fetchStats = async () => {
     setLoading(true);
     try {
-      const res = await fetch(`/api/admin/somera/stats?range=${timeRange}`);
+      const res = await fetch(`/api/admin/anna/stats?range=${timeRange}`);
       if (res.ok) {
         const data = await res.json();
         setStats(data);
@@ -202,7 +202,7 @@ export default function SomeraAdminDashboard() {
   const fetchCalls = async () => {
     setCallsLoading(true);
     try {
-      const res = await fetch(`/api/admin/somera/calls?range=${timeRange}`);
+      const res = await fetch(`/api/admin/anna/calls?range=${timeRange}`);
       if (res.ok) {
         const data = await res.json();
         setCalls(data.calls || []);
@@ -217,7 +217,7 @@ export default function SomeraAdminDashboard() {
     setDetailLoading(true);
     setSelectedCall(callId);
     try {
-      const res = await fetch(`/api/admin/somera/calls/${encodeURIComponent(callId)}`);
+      const res = await fetch(`/api/admin/anna/calls/${encodeURIComponent(callId)}`);
       if (res.ok) {
         const data = await res.json();
         setCallDetail(data);
@@ -299,7 +299,7 @@ export default function SomeraAdminDashboard() {
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" />
               </svg>
             </div>
-            <h1 className="text-2xl font-bold text-white mb-2">SOMERA Voice Analytics</h1>
+            <h1 className="text-2xl font-bold text-white mb-2">Anna Voice Analytics</h1>
             <p className="text-gray-400">Sign in to access the dashboard</p>
           </div>
 
@@ -375,7 +375,7 @@ export default function SomeraAdminDashboard() {
               </svg>
             </div>
             <div>
-              <h1 className="text-3xl font-bold text-white">SOMERA Voice Analytics</h1>
+              <h1 className="text-3xl font-bold text-white">Anna Voice Analytics</h1>
               <p className="text-gray-400 mt-1">Voice coaching performance dashboard</p>
             </div>
           </div>
@@ -411,7 +411,7 @@ export default function SomeraAdminDashboard() {
               </button>
             </div>
             <a
-              href={`/api/admin/somera/export?range=${timeRange}`}
+              href={`/api/admin/anna/export?range=${timeRange}`}
               className="px-4 py-2 bg-green-500/20 hover:bg-green-500/30 text-green-400 hover:text-green-300 rounded-lg text-sm transition-colors flex items-center gap-2"
               download
             >
@@ -424,7 +424,7 @@ export default function SomeraAdminDashboard() {
               href="/admin/dashboard"
               className="px-4 py-2 bg-gray-800 hover:bg-gray-700 text-gray-400 hover:text-white rounded-lg text-sm transition-colors"
             >
-              Jovee Dashboard
+              Anna Dashboard
             </a>
           </div>
         </div>
@@ -620,7 +620,7 @@ function AnalyticsView({ stats, loading, formatLatency }: {
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" />
           </svg>
           <h3 className="text-xl font-semibold text-white mb-2">No Voice Calls Yet</h3>
-          <p className="text-gray-400">Make some voice calls with SOMERA to see analytics here.</p>
+          <p className="text-gray-400">Make some voice calls with Anna to see analytics here.</p>
         </div>
       ) : (
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -815,7 +815,7 @@ function TranscriptsView({
                   <span className={`text-xs font-medium ${
                     msg.role === 'user' ? 'text-blue-400' : 'text-purple-400'
                   }`}>
-                    {msg.role === 'user' ? 'User' : 'SOMERA'}
+                    {msg.role === 'user' ? 'User' : 'Anna'}
                   </span>
                   <div className="flex items-center gap-2">
                     {msg.role === 'user' && getReadinessBadge(msg.readinessScore)}

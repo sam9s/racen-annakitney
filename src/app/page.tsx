@@ -260,16 +260,16 @@ export default function Home() {
             <div className="flex-1 flex items-center justify-center min-h-[50vh] md:min-h-[60vh]">
               <div className="text-center max-w-md px-4">
                 <p className="text-xl font-light text-theme-muted">
-                  {getUserFirstName() ? `Hi ${getUserFirstName()}, I'm Jovee` : "Hi, I'm Jovee"}
+                  {getUserFirstName() ? `Hi ${getUserFirstName()}, I'm Anna` : "Hi, I'm Anna"}
                 </p>
                 <p className="text-sm mt-2 text-theme-muted opacity-80">
-                  Your friendly wellness guide at JoveHeal
+                  Your friendly wellness guide at Anna Kitney
                 </p>
                 <div className="mt-6 text-left text-sm text-theme-muted opacity-70 space-y-1">
                   <p className="font-medium opacity-90 mb-2">I can help you explore:</p>
-                  <p>• Program details (Balance Mastery+, Elevate 360)</p>
-                  <p>• Healing philosophy and approach</p>
-                  <p>• Membership and pricing info</p>
+                  <p>• Wellness coaching programs</p>
+                  <p>• Holistic health and well-being</p>
+                  <p>• Services and offerings</p>
                   <p>• How to get started</p>
                 </div>
                 <p className="text-sm mt-6 text-theme-muted opacity-60">

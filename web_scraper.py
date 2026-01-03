@@ -164,28 +164,28 @@ def clean_extracted_text(text: str) -> str:
     return '\n'.join(cleaned_lines)
 
 
-def scrape_joveheal_website(max_pages: int = 50) -> list:
+def scrape_annakitney_website(max_pages: int = 50) -> list:
     """
-    Scrape the JoveHeal website and return a list of documents.
+    Scrape the Anna Kitney website and return a list of documents.
     Each document contains the URL and its text content.
     """
-    base_url = "https://www.joveheal.com"
-    base_domain = "joveheal.com"
+    base_url = "https://www.annakitney.com"
+    base_domain = "annakitney.com"
     
     common_pages = [
-        "https://www.joveheal.com",
-        "https://www.joveheal.com/about",
-        "https://www.joveheal.com/services",
-        "https://www.joveheal.com/programs",
-        "https://www.joveheal.com/coaching",
-        "https://www.joveheal.com/healing",
-        "https://www.joveheal.com/membership",
-        "https://www.joveheal.com/workshops",
-        "https://www.joveheal.com/contact",
-        "https://www.joveheal.com/faq",
-        "https://www.joveheal.com/pricing",
-        "https://www.joveheal.com/balance-mastery",
-        "https://www.joveheal.com/inner-mastery-lounge",
+        "https://www.annakitney.com",
+        "https://www.annakitney.com/about",
+        "https://www.annakitney.com/services",
+        "https://www.annakitney.com/programs",
+        "https://www.annakitney.com/coaching",
+        "https://www.annakitney.com/healing",
+        "https://www.annakitney.com/membership",
+        "https://www.annakitney.com/workshops",
+        "https://www.annakitney.com/contact",
+        "https://www.annakitney.com/faq",
+        "https://www.annakitney.com/pricing",
+        "https://www.annakitney.com/balance-mastery",
+        "https://www.annakitney.com/inner-mastery-lounge",
     ]
     
     visited = set()
@@ -232,7 +232,7 @@ def scrape_joveheal_website(max_pages: int = 50) -> list:
 
 
 if __name__ == "__main__":
-    docs = scrape_joveheal_website(max_pages=10)
+    docs = scrape_annakitney_website(max_pages=10)
     for doc in docs:
         print(f"\n--- {doc['url']} ---")
         print(doc['content'][:500] + "..." if len(doc['content']) > 500 else doc['content'])

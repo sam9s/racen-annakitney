@@ -1,5 +1,5 @@
 """
-Database Models and Connection for JoveHeal Chatbot
+Database Models and Connection for Anna Kitney Chatbot
 
 PostgreSQL database for:
 - Conversation logs with analytics

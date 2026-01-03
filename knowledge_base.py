@@ -1,5 +1,5 @@
 """
-Knowledge Base / RAG Module for JoveHeal Chatbot
+Knowledge Base / RAG Module for Anna Kitney Chatbot
 
 This module handles:
 - Document ingestion (web scraping, PDF, text files)
@@ -19,7 +19,7 @@ from chromadb.config import Settings
 from pypdf import PdfReader
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 
-from web_scraper import scrape_joveheal_website
+from web_scraper import scrape_annakitney_website
 
 KNOWLEDGE_BASE_DIR = Path("knowledge_base")
 VECTOR_DB_DIR = Path("vector_db")
@@ -47,13 +47,13 @@ def get_chroma_client():
 
 
 def get_or_create_collection(client=None):
-    """Get or create the JoveHeal knowledge collection."""
+    """Get or create the Anna Kitney knowledge collection."""
     if client is None:
         client = get_chroma_client()
     
     return client.get_or_create_collection(
-        name="joveheal_knowledge",
-        metadata={"description": "JoveHeal website and document knowledge base"}
+        name="annakitney_knowledge",
+        metadata={"description": "Anna Kitney website and document knowledge base"}
     )
 
 
@@ -131,7 +131,7 @@ def clear_website_chunks():
 
 def ingest_website_content(max_pages: int = 50, clear_existing: bool = True) -> int:
     """
-    Scrape the JoveHeal website and add content to the knowledge base.
+    Scrape the Anna Kitney website and add content to the knowledge base.
     Returns the number of chunks added.
     
     WARNING: Website scraping may produce unreliable results due to encoding issues.
@@ -139,8 +139,8 @@ def ingest_website_content(max_pages: int = 50, clear_existing: bool = True) -> 
     """
     from datetime import datetime
     
-    print("Scraping JoveHeal website...")
-    documents = scrape_joveheal_website(max_pages=max_pages)
+    print("Scraping Anna Kitney website...")
+    documents = scrape_annakitney_website(max_pages=max_pages)
     
     if not documents:
         print("No content found from website.")
@@ -582,8 +582,8 @@ def search_coaching_content_enhanced(
     try:
         client = get_chroma_client()
         collection = client.get_or_create_collection(
-            name="joveheal_knowledge",
-            metadata={"description": "JoveHeal website and document knowledge base"}
+            name="annakitney_knowledge",
+            metadata={"description": "Anna Kitney website and document knowledge base"}
         )
         
         count = collection.count()
@@ -680,8 +680,8 @@ def search_coaching_content(query: str, n_results: int = 5, topic: str = None, r
     try:
         client = get_chroma_client()
         collection = client.get_or_create_collection(
-            name="joveheal_knowledge",
-            metadata={"description": "JoveHeal website and document knowledge base"}
+            name="annakitney_knowledge",
+            metadata={"description": "Anna Kitney website and document knowledge base"}
         )
         
         count = collection.count()
@@ -765,8 +765,8 @@ def search_knowledge_base(query: str, n_results: int = 5, retry_count: int = 0) 
     try:
         client = get_chroma_client()
         collection = client.get_or_create_collection(
-            name="joveheal_knowledge",
-            metadata={"description": "JoveHeal website and document knowledge base"}
+            name="annakitney_knowledge",
+            metadata={"description": "Anna Kitney website and document knowledge base"}
         )
         
         count = collection.count()
@@ -828,7 +828,7 @@ def clear_knowledge_base():
     try:
         client = get_chroma_client()
         try:
-            client.delete_collection("joveheal_knowledge")
+            client.delete_collection("annakitney_knowledge")
         except Exception:
             pass
         
@@ -865,7 +865,7 @@ def initialize_knowledge_base(force_refresh: bool = False, enable_web_scrape: bo
     
     Args:
         force_refresh: If True, clear all content and rebuild
-        enable_web_scrape: If True, attempt to scrape the JoveHeal website
+        enable_web_scrape: If True, attempt to scrape the Anna Kitney website
                           (disabled by default due to encoding issues)
     """
     ensure_directories()

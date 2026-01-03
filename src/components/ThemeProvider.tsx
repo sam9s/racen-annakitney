@@ -20,7 +20,7 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     setMounted(true);
-    const savedTheme = localStorage.getItem('racen-theme') as Theme | null;
+    const savedTheme = localStorage.getItem('anna-theme') as Theme | null;
     if (savedTheme && (savedTheme === 'dark' || savedTheme === 'light')) {
       setTheme(savedTheme);
     }
@@ -30,7 +30,7 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     if (mounted) {
       document.documentElement.classList.remove('light', 'dark');
       document.documentElement.classList.add(theme);
-      localStorage.setItem('racen-theme', theme);
+      localStorage.setItem('anna-theme', theme);
     }
   }, [theme, mounted]);
 

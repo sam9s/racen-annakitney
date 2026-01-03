@@ -253,7 +253,7 @@ export default function AdminDashboard() {
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
               </svg>
             </div>
-            <h1 className="text-2xl font-bold text-white mb-2">Jovee Analytics</h1>
+            <h1 className="text-2xl font-bold text-white mb-2">Anna Analytics</h1>
             <p className="text-gray-400">Sign in to access the dashboard</p>
           </div>
 
@@ -340,7 +340,7 @@ export default function AdminDashboard() {
       <div className="max-w-7xl mx-auto">
         <div className="flex items-center justify-between mb-8">
           <div>
-            <h1 className="text-3xl font-bold text-white">Jovee Analytics</h1>
+            <h1 className="text-3xl font-bold text-white">Anna Analytics</h1>
             <p className="text-gray-400 mt-1">Real-time chatbot performance dashboard</p>
           </div>
           <div className="flex items-center gap-4">
@@ -375,13 +375,13 @@ export default function AdminDashboard() {
               </button>
             </div>
             <a
-              href="/admin/somera"
+              href="/admin/anna"
               className="px-4 py-2 bg-purple-500/20 hover:bg-purple-500/30 text-purple-400 hover:text-purple-300 rounded-lg text-sm transition-colors flex items-center gap-2"
             >
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" />
               </svg>
-              SOMERA Voice
+              Anna Voice
             </a>
           </div>
         </div>
@@ -522,7 +522,7 @@ function AnalyticsView({ stats, loading }: { stats: DashboardStats | null; loadi
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
           </svg>
           <h3 className="text-xl font-semibold text-white mb-2">No Data Yet</h3>
-          <p className="text-gray-400">Start chatting with Jovee to see analytics here.</p>
+          <p className="text-gray-400">Start chatting with Anna to see analytics here.</p>
         </div>
       ) : (
         <>
@@ -644,7 +644,7 @@ function ConversationsView({
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
         </svg>
         <h3 className="text-xl font-semibold text-white mb-2">No Conversations Yet</h3>
-        <p className="text-gray-400">Conversations will appear here once users start chatting with Jovee.</p>
+        <p className="text-gray-400">Conversations will appear here once users start chatting with Anna.</p>
       </div>
     );
   }

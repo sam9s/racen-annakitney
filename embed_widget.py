@@ -1,5 +1,5 @@
 """
-JoveHeal Chatbot - Embeddable Widget
+Anna Kitney Chatbot - Embeddable Widget
 
 A lightweight version of the chatbot designed for embedding on external websites.
 Provides a simpler interface focused on the chat functionality.
@@ -15,7 +15,7 @@ from conversation_logger import log_conversation
 from database import init_database, is_database_available
 
 st.set_page_config(
-    page_title="JoveHeal Chat",
+    page_title="Anna Kitney Chat",
     page_icon="🌿",
     layout="centered",
     initial_sidebar_state="collapsed"
@@ -84,7 +84,7 @@ st.markdown("""
 
 st.markdown("""
 <div class="widget-header">
-    <p class="widget-title">JoveHeal Assistant</p>
+    <p class="widget-title">Anna Kitney Assistant</p>
     <p class="widget-subtitle">Ask me about our wellness programs</p>
 </div>
 """, unsafe_allow_html=True)
@@ -165,6 +165,6 @@ if prompt := st.chat_input("Type your question..."):
 
 st.markdown("""
 <div class="powered-by">
-    Powered by <a href="https://www.joveheal.com" target="_blank">JoveHeal</a>
+    Powered by <a href="https://www.annakitney.com" target="_blank">Anna Kitney</a>
 </div>
 """, unsafe_allow_html=True)

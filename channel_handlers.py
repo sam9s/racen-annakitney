@@ -1,5 +1,5 @@
 """
-Multi-Channel Message Handlers for JoveHeal
+Multi-Channel Message Handlers for Anna Kitney
 
 Handles incoming messages from different channels:
 - WhatsApp (via Twilio)

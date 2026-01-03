@@ -1,7 +1,7 @@
 """
-JoveHeal Wellness Chatbot - Main Streamlit Application
+Anna Kitney Wellness Chatbot - Main Streamlit Application
 
-A RAG-based chatbot for JoveHeal wellness coaching business.
+A RAG-based chatbot for Anna Kitney wellness coaching business.
 Provides information about programs, services, and offerings.
 """
 
@@ -36,7 +36,7 @@ from conversation_logger import (
 from database import init_database, is_database_available
 
 st.set_page_config(
-    page_title="JoveHeal Assistant",
+    page_title="Anna Kitney Assistant",
     page_icon="🌿",
     layout="centered",
     initial_sidebar_state="collapsed"
@@ -119,7 +119,7 @@ def initialize_kb_if_needed():
 
 def render_chat_interface():
     """Render the main chat interface."""
-    st.title("JoveHeal Assistant")
+    st.title("Anna Kitney Assistant")
     st.markdown("*Your guide to wellness coaching programs and services*")
     
     status = check_knowledge_base_status()
@@ -188,7 +188,7 @@ def render_chat_interface():
                     if saved_comment:
                         st.caption(f"Your comment: {saved_comment[:50]}...")
     
-    if prompt := st.chat_input("Ask me about JoveHeal's programs and services..."):
+    if prompt := st.chat_input("Ask me about Anna Kitney's programs and services..."):
         st.session_state.messages.append({"role": "user", "content": prompt})
         
         with st.chat_message("user"):
@@ -290,7 +290,7 @@ def render_admin_panel():
         uploaded_file = st.file_uploader(
             "Choose a file",
             type=["pdf", "txt"],
-            help="Upload PDF or TXT files containing JoveHeal information"
+            help="Upload PDF or TXT files containing Anna Kitney information"
         )
         
         if uploaded_file is not None:
@@ -452,7 +452,7 @@ def render_admin_panel():
     
     with tab5:
         st.subheader("Embed Chatbot Widget")
-        st.markdown("Add the JoveHeal chatbot to your website using the embed code below.")
+        st.markdown("Add the Anna Kitney chatbot to your website using the embed code below.")
         
         replit_url = os.environ.get("REPLIT_DEV_DOMAIN", "your-replit-url.replit.dev")
         widget_url = f"https://{replit_url}/widget"
@@ -471,7 +471,7 @@ def render_admin_panel():
     width="400"
     height="600"
     style="border: none; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.15);"
-    title="JoveHeal Chat Assistant">
+    title="Anna Kitney Chat Assistant">
 </iframe>'''
         
         st.code(iframe_code, language="html")
@@ -482,7 +482,7 @@ def render_admin_panel():
         st.markdown("For a floating chat button in the corner of your website:")
         
         floating_code = f'''<style>
-.joveheal-chat-button {{
+.anna-chat-button {{
     position: fixed;
     bottom: 20px;
     right: 20px;
@@ -497,7 +497,7 @@ def render_admin_panel():
     font-size: 24px;
     z-index: 9999;
 }}
-.joveheal-chat-widget {{
+.anna-chat-widget {{
     position: fixed;
     bottom: 90px;
     right: 20px;
@@ -509,15 +509,15 @@ def render_admin_panel():
     z-index: 9998;
     display: none;
 }}
-.joveheal-chat-widget.open {{
+.anna-chat-widget.open {{
     display: block;
 }}
 </style>
-<button class="joveheal-chat-button" onclick="toggleJoveHealChat()">💬</button>
-<iframe class="joveheal-chat-widget" id="joveheal-widget" src="{widget_url}"></iframe>
+<button class="anna-chat-button" onclick="toggleAnnaChat()">💬</button>
+<iframe class="anna-chat-widget" id="annakitney-widget" src="{widget_url}"></iframe>
 <script>
-function toggleJoveHealChat() {{
-    var widget = document.getElementById('joveheal-widget');
+function toggleAnnaChat() {{
+    var widget = document.getElementById('annakitney-widget');
     widget.classList.toggle('open');
 }}
 </script>'''
@@ -536,7 +536,7 @@ function toggleJoveHealChat() {{
     
     with tab6:
         st.subheader("Multi-Channel Integration")
-        st.markdown("Connect your JoveHeal chatbot to messaging platforms.")
+        st.markdown("Connect your Anna Kitney chatbot to messaging platforms.")
         
         try:
             from channel_handlers import get_channel_status
@@ -633,7 +633,7 @@ function toggleJoveHealChat() {{
         
         st.markdown("**Response format:**")
         response_example = '''{
-    "response": "JoveHeal offers several wellness programs...",
+    "response": "Anna Kitney offers several wellness programs...",
     "user_id": "user123",
     "channel": "custom_app"
 }'''
@@ -766,7 +766,7 @@ function toggleJoveHealChat() {{
             
             st.markdown("### Monitoring Setup")
             st.markdown("""
-            **Recommended monitors for JoveHeal:**
+            **Recommended monitors for Anna Kitney:**
             - Homepage: `https://your-app.replit.app/`
             - Health Check: `https://your-app.replit.app/health`
             - Widget: `https://your-app.replit.app/widget.js`
@@ -795,9 +795,9 @@ def main():
         
         st.markdown("### About")
         st.markdown("""
-        This chatbot provides information about JoveHeal's wellness coaching programs and services.
+        This chatbot provides information about Anna Kitney's wellness coaching programs and services.
         
-        For bookings or personal inquiries, please visit [joveheal.com](https://www.joveheal.com)
+        For bookings or personal inquiries, please visit [annakitney.com](https://www.annakitney.com)
         """)
         
         if st.button("New Conversation"):

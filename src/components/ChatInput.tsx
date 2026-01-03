@@ -36,7 +36,7 @@ export function ChatInput({ onSend, disabled }: ChatInputProps) {
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={handleKeyDown}
             disabled={disabled}
-            placeholder="Ask about JoveHeal..."
+            placeholder="Ask about Anna Kitney..."
             className="flex-1 px-3 md:px-5 py-3 md:py-3 text-base md:text-sm bg-transparent text-theme placeholder-gray-500 focus:outline-none disabled:opacity-50"
           />
           <button
