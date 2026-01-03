@@ -5,12 +5,18 @@ This script crawls annakitney.com and ingests content into the knowledge base.
 Run this script to populate the chatbot with Anna's website content.
 
 Usage:
-    python ingest_anna_website.py
+    python3 ingest_anna_website.py
 """
 
 import os
 import sys
-from knowledge_base import add_document_to_kb, clear_knowledge_base, get_knowledge_base_stats
+from knowledge_base import (
+    get_or_create_collection,
+    split_text_into_chunks,
+    clear_knowledge_base,
+    get_knowledge_base_stats,
+    is_valid_text_content
+)
 from web_scraper import get_website_text_content, get_all_links, fetch_page_content
 
 
@@ -64,16 +70,17 @@ BASE_DOMAIN = "annakitney.com"
 MAX_DISCOVERY_PAGES = 100
 
 
-def ingest_url(url: str, source_name: str = None) -> bool:
+def ingest_url(url: str, collection, source_name: str = None) -> int:
     """
     Ingest a single URL into the knowledge base.
     
     Args:
         url: The URL to scrape and ingest
+        collection: ChromaDB collection
         source_name: Optional custom source name
     
     Returns:
-        True if successful, False otherwise
+        Number of chunks added
     """
     print(f"Ingesting: {url}")
     
@@ -82,19 +89,42 @@ def ingest_url(url: str, source_name: str = None) -> bool:
         
         if not content or len(content.strip()) < 100:
             print(f"  - Skipped (no content or too short)")
-            return False
+            return 0
+        
+        if not is_valid_text_content(content):
+            print(f"  - Skipped (invalid content)")
+            return 0
         
         if source_name is None:
             path = url.replace("https://", "").replace("http://", "").replace("www.", "")
             source_name = f"website_{path.replace('/', '_').replace('.', '_').rstrip('_')}"
         
-        add_document_to_kb(content, source_name)
-        print(f"  - Success! ({len(content)} chars)")
-        return True
+        chunks = split_text_into_chunks(content, url)
+        chunks_added = 0
+        
+        for chunk in chunks:
+            if not is_valid_text_content(chunk["content"], min_printable_ratio=0.90):
+                continue
+            try:
+                collection.upsert(
+                    ids=[chunk["id"]],
+                    documents=[chunk["content"]],
+                    metadatas=[{
+                        "source": url,
+                        "type": "website",
+                        "chunk_index": chunk["chunk_index"]
+                    }]
+                )
+                chunks_added += 1
+            except Exception as e:
+                print(f"  - Chunk error: {e}")
+        
+        print(f"  - Success! ({len(content)} chars, {chunks_added} chunks)")
+        return chunks_added
         
     except Exception as e:
         print(f"  - Error: {e}")
-        return False
+        return 0
 
 
 def discover_pages(base_url: str, base_domain: str, max_pages: int = 50) -> list:
@@ -156,6 +186,8 @@ def main():
     print("\nClearing existing knowledge base...")
     clear_knowledge_base()
     
+    collection = get_or_create_collection()
+    
     all_urls = set()
     
     print("\n--- Adding Main Pages ---")
@@ -198,13 +230,16 @@ def main():
     print(f"Total pages to ingest: {len(urls_to_ingest)}")
     print(f"{'=' * 60}")
     
+    total_chunks = 0
     success_count = 0
     error_count = 0
     
     for i, url in enumerate(urls_to_ingest, 1):
         print(f"\n[{i}/{len(urls_to_ingest)}] ", end="")
-        if ingest_url(url):
+        chunks = ingest_url(url, collection)
+        if chunks > 0:
             success_count += 1
+            total_chunks += chunks
         else:
             error_count += 1
     
@@ -213,6 +248,7 @@ def main():
     print("=" * 60)
     print(f"Successfully ingested: {success_count} pages")
     print(f"Failed/Skipped: {error_count} pages")
+    print(f"Total chunks added: {total_chunks}")
     
     stats = get_knowledge_base_stats()
     print(f"\nKnowledge Base Stats:")
