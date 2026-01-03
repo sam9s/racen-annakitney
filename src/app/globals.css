@@ -1,0 +1,172 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --foreground-rgb: 255, 255, 255;
+  --background-rgb: 10, 10, 15;
+  --surface-rgb: 20, 20, 30;
+  --card-rgb: 30, 30, 45;
+}
+
+.light {
+  --foreground-rgb: 30, 30, 40;
+  --background-rgb: 245, 247, 250;
+  --surface-rgb: 255, 255, 255;
+  --card-rgb: 240, 242, 245;
+}
+
+body {
+  color: rgb(var(--foreground-rgb));
+  background: rgb(var(--background-rgb));
+  min-height: 100vh;
+  transition: background-color 0.3s ease, color 0.3s ease;
+}
+
+/* Theme-aware background classes */
+.bg-theme {
+  background-color: rgb(var(--background-rgb));
+}
+
+.bg-theme-surface {
+  background-color: rgb(var(--surface-rgb));
+}
+
+.bg-theme-card {
+  background-color: rgb(var(--card-rgb));
+}
+
+.text-theme {
+  color: rgb(var(--foreground-rgb));
+}
+
+.text-theme-muted {
+  color: rgba(var(--foreground-rgb), 0.6);
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: rgba(0, 0, 0, 0.1);
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(3, 169, 244, 0.5);
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(3, 169, 244, 0.7);
+}
+
+/* Glowing effect */
+.glow {
+  box-shadow: 0 0 20px rgba(3, 169, 244, 0.3);
+}
+
+.glow-text {
+  text-shadow: 0 0 10px rgba(3, 169, 244, 0.5);
+}
+
+/* Message animations */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.message-enter {
+  animation: fadeIn 0.3s ease-out;
+}
+
+/* Typing indicator */
+@keyframes bounce {
+  0%, 60%, 100% {
+    transform: translateY(0);
+  }
+  30% {
+    transform: translateY(-4px);
+  }
+}
+
+.typing-dot {
+  animation: bounce 1.4s infinite ease-in-out;
+}
+
+.typing-dot:nth-child(1) {
+  animation-delay: 0s;
+}
+
+.typing-dot:nth-child(2) {
+  animation-delay: 0.2s;
+}
+
+.typing-dot:nth-child(3) {
+  animation-delay: 0.4s;
+}
+
+/* Input focus glow */
+.input-glow:focus {
+  box-shadow: 0 0 0 2px rgba(3, 169, 244, 0.3);
+}
+
+/* Gradient border */
+.gradient-border {
+  position: relative;
+  background: linear-gradient(135deg, rgba(3, 169, 244, 0.1), rgba(3, 169, 244, 0.05));
+  border: 1px solid rgba(3, 169, 244, 0.3);
+}
+
+.light .gradient-border {
+  background: linear-gradient(135deg, rgba(3, 169, 244, 0.05), rgba(3, 169, 244, 0.02));
+  border: 1px solid rgba(3, 169, 244, 0.4);
+}
+
+.gradient-border::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  padding: 1px;
+  background: linear-gradient(135deg, rgba(3, 169, 244, 0.3), transparent);
+  -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  pointer-events: none;
+}
+
+/* Header style in light mode */
+.light .header-bg {
+  background-color: rgba(255, 255, 255, 0.9);
+  border-bottom-color: rgba(3, 169, 244, 0.2);
+}
+
+/* Button styles */
+.btn-theme {
+  background-color: rgba(var(--surface-rgb), 0.8);
+  border: 1px solid rgba(3, 169, 244, 0.3);
+  transition: all 0.2s ease;
+}
+
+.btn-theme:hover {
+  background-color: rgba(3, 169, 244, 0.1);
+  border-color: rgba(3, 169, 244, 0.5);
+}
+
+.light .btn-theme {
+  background-color: rgba(255, 255, 255, 0.9);
+  border: 1px solid rgba(3, 169, 244, 0.4);
+}
+
+.light .btn-theme:hover {
+  background-color: rgba(3, 169, 244, 0.1);
+}
