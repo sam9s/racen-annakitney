@@ -1,9 +1,88 @@
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, ReactNode } from "react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { Send, RotateCcw, Loader2, MessageCircle } from "lucide-react";
 import logoImage from "@assets/AK_logo_black_compressed_1767495757104.png";
+
+function extractNavigationUrl(content: string): { url: string | null; cleanContent: string } {
+  const navRegex = /\[NAVIGATE:(https?:\/\/[^\]]+)\]\s*/i;
+  const match = content.match(navRegex);
+  const cleanContent = content.replace(navRegex, '').trim();
+  
+  if (match) {
+    return { url: match[1], cleanContent };
+  }
+  return { url: null, cleanContent };
+}
+
+function renderMessageContent(text: string): ReactNode[] {
+  const parts: ReactNode[] = [];
+  const lines = text.split('\n');
+  
+  lines.forEach((line, lineIndex) => {
+    if (lineIndex > 0) {
+      parts.push(<br key={`br-${lineIndex}`} />);
+    }
+    
+    if (line.trim() === '') {
+      return;
+    }
+    
+    const combinedRegex = /(\*\*([^*]+)\*\*)|(\[([^\]]+)\]\(([^)]+)\))|(https?:\/\/[^\s<>")\]]+)/g;
+    let lastIndex = 0;
+    let match;
+    let matchCount = 0;
+    
+    while ((match = combinedRegex.exec(line)) !== null) {
+      if (match.index > lastIndex) {
+        parts.push(line.substring(lastIndex, match.index));
+      }
+      
+      if (match[1]) {
+        parts.push(<strong key={`bold-${lineIndex}-${matchCount}`}>{match[2]}</strong>);
+      } else if (match[3]) {
+        const linkText = match[4];
+        const linkUrl = match[5];
+        parts.push(
+          <a
+            key={`link-${lineIndex}-${matchCount}`}
+            href={linkUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-primary hover:text-primary/80 underline"
+            data-testid={`link-program-${matchCount}`}
+          >
+            {linkText}
+          </a>
+        );
+      } else if (match[6]) {
+        const plainUrl = match[6];
+        parts.push(
+          <a
+            key={`url-${lineIndex}-${matchCount}`}
+            href={plainUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-primary hover:text-primary/80 underline break-all"
+            data-testid={`link-url-${matchCount}`}
+          >
+            {plainUrl}
+          </a>
+        );
+      }
+      
+      lastIndex = combinedRegex.lastIndex;
+      matchCount++;
+    }
+    
+    if (lastIndex < line.length) {
+      parts.push(line.substring(lastIndex));
+    }
+  });
+  
+  return parts;
+}
 
 interface Message {
   id: string;
@@ -72,16 +151,25 @@ export default function Home() {
       }
 
       const data = await response.json();
+      
+      const rawResponse = data.response || "I apologize, but I encountered an issue. Please try again.";
+      const { url: navigationUrl, cleanContent } = extractNavigationUrl(rawResponse);
 
       const assistantMessage: Message = {
         id: `msg_${Date.now()}_assistant`,
         role: "assistant",
-        content: data.response || "I apologize, but I encountered an issue. Please try again.",
+        content: cleanContent,
         sources: data.sources || [],
         timestamp: new Date(),
       };
 
       setMessages((prev) => [...prev, assistantMessage]);
+      
+      if (navigationUrl) {
+        setTimeout(() => {
+          window.open(navigationUrl, '_blank');
+        }, 1500);
+      }
     } catch (error) {
       console.error("Error sending message:", error);
       const errorMessage: Message = {
@@ -166,7 +254,11 @@ export default function Home() {
                     : "bg-muted"
                 }`}
               >
-                <p className="text-sm whitespace-pre-wrap">{message.content}</p>
+                <div className="text-sm whitespace-pre-wrap">
+                  {message.role === "assistant" 
+                    ? renderMessageContent(message.content)
+                    : message.content}
+                </div>
                 {message.sources && message.sources.length > 0 && (
                   <div className="mt-2 pt-2 border-t border-border/50">
                     <p className="text-xs text-muted-foreground">Sources:</p>
