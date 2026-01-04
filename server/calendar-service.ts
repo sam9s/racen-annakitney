@@ -74,11 +74,43 @@ export interface EventInfo {
   description: string;
   start: string;
   end: string;
+  startTimeZone: string;
+  endTimeZone: string;
   location: string;
   htmlLink: string;
   slug: string;
   eventPageUrl: string;
   calendarId: string;
+}
+
+// Canonical URL mapping for known events (marketing URLs may differ from auto-generated slugs)
+const EVENT_URL_MAPPING: Record<string, string> = {
+  "success redefined - the meditation: live in dubai": "https://www.annakitney.com/event/success-redefined-the-meditation/",
+  "the identity overflow": "https://www.annakitney.com/event/the-identity-overflow/",
+  "soulalign® manifestation mastery": "https://www.annakitney.com/event/soulalign-manifestation-mastery/",
+  "soulalign® coach": "https://www.annakitney.com/event/soulalign-coach/",
+  "soulalign® heal": "https://www.annakitney.com/event/soulalign-heal/",
+  "soulalign® business 2026": "https://www.annakitney.com/event/soulalign-business/",
+};
+
+// Get canonical event page URL from mapping or generate from slug
+function getEventPageUrl(title: string, slug: string): string {
+  const titleLower = title.toLowerCase();
+  
+  // Check exact match in mapping
+  if (EVENT_URL_MAPPING[titleLower]) {
+    return EVENT_URL_MAPPING[titleLower];
+  }
+  
+  // Check partial match
+  for (const [key, url] of Object.entries(EVENT_URL_MAPPING)) {
+    if (titleLower.includes(key) || key.includes(titleLower)) {
+      return url;
+    }
+  }
+  
+  // Fallback to generated slug
+  return `https://www.annakitney.com/event/${slug}/`;
 }
 
 // Generate URL-friendly slug from event title
@@ -145,10 +177,12 @@ export async function getEvents(calendarId: string, maxResults: number = 20): Pr
       description: event.description || '',
       start: event.start?.dateTime || event.start?.date || '',
       end: event.end?.dateTime || event.end?.date || '',
+      startTimeZone: event.start?.timeZone || 'UTC',
+      endTimeZone: event.end?.timeZone || 'UTC',
       location: event.location || 'Online',
       htmlLink: event.htmlLink || '',
       slug,
-      eventPageUrl: `https://www.annakitney.com/event/${slug}/`,
+      eventPageUrl: getEventPageUrl(title, slug),
       calendarId
     };
   });

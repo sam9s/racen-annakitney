@@ -14,7 +14,7 @@ from tenacity import retry, stop_after_attempt, wait_exponential, retry_if_excep
 
 from knowledge_base import search_knowledge_base, get_knowledge_base_stats
 from safety_guardrails import apply_safety_filters, get_system_prompt, filter_response_for_safety, inject_program_links, inject_checkout_urls, append_contextual_links, format_numbered_lists, inject_dynamic_enrollment
-from events_service import is_event_query, get_event_context_for_llm, process_calendar_action
+from events_service import is_event_query, get_event_context_for_llm, process_calendar_action, fix_navigation_urls
 
 _openai_client = None
 
@@ -348,8 +348,15 @@ FOLLOW-UP QUESTIONS (choose ONE that's most relevant):
         
         response_with_calendar = response_with_program_links
         calendar_action_taken = False
+        
+        # Fix any hallucinated navigation URLs with correct eventPageUrl
+        if "[NAVIGATE:" in response_with_program_links:
+            response_with_program_links = fix_navigation_urls(response_with_program_links, conversation_history)
+        
         if "[ADD_TO_CALENDAR:" in response_with_program_links:
             response_with_calendar, calendar_action_taken, _ = process_calendar_action(response_with_program_links, conversation_history)
+        else:
+            response_with_calendar = response_with_program_links
         
         final_response = append_contextual_links(user_message, response_with_calendar)
         

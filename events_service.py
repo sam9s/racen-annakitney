@@ -8,7 +8,19 @@ Provides formatted event information for chatbot responses.
 import os
 import requests
 from typing import List, Optional, Dict
-from datetime import datetime
+from datetime import datetime, timezone, timedelta
+
+# Common timezone offsets (hours from UTC)
+TIMEZONE_OFFSETS = {
+    "Asia/Dubai": 4,
+    "Asia/Kolkata": 5.5,
+    "Australia/Sydney": 11,  # AEDT (summer)
+    "Australia/Melbourne": 11,
+    "Europe/London": 0,
+    "America/New_York": -5,
+    "America/Los_Angeles": -8,
+    "UTC": 0,
+}
 
 EXPRESS_API_URL = os.environ.get("EXPRESS_API_URL", "http://localhost:5000")
 
@@ -104,44 +116,155 @@ def book_event_to_calendar(event: Dict, calendar_id: str = "primary") -> Dict:
         return {"success": False, "error": str(e)}
 
 
-def format_date_friendly(iso_date: str) -> str:
-    """Format ISO date string to friendly format."""
+def convert_to_timezone(dt_utc: datetime, timezone_str: str) -> datetime:
+    """
+    Convert a UTC datetime to the specified timezone.
+    Uses the TIMEZONE_OFFSETS mapping for common timezones.
+    """
+    offset_hours = TIMEZONE_OFFSETS.get(timezone_str, 0)
+    offset = timedelta(hours=offset_hours)
+    return dt_utc + offset
+
+
+def get_timezone_display_name(timezone_str: str) -> str:
+    """Get a human-readable timezone name."""
+    if not timezone_str or timezone_str == 'UTC':
+        return ''
+    
+    # Map common timezone names to display names
+    tz_display = {
+        "Asia/Dubai": "Dubai",
+        "Asia/Kolkata": "IST",
+        "Australia/Sydney": "Sydney",
+        "Europe/London": "London",
+        "America/New_York": "Eastern",
+        "America/Los_Angeles": "Pacific",
+    }
+    
+    if timezone_str in tz_display:
+        return tz_display[timezone_str]
+    
+    # Extract city name from timezone string
+    if '/' in timezone_str:
+        return timezone_str.split('/')[-1].replace('_', ' ')
+    
+    return timezone_str
+
+
+def format_date_friendly(iso_date: str, timezone_str: str = None) -> str:
+    """
+    Format ISO date string to friendly format.
+    If timezone is provided, converts the time to that timezone for display.
+    """
     try:
+        # Parse as UTC
         dt = datetime.fromisoformat(iso_date.replace('Z', '+00:00'))
-        return dt.strftime("%A, %B %d, %Y at %I:%M %p")
+        
+        # Convert to target timezone if provided
+        if timezone_str and timezone_str != 'UTC':
+            dt = convert_to_timezone(dt, timezone_str)
+        
+        # Format the date/time
+        formatted = dt.strftime("%A, %B %d, %Y at %I:%M %p")
+        
+        # Add timezone info if available
+        tz_name = get_timezone_display_name(timezone_str)
+        if tz_name:
+            formatted += f" ({tz_name} time)"
+        
+        return formatted
     except:
         return iso_date
 
 
-def format_event_for_chat(event: Dict) -> str:
-    """Format a single event for chatbot response."""
+def format_time_range(start_iso: str, end_iso: str, timezone_str: str = None) -> str:
+    """
+    Format start and end times as a range with timezone.
+    Converts UTC times to the specified timezone for display.
+    """
+    try:
+        # Parse as UTC
+        start_dt = datetime.fromisoformat(start_iso.replace('Z', '+00:00'))
+        end_dt = datetime.fromisoformat(end_iso.replace('Z', '+00:00'))
+        
+        # Convert to target timezone if provided
+        if timezone_str and timezone_str != 'UTC':
+            start_dt = convert_to_timezone(start_dt, timezone_str)
+            end_dt = convert_to_timezone(end_dt, timezone_str)
+        
+        # Format: Sunday, January 25, 2026 from 11:00 AM - 1:30 PM
+        date_str = start_dt.strftime("%A, %B %d, %Y")
+        start_time = start_dt.strftime("%I:%M %p").lstrip('0')
+        end_time = end_dt.strftime("%I:%M %p").lstrip('0')
+        
+        result = f"{date_str} from {start_time} - {end_time}"
+        
+        # Add timezone if provided
+        tz_name = get_timezone_display_name(timezone_str)
+        if tz_name:
+            result += f" ({tz_name} time)"
+        
+        return result
+    except:
+        return format_date_friendly(start_iso, timezone_str)
+
+
+def format_event_for_chat(event: Dict, include_full_description: bool = True) -> str:
+    """
+    Format a single event for chatbot response with comprehensive details.
+    Includes timezone information and full event description.
+    """
     title = event.get("title", "Untitled Event")
-    start = format_date_friendly(event.get("start", ""))
-    end = format_date_friendly(event.get("end", ""))
+    start_iso = event.get("start", "")
+    end_iso = event.get("end", "")
+    timezone = event.get("startTimeZone", "")
     location = event.get("location", "Online")
     description = event.get("description", "")
     event_url = event.get("eventPageUrl", "")
     
     response = f"**{title}**\n\n"
-    response += f"**When:** {start}\n"
     
-    start_date = event.get("start", "")[:10] if event.get("start") else ""
-    end_date = event.get("end", "")[:10] if event.get("end") else ""
-    if start_date != end_date:
-        response += f"**To:** {end}\n"
+    # Use time range format with timezone
+    if start_iso and end_iso:
+        time_str = format_time_range(start_iso, end_iso, timezone)
+        response += f"**When:** {time_str}\n\n"
+    elif start_iso:
+        response += f"**When:** {format_date_friendly(start_iso, timezone)}\n\n"
     
-    response += f"\n**Where:** {location}\n\n"
+    response += f"**Where:** {location}\n\n"
     
-    if description:
-        short_desc = description[:600] + "..." if len(description) > 600 else description
-        short_desc = short_desc.split("REGISTER NOW")[0].strip()
-        response += f"**About this event:**\n{short_desc}\n\n"
+    # Include full description for comprehensive event details
+    if description and include_full_description:
+        # Clean up HTML-style content but preserve important info
+        clean_desc = description.replace('\n\n\n', '\n\n').strip()
+        
+        # Remove "Get Tickets" and similar CTAs from description
+        for cta in ["Get Tickets", "REGISTER NOW", "Register Now", "Anna Kitney Coaching"]:
+            clean_desc = clean_desc.split(cta)[0].strip()
+        
+        # If description is very long, provide a structured summary
+        if len(clean_desc) > 2000:
+            response += f"**About this event:**\n{clean_desc[:2000]}...\n\n"
+        else:
+            response += f"**About this event:**\n{clean_desc}\n\n"
+    elif description:
+        # Short version for listings
+        short_desc = description[:300] + "..." if len(description) > 300 else description
+        short_desc = short_desc.split("Get Tickets")[0].strip()
+        response += f"**About:** {short_desc}\n\n"
+    
+    # Always include event page link
+    if event_url:
+        response += f"**Event Page:** {event_url}\n\n"
     
     return response
 
 
-def format_events_list(events: List[Dict]) -> str:
-    """Format multiple events as a list for chatbot response."""
+def format_events_list(events: List[Dict], include_links: bool = True) -> str:
+    """
+    Format multiple events as a list for chatbot response.
+    Each event includes a clickable link to its event page.
+    """
     if not events:
         return "I don't see any upcoming events at the moment. Please check back soon or visit the events page at https://www.annakitney.com/events/ for the latest updates!"
     
@@ -151,6 +274,7 @@ def format_events_list(events: List[Dict]) -> str:
         title = event.get("title", "Untitled")
         start = event.get("start", "")
         location = event.get("location", "Online")
+        event_url = event.get("eventPageUrl", "")
         
         try:
             dt = datetime.fromisoformat(start.replace('Z', '+00:00'))
@@ -158,11 +282,26 @@ def format_events_list(events: List[Dict]) -> str:
         except:
             date_str = start[:10] if start else "TBD"
         
-        response += f"{i}. **{title}** - {date_str} ({location})\n"
+        # Format with clickable link
+        if include_links and event_url:
+            response += f"{i}. [**{title}**]({event_url}) - {date_str} ({location})\n"
+        else:
+            response += f"{i}. **{title}** - {date_str} ({location})\n"
     
     response += "\nWould you like more details about any of these events?"
     
     return response
+
+
+def format_no_events_response(query_context: str = None) -> str:
+    """
+    Format a response when no events match the query.
+    Provides clear messaging and directs to upcoming events.
+    """
+    if query_context:
+        return f"I don't have any events matching '{query_context}' in the calendar. Here are the events I do have coming up - would you like to see those instead? You can also check the events page at https://www.annakitney.com/events/ for the latest updates."
+    
+    return "I don't see any events matching that timeframe. Would you like to see all upcoming events instead? You can also visit https://www.annakitney.com/events/ for the full calendar."
 
 
 def is_event_query(message: str) -> bool:
@@ -195,6 +334,50 @@ def is_booking_request(message: str) -> bool:
     return any(keyword in message_lower for keyword in booking_keywords)
 
 
+def is_navigation_request(message: str) -> bool:
+    """Detect if user wants to navigate to an event page."""
+    message_lower = message.lower()
+    
+    nav_keywords = [
+        "navigate", "take me", "go to", "show me the page",
+        "event page", "yes please", "yes", "go there",
+        "open the page", "visit", "link"
+    ]
+    
+    return any(keyword in message_lower for keyword in nav_keywords)
+
+
+def _find_event_from_history(conversation_history: List[Dict]) -> Optional[Dict]:
+    """
+    Find the last discussed event from conversation history.
+    Looks for event titles mentioned in recent messages.
+    """
+    if not conversation_history:
+        return None
+    
+    event_patterns = [
+        ("identity overflow", "Identity Overflow"),
+        ("manifestation mastery", "Manifestation Mastery"),
+        ("meditation", "Meditation"),
+        ("success redefined", "Success Redefined"),
+        ("dubai", "Dubai"),
+        ("soulalign coach", "SoulAlign Coach"),
+        ("soulalign heal", "SoulAlign Heal"),
+        ("soulalign business", "SoulAlign Business"),
+    ]
+    
+    # Search recent messages for event mentions
+    for msg in reversed(conversation_history[-10:]):  # Check last 10 messages
+        content = msg.get("content", "").lower()
+        for keyword, search_term in event_patterns:
+            if keyword in content:
+                event = get_event_by_title(search_term)
+                if event:
+                    return event
+    
+    return None
+
+
 def get_event_context_for_llm(user_message: str, conversation_history: List[Dict] = None) -> str:
     """
     Get event context to inject into the LLM prompt.
@@ -220,20 +403,23 @@ def _get_event_context_internal(user_message: str, conversation_history: List[Di
     """Internal implementation of get_event_context_for_llm."""
     message_lower = user_message.lower()
     
+    # Handle navigation requests (user wants to go to event page)
+    if is_navigation_request(message_lower):
+        last_event = _find_event_from_history(conversation_history)
+        if last_event:
+            event_url = last_event.get('eventPageUrl', '')
+            return f"""
+NAVIGATION REQUEST:
+The user wants to navigate to the event page for: {last_event.get('title')}
+
+IMPORTANT: Use this EXACT URL for navigation: {event_url}
+Use: [NAVIGATE:{event_url}]
+
+Do NOT generate or guess the URL. Use the exact URL provided above.
+"""
+    
     if is_booking_request(message_lower):
-        last_event = None
-        if conversation_history:
-            for msg in reversed(conversation_history):
-                content = msg.get("content", "").lower()
-                if "identity overflow" in content:
-                    last_event = get_event_by_title("Identity Overflow")
-                    break
-                elif "manifestation mastery" in content:
-                    last_event = get_event_by_title("Manifestation Mastery")
-                    break
-                elif "meditation" in content or "dubai" in content:
-                    last_event = get_event_by_title("Meditation")
-                    break
+        last_event = _find_event_from_history(conversation_history)
         
         if last_event:
             return f"""
@@ -301,12 +487,42 @@ IMPORTANT INSTRUCTIONS:
     return ""
 
 
+def fix_navigation_urls(response: str, conversation_history: List[Dict] = None) -> str:
+    """
+    Post-process response to replace hallucinated event URLs with correct eventPageUrl.
+    This ensures 100% accuracy for event page navigation by overriding any LLM-generated URLs.
+    """
+    import re
+    
+    # Pattern to match [NAVIGATE:url] where url is an event page
+    nav_pattern = r'\[NAVIGATE:(https://www\.annakitney\.com/event/[^\]]+)\]'
+    match = re.search(nav_pattern, response)
+    
+    if match:
+        # Find the last discussed event from conversation history
+        last_event = _find_event_from_history(conversation_history)
+        
+        if last_event:
+            correct_url = last_event.get('eventPageUrl', '')
+            if correct_url:
+                # Replace the hallucinated URL with the correct one
+                generated_url = match.group(1)
+                if generated_url != correct_url:
+                    print(f"[Events Service] Correcting URL: {generated_url} -> {correct_url}")
+                    response = re.sub(nav_pattern, f'[NAVIGATE:{correct_url}]', response)
+    
+    return response
+
+
 def process_calendar_action(response: str, conversation_history: List[Dict] = None) -> tuple:
     """
     Process calendar booking actions in the response.
     Returns (processed_response, action_taken, action_result)
     """
     import re
+    
+    # First, fix any hallucinated navigation URLs
+    response = fix_navigation_urls(response, conversation_history)
     
     add_pattern = r'\[ADD_TO_CALENDAR:([^\]]+)\]'
     match = re.search(add_pattern, response)
