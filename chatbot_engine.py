@@ -216,7 +216,7 @@ Output: "hi how are you" (no changes needed)"""
 def generate_response(
     user_message: str,
     conversation_history: List[dict] = None,
-    n_context_docs: int = 5,
+    n_context_docs: int = 8,
     user_name: str = None,
     is_returning_user: bool = False,
     last_topic_summary: str = None
@@ -298,7 +298,17 @@ The following information is from Anna Kitney's official website and documents. 
 
 {context}
 
-IMPORTANT: Only use information from the context above. If the answer is not in the context, politely say you don't have that specific information and offer to help them contact us at https://www.annakitney.com/contact"""
+IMPORTANT GUIDELINES:
+1. Only use information from the context above. If the answer is not in the context, politely say you don't have that specific information and offer to help them contact us at https://www.annakitney.com/contact
+2. When describing programs, include key details like: what it is, who it's for, what's included, and the transformation it offers.
+3. After providing program information, ALWAYS end with a follow-up question to invite deeper engagement.
+
+FOLLOW-UP QUESTIONS (choose ONE that's most relevant):
+- "Would you like to know more about the bonuses included, or how to enroll?"
+- "Shall I share what past participants have experienced?"
+- "Would you like details about investment and enrollment?"
+- "Is there a specific aspect you'd like to explore deeper?"
+"""
 
     messages = [{"role": "system", "content": augmented_system_prompt}]
     
@@ -364,7 +374,7 @@ IMPORTANT: Only use information from the context above. If the answer is not in 
 def generate_response_stream(
     user_message: str,
     conversation_history: List[dict] = None,
-    n_context_docs: int = 5,
+    n_context_docs: int = 8,
     user_name: str = None,
     is_returning_user: bool = False,
     last_topic_summary: str = None
@@ -431,7 +441,17 @@ The following information is from Anna Kitney's official website and documents. 
 
 {context}
 
-IMPORTANT: Only use information from the context above. If the answer is not in the context, politely say you don't have that specific information and offer to help them contact us at https://www.annakitney.com/contact"""
+IMPORTANT GUIDELINES:
+1. Only use information from the context above. If the answer is not in the context, politely say you don't have that specific information and offer to help them contact us at https://www.annakitney.com/contact
+2. When describing programs, include key details like: what it is, who it's for, what's included, and the transformation it offers.
+3. After providing program information, ALWAYS end with a follow-up question to invite deeper engagement.
+
+FOLLOW-UP QUESTIONS (choose ONE that's most relevant):
+- "Would you like to know more about the bonuses included, or how to enroll?"
+- "Shall I share what past participants have experienced?"
+- "Would you like details about investment and enrollment?"
+- "Is there a specific aspect you'd like to explore deeper?"
+"""
 
     messages = [{"role": "system", "content": augmented_system_prompt}]
     

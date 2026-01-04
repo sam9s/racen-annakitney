@@ -756,15 +756,45 @@ def get_coaching_stats() -> dict:
     }
 
 
-def search_knowledge_base(query: str, n_results: int = 5, retry_count: int = 0, prefer_programs: bool = True) -> List[dict]:
+def calculate_position_weight(chunk_index: int, total_chunks: int = 20) -> float:
+    """
+    Calculate position weight for a chunk based on its index.
+    
+    Anna's pages are structured with the most important content at the TOP.
+    This function aggressively boosts top-of-page content.
+    
+    Position weights:
+    - Top 25% of page (chunks 0-4): 1.5x boost
+    - Middle 25% (chunks 5-9): 1.0x (neutral)
+    - Lower middle 25% (chunks 10-14): 0.8x penalty
+    - Bottom 25% (chunks 15+): 0.6x penalty
+    """
+    if chunk_index is None:
+        return 1.0
+    
+    if chunk_index <= 4:
+        return 1.5
+    elif chunk_index <= 9:
+        return 1.0
+    elif chunk_index <= 14:
+        return 0.8
+    else:
+        return 0.6
+
+
+def search_knowledge_base(query: str, n_results: int = 8, retry_count: int = 0, prefer_programs: bool = True) -> List[dict]:
     """
     Search the knowledge base for relevant content.
     Returns a list of matching documents with their metadata.
     Includes retry logic for ChromaDB index issues.
     
+    POSITION-WEIGHTED RETRIEVAL:
+    Content near the top of pages gets boosted because Anna structures
+    her pages with the most important information first.
+    
     Args:
         query: Search query
-        n_results: Number of results to return
+        n_results: Number of results to return (default increased to 8 for comprehensive answers)
         retry_count: Internal retry counter
         prefer_programs: If True, prioritize program pages over other content types
     """
@@ -786,8 +816,9 @@ def search_knowledge_base(query: str, n_results: int = 5, retry_count: int = 0, 
             try:
                 program_results = collection.query(
                     query_texts=[query],
-                    n_results=min(n_results * 2, count),
-                    where={"type": "program"}
+                    n_results=min(n_results * 3, count),
+                    where={"type": "program"},
+                    include=["documents", "metadatas", "distances"]
                 )
                 
                 if program_results and program_results.get("documents") and program_results["documents"][0]:
@@ -797,13 +828,21 @@ def search_knowledge_base(query: str, n_results: int = 5, retry_count: int = 0, 
                             seen_ids.add(doc_id)
                             metadata = program_results["metadatas"][0][i] if program_results.get("metadatas") else {}
                             distance = program_results["distances"][0][i] if program_results.get("distances") else None
-                            boosted_score = (1 - distance) * 1.3 if distance else None
+                            
+                            chunk_index = metadata.get("chunk_index")
+                            position_weight = calculate_position_weight(chunk_index)
+                            program_boost = 1.3
+                            
+                            base_score = (1 - distance) if distance else 0.5
+                            final_score = base_score * program_boost * position_weight
                             
                             all_documents.append({
                                 "content": doc,
                                 "source": metadata.get("source", "Unknown"),
                                 "type": metadata.get("type", "Unknown"),
-                                "relevance_score": boosted_score,
+                                "chunk_index": chunk_index,
+                                "position_weight": position_weight,
+                                "relevance_score": final_score,
                                 "id": doc_id
                             })
             except Exception as e:
@@ -811,7 +850,8 @@ def search_knowledge_base(query: str, n_results: int = 5, retry_count: int = 0, 
         
         results = collection.query(
             query_texts=[query],
-            n_results=min(n_results * 2, count)
+            n_results=min(n_results * 3, count),
+            include=["documents", "metadatas", "distances"]
         )
         
         if results and results.get("documents") and results["documents"][0]:
@@ -823,18 +863,27 @@ def search_knowledge_base(query: str, n_results: int = 5, retry_count: int = 0, 
                     distance = results["distances"][0][i] if results.get("distances") else None
                     
                     doc_type = metadata.get("type", "Unknown")
-                    base_score = 1 - distance if distance else None
+                    chunk_index = metadata.get("chunk_index")
+                    position_weight = calculate_position_weight(chunk_index)
+                    
+                    base_score = (1 - distance) if distance else 0.5
                     
                     if doc_type == "event":
-                        base_score = base_score * 0.5 if base_score else None
+                        type_multiplier = 0.5
                     elif doc_type == "program":
-                        base_score = base_score * 1.3 if base_score else None
+                        type_multiplier = 1.3
+                    else:
+                        type_multiplier = 1.0
+                    
+                    final_score = base_score * type_multiplier * position_weight
                     
                     all_documents.append({
                         "content": doc,
                         "source": metadata.get("source", "Unknown"),
                         "type": doc_type,
-                        "relevance_score": base_score,
+                        "chunk_index": chunk_index,
+                        "position_weight": position_weight,
+                        "relevance_score": final_score,
                         "id": doc_id
                     })
         
@@ -846,6 +895,7 @@ def search_knowledge_base(query: str, n_results: int = 5, retry_count: int = 0, 
                 "content": doc["content"],
                 "source": doc["source"],
                 "type": doc["type"],
+                "chunk_index": doc.get("chunk_index"),
                 "relevance_score": doc["relevance_score"]
             })
         
