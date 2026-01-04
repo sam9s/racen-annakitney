@@ -681,84 +681,188 @@ AVAILABLE PAGES:
 - Contact: https://www.annakitney.com/contact/
 - Clarity Call: https://www.annakitney.com/clarity-call/
 
-=== ENROLLMENT - CRITICAL ACCURACY RULES ===
+=== ENROLLMENT - DYNAMIC BEHAVIOR ===
 
-Different programs have different enrollment processes. Follow these EXACTLY:
+When a user asks about enrollment, payment, or how to sign up for ANY program:
 
-PROGRAMS WITH DIRECT CHECKOUT (NO Clarity Call needed):
-These programs have immediate enrollment with payment options:
+1. ACKNOWLEDGE their interest warmly with a brief positive response
+2. The system will AUTOMATICALLY inject the correct enrollment information (payment options OR Clarity Call requirement)
 
-1. **SoulAlign Manifestation Mastery** - Direct checkout with 3 payment options:
-   - Pay in Full: £2,500 - https://annakitneyportal.com/offers/wrDLYp8W/checkout
-   - 6 Monthly Payments: £455/month - https://annakitneyportal.com/offers/DxDQoW5L/checkout
-   - 12 Monthly Payments: £240/month - https://annakitneyportal.com/offers/hcY3LzWm/checkout
+IMPORTANT: DO NOT mention payment amounts, prices, or Clarity Calls yourself. The system will add the correct information automatically based on our database.
 
-2. **Divine Abundance Codes** - Direct checkout with 3 payment options:
-   - Pay in Full: £997 - https://annakitneyportal.com/offers/o352kRcS/checkout
-   - 3 Monthly Payments: £370/month - https://annakitneyportal.com/offers/JptpD268/checkout
-   - 6 Monthly Payments: £197/month - https://annakitneyportal.com/offers/ac939RmL/checkout
+Simply say something like:
+- "Great choice! Here are your enrollment options..."
+- "Wonderful! Let me show you how to get started..."
 
-3. **SoulAlign Heal** - Direct checkout with 2 payment options:
-   - Pay in Full: $5,555 - https://www.annakitneyportal.com/offers/ucjPYtNo/checkout
-   - 12 Monthly Payments: $553/month - https://www.annakitneyportal.com/offers/JsKykd8y/checkout
+WHEN USER SELECTS A PAYMENT OPTION:
+If the user selects a specific payment option (e.g., "I'll take the monthly payments" or "pay in full"):
+1. Use the [NAVIGATE:checkout_url] marker to take them to checkout
+2. The checkout URL will be in the context from the payment options shown earlier
 
-4. **The Ascend Collective** - Direct checkout OR Clarity Call available
-
-PROGRAMS REQUIRING CLARITY CALL:
-These programs require a consultation before enrollment:
-- Elite Private Advisory - Clarity Call required
-- VIP Day - Clarity Call required
-
-ENROLLMENT EXAMPLES (FOLLOW EXACTLY):
-
-User: How do I enroll in SoulAlign Manifestation Mastery?
-Anna: Great choice! SoulAlign Manifestation Mastery offers flexible payment options:
-
-1. **[Pay in Full - £2,500](https://annakitneyportal.com/offers/wrDLYp8W/checkout)** - One-time payment
-
-2. **[6 Monthly Payments - £455/month](https://annakitneyportal.com/offers/DxDQoW5L/checkout)** - 6 payments of £455
-
-3. **[12 Monthly Payments - £240/month](https://annakitneyportal.com/offers/hcY3LzWm/checkout)** - 12 payments of £240
-
-Which payment option works best for you? I can take you directly to checkout.
-
-User: I'll go with the 6 monthly payments
-Anna: [NAVIGATE:https://annakitneyportal.com/offers/DxDQoW5L/checkout] Taking you to checkout for the 6 monthly payment option (£455/month)!
-
-User: How do I get started with Elite Private Advisory?
-Anna: Elite Private Advisory is our premium 1:1 mentorship experience. Because it's a personalized program, the first step is to book a complimentary Clarity Call where Anna will learn about your needs and goals. Would you like me to take you to the Clarity Call page?
-
-User: Yes
-Anna: [NAVIGATE:https://www.annakitney.com/clarity-call/] Taking you to the Clarity Call booking page now!
-
-User: How do I enroll in Divine Abundance Codes?
-Anna: Wonderful! Divine Abundance Codes offers these payment options:
-
-1. **[Pay in Full - £997](https://annakitneyportal.com/offers/o352kRcS/checkout)** - One-time payment
-
-2. **[3 Monthly Payments - £370/month](https://annakitneyportal.com/offers/JptpD268/checkout)** - 3 monthly payments
-
-3. **[6 Monthly Payments - £197/month](https://annakitneyportal.com/offers/ac939RmL/checkout)** - 6 monthly payments
-
-Which option would you prefer? I can take you straight to checkout.
-
-User: How do I enroll in SoulAlign Heal?
-Anna: SoulAlign Heal offers these payment options:
-
-1. **[Pay in Full - $5,555](https://www.annakitneyportal.com/offers/ucjPYtNo/checkout)** - One-time payment
-
-2. **[12 Monthly Payments - $553/month](https://www.annakitneyportal.com/offers/JsKykd8y/checkout)** - 12 payments of $553
-
-Which option works best for you? I can take you directly to checkout.
-
-User: I want to pay in full
-Anna: [NAVIGATE:https://www.annakitneyportal.com/offers/ucjPYtNo/checkout] Taking you to checkout for the full payment option ($5,555)!
-
-CRITICAL: Never suggest a Clarity Call for programs with direct checkout options. Only suggest Clarity Calls for Elite Private Advisory and VIP Day.
+CRITICAL: Do NOT make up prices, payment plans, or enrollment requirements. The system handles this automatically.
 
 === REMEMBER ===
 
 You are Anna — warm, honest, helpful. Prioritize the visitor's wellbeing over making a sale. Stay within the knowledge base."""
+
+
+def detect_enrollment_intent(user_message: str, response: str = "") -> bool:
+    """
+    Detect if the user is asking about enrollment/signup/payment.
+    This is used to trigger dynamic enrollment injection.
+    """
+    enrollment_keywords = [
+        "enroll", "sign up", "signup", "register", "join",
+        "how do i", "how can i", "how to", "get started",
+        "purchase", "buy", "payment", "pay", "price", "cost",
+        "checkout", "book", "apply", "invest"
+    ]
+    combined = (user_message + " " + response).lower()
+    return any(kw in combined for kw in enrollment_keywords)
+
+
+def find_program_in_context(user_message: str, response: str = "", conversation_history: list = None) -> str:
+    """
+    Find which program is being discussed based on context.
+    Returns the program name or None if no program is identified.
+    """
+    combined_text = (user_message + " " + response).lower()
+    
+    if conversation_history:
+        for msg in reversed(conversation_history[-4:]):
+            combined_text += " " + msg.get("content", "").lower()
+    
+    for program_name in PROGRAM_ENROLLMENT_DATA.keys():
+        if program_name.lower() in combined_text:
+            return program_name
+    
+    for program_name in ANNA_PROGRAM_URLS.keys():
+        if program_name.lower() in combined_text:
+            return program_name
+    
+    return None
+
+
+def generate_enrollment_options(program_name: str) -> str:
+    """
+    Dynamically generate formatted payment options from PROGRAM_ENROLLMENT_DATA.
+    This is the single source of truth for enrollment information.
+    """
+    if program_name not in PROGRAM_ENROLLMENT_DATA:
+        return None
+    
+    data = PROGRAM_ENROLLMENT_DATA[program_name]
+    info_page = data.get("info_page", ANNA_PROGRAM_URLS.get(program_name, ""))
+    
+    if data.get("enrollment_mode") == "clarity_call_only":
+        clarity_url = data.get("clarity_call_url", "https://www.annakitney.com/clarity-call/")
+        message = data.get("enrollment_message", f"{program_name} is a personalized program. The first step is to book a complimentary Clarity Call.")
+        return f"[{program_name}]({info_page}) requires a personalized consultation. {message}\n\nWould you like me to take you to the [Clarity Call]({clarity_url}) booking page?"
+    
+    payment_options = data.get("payment_options", [])
+    if not payment_options:
+        return None
+    
+    lines = [f"[{program_name}]({info_page}) offers these payment options:\n"]
+    
+    for i, option in enumerate(payment_options, 1):
+        label = option.get("label", "Payment Option")
+        price = option.get("price", "")
+        desc = option.get("description", "")
+        url = option.get("checkout_url", "")
+        
+        lines.append(f"{i}. **[{label} - {price}]({url})** - {desc}\n")
+    
+    lines.append("\nWhich option works best for you? I can take you directly to checkout!")
+    
+    if data.get("clarity_call_optional"):
+        clarity_url = data.get("clarity_call_url", "https://www.annakitney.com/clarity-call/")
+        lines.append(f"\n\nAlternatively, if you'd like to discuss your goals first, you can book a [Clarity Call]({clarity_url}).")
+    
+    return "".join(lines)
+
+
+def inject_dynamic_enrollment(response: str, user_message: str, conversation_history: list = None) -> str:
+    """
+    Dynamically inject enrollment information when the user asks about enrollment.
+    This uses PROGRAM_ENROLLMENT_DATA as the single source of truth.
+    
+    REPLACES any LLM-generated payment info with accurate data from the manifest.
+    Also removes conflicting information (e.g., Clarity Call mentions for direct checkout programs).
+    """
+    import re
+    
+    if re.search(r'https://(www\.)?annakitneyportal\.com/offers/[^/]+/checkout', response):
+        return response
+    
+    if not detect_enrollment_intent(user_message, response):
+        return response
+    
+    program_name = find_program_in_context(user_message, response, conversation_history)
+    if not program_name:
+        return response
+    
+    if program_name not in PROGRAM_ENROLLMENT_DATA:
+        return response
+    
+    enrollment_data = PROGRAM_ENROLLMENT_DATA[program_name]
+    enrollment_text = generate_enrollment_options(program_name)
+    if not enrollment_text:
+        return response
+    
+    cleaned_response = response
+    
+    fake_payment_patterns = [
+        r'\d+\.\s*\*\*[^*]+\*\*\s*[-–]\s*\$[\d,]+(?:/month)?[^\n]*(?:\n|$)',
+        r'\d+\.\s*\*\*[^*]+\*\*\s*[-–]\s*£[\d,]+(?:/month)?[^\n]*(?:\n|$)',
+        r'(?:One|Full)\s+Payment[^\n]*\$[\d,]+[^\n]*(?:\n|$)',
+        r'\d+\s+Monthly\s+Payments?[^\n]*\$[\d,]+[^\n]*(?:\n|$)',
+        r'payment\s+options?\s*(?:available)?:?\s*\n(?:\s*\d+\.\s*[^\n]+\n?)+',
+        r'Here are the[^\n]*:?\s*\n?',
+    ]
+    
+    for pattern in fake_payment_patterns:
+        cleaned_response = re.sub(pattern, '', cleaned_response, flags=re.IGNORECASE)
+    
+    cleaned_response = re.sub(r'Would you like to choose a payment option[^\n]*\n?', '', cleaned_response, flags=re.IGNORECASE)
+    cleaned_response = re.sub(r'Let me show you the payment options[^\n]*:?\n?', '', cleaned_response, flags=re.IGNORECASE)
+    
+    if enrollment_data.get("enrollment_mode") == "direct_checkout":
+        clarity_patterns = [
+            r'\d+\.\s*\*\*Book a \[Clarity Call\][^\n]*\*\*[^\n]*\n?',
+            r'(?:the\s+)?first\s+step\s+is\s+to\s+book\s+a\s+(?:complimentary\s+)?\[?Clarity\s+Call\]?[^\n]*\n?',
+            r'book\s+a\s+(?:complimentary\s+)?\[?Clarity\s+Call\]?\([^)]*\)[^\n]*\n?',
+            r'Would you like me to take you to the Clarity Call booking page\?[^\n]*\n?',
+            r'During this call[^\n]*\n?',
+            r'This allows us to[^\n]*\n?',
+            r'This is a great first step to discuss[^\n]*\n?',
+            r'\*\*Direct Enrollment\*\*[^\n]*\n?',
+            r'You can directly enroll[^\n]*\n?',
+        ]
+        for pattern in clarity_patterns:
+            cleaned_response = re.sub(pattern, '', cleaned_response, flags=re.IGNORECASE)
+        
+        cleaned_response = re.sub(r'\[Clarity Call\]\([^)]+\)', '', cleaned_response)
+        cleaned_response = re.sub(r'Clarity Call', '', cleaned_response, flags=re.IGNORECASE)
+        
+        cleaned_response = re.sub(r'(?:we\s+)?(?:first\s+)?recommend\s+scheduling\s+a\s+(?:complimentary\s+)?\.?[^\n]*\n?', '', cleaned_response, flags=re.IGNORECASE)
+        cleaned_response = re.sub(r'To\s+(?:start|begin|enroll)[^.]*\s+a\s+complimentary\s+\.[^\n]*\n?', '', cleaned_response, flags=re.IGNORECASE)
+        cleaned_response = re.sub(r'\s+\.', '.', cleaned_response)
+        cleaned_response = re.sub(r'\s+,', ',', cleaned_response)
+        cleaned_response = re.sub(r'a\s+\.\s*', '', cleaned_response)
+    
+    if enrollment_data.get("enrollment_mode") == "clarity_call_only":
+        if "clarity call" in cleaned_response.lower():
+            cleaned_response = re.sub(
+                r'Would you like me to take you to the Clarity Call booking page\?',
+                '',
+                cleaned_response,
+                flags=re.IGNORECASE
+            )
+    
+    cleaned_response = re.sub(r'\n{3,}', '\n\n', cleaned_response).strip()
+    
+    return cleaned_response + "\n\n" + enrollment_text
 
 
 def inject_checkout_urls(response: str, user_message: str = "") -> str:
@@ -776,7 +880,7 @@ def inject_checkout_urls(response: str, user_message: str = "") -> str:
     
     if re.search(r'\[[^\]]*checkout[^\]]*\]\([^)]+\)', response, re.IGNORECASE):
         return response
-    if re.search(r'https://annakitneyportal\.com/offers/[^/]+/checkout', response):
+    if re.search(r'https://(www\.)?annakitneyportal\.com/offers/[^/]+/checkout', response):
         return response
     
     program_found = None
