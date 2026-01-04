@@ -262,10 +262,18 @@ export default function Home() {
                 {message.sources && message.sources.length > 0 && (
                   <div className="mt-2 pt-2 border-t border-border/50">
                     <p className="text-xs text-muted-foreground">Sources:</p>
-                    <ul className="text-xs text-muted-foreground/80 mt-1">
+                    <ul className="text-xs mt-1 space-y-0.5">
                       {message.sources.slice(0, 3).map((source, idx) => (
                         <li key={idx} className="truncate">
-                          {source}
+                          <a
+                            href={source}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-primary/80 hover:text-primary hover:underline"
+                            data-testid={`link-source-${idx}`}
+                          >
+                            {source}
+                          </a>
                         </li>
                       ))}
                     </ul>

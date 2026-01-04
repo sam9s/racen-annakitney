@@ -143,15 +143,15 @@ PROGRAM_ENROLLMENT_DATA = {
         "payment_options": [
             {
                 "label": "Pay in Full",
-                "price": "Contact for pricing",
+                "price": "$5,555",
                 "description": "One-time payment",
-                "checkout_url": "https://annakitneyportal.com/offers/ucjPYtNo/checkout"
+                "checkout_url": "https://www.annakitneyportal.com/offers/ucjPYtNo/checkout"
             },
             {
-                "label": "Payment Plan",
-                "price": "Contact for pricing",
-                "description": "Monthly payments available",
-                "checkout_url": "https://annakitneyportal.com/offers/JsKykd8y/checkout"
+                "label": "12 Monthly Payments",
+                "price": "$553/month",
+                "description": "12 payments of $553",
+                "checkout_url": "https://www.annakitneyportal.com/offers/JsKykd8y/checkout"
             }
         ],
         "info_page": "https://www.annakitney.com/soulalign-heal/"
@@ -698,7 +698,10 @@ These programs have immediate enrollment with payment options:
    - 3 Monthly Payments: £370/month - https://annakitneyportal.com/offers/JptpD268/checkout
    - 6 Monthly Payments: £197/month - https://annakitneyportal.com/offers/ac939RmL/checkout
 
-3. **SoulAlign Heal** - Direct checkout available
+3. **SoulAlign Heal** - Direct checkout with 2 payment options:
+   - Pay in Full: $5,555 - https://www.annakitneyportal.com/offers/ucjPYtNo/checkout
+   - 12 Monthly Payments: $553/month - https://www.annakitneyportal.com/offers/JsKykd8y/checkout
+
 4. **The Ascend Collective** - Direct checkout OR Clarity Call available
 
 PROGRAMS REQUIRING CLARITY CALL:
@@ -738,6 +741,18 @@ Anna: Wonderful! Divine Abundance Codes offers these payment options:
 3. **[6 Monthly Payments - £197/month](https://annakitneyportal.com/offers/ac939RmL/checkout)** - 6 monthly payments
 
 Which option would you prefer? I can take you straight to checkout.
+
+User: How do I enroll in SoulAlign Heal?
+Anna: SoulAlign Heal offers these payment options:
+
+1. **[Pay in Full - $5,555](https://www.annakitneyportal.com/offers/ucjPYtNo/checkout)** - One-time payment
+
+2. **[12 Monthly Payments - $553/month](https://www.annakitneyportal.com/offers/JsKykd8y/checkout)** - 12 payments of $553
+
+Which option works best for you? I can take you directly to checkout.
+
+User: I want to pay in full
+Anna: [NAVIGATE:https://www.annakitneyportal.com/offers/ucjPYtNo/checkout] Taking you to checkout for the full payment option ($5,555)!
 
 CRITICAL: Never suggest a Clarity Call for programs with direct checkout options. Only suggest Clarity Calls for Elite Private Advisory and VIP Day.
 

@@ -678,6 +678,7 @@
     'annakitney.com',
     'www.annakitney.com',
     'annakitneyportal.com',
+    'www.annakitneyportal.com',
     'bit.ly'
   ];
 
