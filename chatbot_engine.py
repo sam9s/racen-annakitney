@@ -493,9 +493,9 @@ def get_greeting_message() -> str:
 I'm here to help you explore our programs, understand our philosophy, and find what might be right for you.
 
 Are you looking for:
-- Program details (Balance Mastery+, Inner Mastery Lounge, Elevate 360)
-- Healing philosophy and approach
-- Membership and pricing info
+- Program details (Elite Private Advisory, The Ascend Collective, SoulAlign courses)
+- Spiritual business coaching and mentorship
+- Manifestation and abundance work
 - How to get started
 
 What brings you here today?"""
@@ -533,7 +533,7 @@ CONVERSATION:
 
 Respond in this EXACT format (use "None" if not applicable):
 EMOTIONAL_THEMES: [List any emotional issues or feelings the user shared, e.g., "feeling disconnected from society", "stressed at work", "relationship struggles"]
-RECOMMENDED_PROGRAMS: [List any Anna Kitney programs mentioned as recommendations, e.g., "Inner Mastery Lounge", "Balance Mastery", "Elevate 360"]
+RECOMMENDED_PROGRAMS: [List any Anna Kitney programs mentioned as recommendations, e.g., "Elite Private Advisory", "The Ascend Collective", "SoulAlign Heal"]
 LAST_TOPICS: [Summarize in 1-2 sentences what the conversation was about]
 CONVERSATION_STATUS: [One of: "exploring programs", "shared personal issue", "asked for contact info", "general inquiry", "follow-up needed"]
 
