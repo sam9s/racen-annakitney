@@ -708,23 +708,30 @@ You are Anna — warm, honest, helpful. Prioritize the visitor's wellbeing over 
 
 def detect_enrollment_intent(user_message: str, response: str = "") -> bool:
     """
-    Detect if the user is asking about enrollment/signup/payment.
-    This is used to trigger dynamic enrollment injection.
+    Detect if the user is EXPLICITLY asking to enroll/signup/pay.
+    Only triggers on clear enrollment intent, NOT on info requests.
     """
-    enrollment_keywords = [
-        "enroll", "sign up", "signup", "register", "join",
-        "how do i", "how can i", "how to", "get started",
-        "purchase", "buy", "payment", "pay", "price", "cost",
-        "checkout", "book", "apply", "invest"
+    user_msg_lower = user_message.lower()
+    
+    explicit_enrollment_keywords = [
+        "enroll", "sign up", "signup", "register", 
+        "purchase", "buy", "checkout", "pay now",
+        "i want to join", "i'd like to join", "i would like to join",
+        "take me to checkout", "ready to enroll", "ready to join",
+        "how do i enroll", "how do i sign up", "how do i join",
+        "how to enroll", "how to sign up", "how to join"
     ]
-    combined = (user_message + " " + response).lower()
-    return any(kw in combined for kw in enrollment_keywords)
+    
+    return any(kw in user_msg_lower for kw in explicit_enrollment_keywords)
 
 
 def find_program_in_context(user_message: str, response: str = "", conversation_history: list = None) -> str:
     """
     Find which program is being discussed based on context.
     Returns the program name or None if no program is identified.
+    
+    Uses STRICT matching: longer/more specific names take priority.
+    E.g., "SoulAlign Heal" matches before "SoulAlign" partial matches.
     """
     combined_text = (user_message + " " + response).lower()
     
@@ -732,11 +739,23 @@ def find_program_in_context(user_message: str, response: str = "", conversation_
         for msg in reversed(conversation_history[-4:]):
             combined_text += " " + msg.get("content", "").lower()
     
-    for program_name in PROGRAM_ENROLLMENT_DATA.keys():
-        if program_name.lower() in combined_text:
-            return program_name
+    programs_sorted = sorted(PROGRAM_ENROLLMENT_DATA.keys(), key=len, reverse=True)
     
-    for program_name in ANNA_PROGRAM_URLS.keys():
+    for program_name in programs_sorted:
+        program_lower = program_name.lower()
+        
+        if program_lower in combined_text:
+            return program_name
+        
+        if program_name == "SoulAlign Heal":
+            if "soulalign heal" in combined_text or "soulalign® heal" in combined_text:
+                return program_name
+        elif program_name == "SoulAlign Manifestation Mastery":
+            if "manifestation mastery" in combined_text or "soulalign manifestation" in combined_text:
+                return program_name
+    
+    programs_url_sorted = sorted(ANNA_PROGRAM_URLS.keys(), key=len, reverse=True)
+    for program_name in programs_url_sorted:
         if program_name.lower() in combined_text:
             return program_name
     
