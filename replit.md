@@ -59,7 +59,36 @@ To embed the chatbot on annakitney.com:
 - No personal information collection
 - Rate limiting
 
+## Events Integration (Google Calendar)
+
+The chatbot has live integration with Anna's Google Calendar for real-time event information.
+
+### Key Files
+- `server/calendar-service.ts` - Google Calendar API integration (Express/TypeScript)
+- `events_service.py` - Python service for chatbot event queries
+
+### Features
+- **Live Event Data**: Fetches upcoming events from Anna's synced Google Calendar
+- **Event Queries**: Users can ask "What events are coming up?" or ask about specific events
+- **Navigation**: Bot navigates users to event pages (pattern: `/event/[event-slug]/`)
+- **Calendar Booking**: Users can add events to their calendar with "add to my calendar"
+
+### API Endpoints
+- `GET /api/events` - List upcoming events
+- `GET /api/events/search?q=query` - Search events
+- `GET /api/events/by-title/:title` - Get specific event
+- `POST /api/events/book` - Add event to calendar
+- `GET /api/calendars` - List available calendars
+
+### Calendar ID
+Anna Kitney Coaching calendar: `cms370prol01ksuq304erj1gmdug1v4m@import.calendar.google.com`
+
 ## Recent Changes
+- Added Google Calendar integration for live event data
+- Implemented event booking (add to calendar) functionality
+- Updated system prompts with event conversation flow
+- Gated enrollment flow for programs (payment options only after explicit intent)
+- Clarity Call-only programs: Elite Private Advisory, VIP Day
 - Migrated from JoveHeal template to Anna Kitney branding
 - Updated all URLs to annakitney.com
 - Updated system prompts for Anna's wellness coaching business

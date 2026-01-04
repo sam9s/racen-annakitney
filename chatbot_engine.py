@@ -14,6 +14,7 @@ from tenacity import retry, stop_after_attempt, wait_exponential, retry_if_excep
 
 from knowledge_base import search_knowledge_base, get_knowledge_base_stats
 from safety_guardrails import apply_safety_filters, get_system_prompt, filter_response_for_safety, inject_program_links, inject_checkout_urls, append_contextual_links, format_numbered_lists, inject_dynamic_enrollment
+from events_service import is_event_query, get_event_context_for_llm, process_calendar_action
 
 _openai_client = None
 
@@ -290,8 +291,14 @@ DO NOT mention any specific topics like "stress", "career", "relationships" or a
 ONLY say something like: "Great to see you back! How can I help you today?"
 """
     
+    event_context = ""
+    if is_event_query(user_message):
+        event_context = get_event_context_for_llm(user_message, conversation_history)
+    
     augmented_system_prompt = f"""{system_prompt}
 {personalization_context}
+
+{event_context}
 
 KNOWLEDGE BASE CONTEXT:
 The following information is from Anna Kitney's official website and documents. Use this to answer the user's question accurately:
@@ -302,6 +309,7 @@ IMPORTANT GUIDELINES:
 1. Only use information from the context above. If the answer is not in the context, politely say you don't have that specific information and offer to help them contact us at https://www.annakitney.com/contact
 2. When describing programs, include key details like: what it is, who it's for, what's included, and the transformation it offers.
 3. After providing program information, ALWAYS end with a follow-up question to invite deeper engagement.
+4. For EVENTS: If event information is provided above, use that LIVE data from the calendar. Always offer to navigate to the event page or add to calendar.
 
 FOLLOW-UP QUESTIONS (choose ONE that's most relevant):
 - "Would you like to know more about the bonuses included, or how to enroll?"
@@ -338,7 +346,12 @@ FOLLOW-UP QUESTIONS (choose ONE that's most relevant):
         
         response_with_program_links = inject_program_links(response_with_checkout_urls)
         
-        final_response = append_contextual_links(user_message, response_with_program_links)
+        response_with_calendar = response_with_program_links
+        calendar_action_taken = False
+        if "[ADD_TO_CALENDAR:" in response_with_program_links:
+            response_with_calendar, calendar_action_taken, _ = process_calendar_action(response_with_program_links, conversation_history)
+        
+        final_response = append_contextual_links(user_message, response_with_calendar)
         
         sources = []
         for doc in relevant_docs:
@@ -350,7 +363,8 @@ FOLLOW-UP QUESTIONS (choose ONE that's most relevant):
             "response": final_response,
             "sources": sources[:3],
             "safety_triggered": was_filtered,
-            "safety_category": "output_filtered" if was_filtered else None
+            "safety_category": "output_filtered" if was_filtered else None,
+            "calendar_action": calendar_action_taken
         }
         
     except Exception as e:
@@ -435,8 +449,14 @@ DO NOT mention any specific topics like "stress", "career", "relationships" or a
 ONLY say something like: "Great to see you back! How can I help you today?"
 """
     
+    event_context_stream = ""
+    if is_event_query(user_message):
+        event_context_stream = get_event_context_for_llm(user_message, conversation_history)
+    
     augmented_system_prompt = f"""{system_prompt}
 {personalization_context}
+
+{event_context_stream}
 
 KNOWLEDGE BASE CONTEXT:
 The following information is from Anna Kitney's official website and documents. Use this to answer the user's question accurately:
@@ -447,6 +467,7 @@ IMPORTANT GUIDELINES:
 1. Only use information from the context above. If the answer is not in the context, politely say you don't have that specific information and offer to help them contact us at https://www.annakitney.com/contact
 2. When describing programs, include key details like: what it is, who it's for, what's included, and the transformation it offers.
 3. After providing program information, ALWAYS end with a follow-up question to invite deeper engagement.
+4. For EVENTS: If event information is provided above, use that LIVE data from the calendar. Always offer to navigate to the event page or add to calendar.
 
 FOLLOW-UP QUESTIONS (choose ONE that's most relevant):
 - "Would you like to know more about the bonuses included, or how to enroll?"

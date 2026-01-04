@@ -1,5 +1,16 @@
 import type { Express, Request, Response } from "express";
 import { createServer, type Server } from "http";
+import {
+  listCalendars,
+  findAnnaCalendar,
+  getUpcomingEvents,
+  searchEvents,
+  getEventByTitle,
+  addEventToCalendar,
+  formatEventForChat,
+  formatEventsListForChat,
+  type EventInfo
+} from "./calendar-service";
 
 const FLASK_API_URL = process.env.FLASK_API_URL || "http://localhost:8080";
 const INTERNAL_API_KEY = process.env.INTERNAL_API_KEY;
@@ -126,6 +137,117 @@ export async function registerRoutes(
         express: "healthy",
         flask: { status: "unreachable" },
       });
+    }
+  });
+
+  // ============ GOOGLE CALENDAR ENDPOINTS ============
+
+  // List all calendars (for debugging/finding Anna's calendar)
+  app.get("/api/calendars", async (_req: Request, res: Response) => {
+    try {
+      const calendars = await listCalendars();
+      res.json({ calendars });
+    } catch (error: any) {
+      console.error("Error listing calendars:", error);
+      res.status(500).json({ error: error.message || "Failed to list calendars" });
+    }
+  });
+
+  // Find Anna's calendar
+  app.get("/api/calendars/anna", async (_req: Request, res: Response) => {
+    try {
+      const annaCalendar = await findAnnaCalendar();
+      if (annaCalendar) {
+        res.json({ calendar: annaCalendar });
+      } else {
+        res.status(404).json({ error: "Anna's calendar not found" });
+      }
+    } catch (error: any) {
+      console.error("Error finding Anna's calendar:", error);
+      res.status(500).json({ error: error.message || "Failed to find calendar" });
+    }
+  });
+
+  // Get upcoming events
+  app.get("/api/events", async (req: Request, res: Response) => {
+    try {
+      const limit = parseInt(req.query.limit as string) || 20;
+      const events = await getUpcomingEvents(limit);
+      res.json({ events });
+    } catch (error: any) {
+      console.error("Error fetching events:", error);
+      res.status(500).json({ error: error.message || "Failed to fetch events" });
+    }
+  });
+
+  // Search events
+  app.get("/api/events/search", async (req: Request, res: Response) => {
+    try {
+      const query = req.query.q as string;
+      if (!query) {
+        return res.status(400).json({ error: "Query parameter 'q' is required" });
+      }
+      const events = await searchEvents(query);
+      res.json({ events });
+    } catch (error: any) {
+      console.error("Error searching events:", error);
+      res.status(500).json({ error: error.message || "Failed to search events" });
+    }
+  });
+
+  // Get event by title
+  app.get("/api/events/by-title/:title", async (req: Request, res: Response) => {
+    try {
+      const title = decodeURIComponent(req.params.title);
+      const event = await getEventByTitle(title);
+      if (event) {
+        res.json({ event, formatted: formatEventForChat(event) });
+      } else {
+        res.status(404).json({ error: "Event not found" });
+      }
+    } catch (error: any) {
+      console.error("Error fetching event:", error);
+      res.status(500).json({ error: error.message || "Failed to fetch event" });
+    }
+  });
+
+  // Add event to calendar (booking feature)
+  app.post("/api/events/book", async (req: Request, res: Response) => {
+    try {
+      const { title, description, start, end, location, calendarId } = req.body;
+      
+      if (!title || !start || !end) {
+        return res.status(400).json({ error: "title, start, and end are required" });
+      }
+      
+      const result = await addEventToCalendar(
+        { title, description, start, end, location },
+        calendarId || 'primary'
+      );
+      
+      if (result.success) {
+        res.json({ success: true, eventLink: result.eventLink });
+      } else {
+        res.status(500).json({ error: result.error });
+      }
+    } catch (error: any) {
+      console.error("Error booking event:", error);
+      res.status(500).json({ error: error.message || "Failed to book event" });
+    }
+  });
+
+  // Get formatted events list for chatbot
+  app.get("/api/events/formatted", async (req: Request, res: Response) => {
+    try {
+      const limit = parseInt(req.query.limit as string) || 10;
+      const events = await getUpcomingEvents(limit);
+      res.json({ 
+        events,
+        formatted: formatEventsListForChat(events)
+      });
+    } catch (error: any) {
+      console.error("Error fetching formatted events:", error);
+      res.status(500).json({ error: error.message || "Failed to fetch events" });
     }
   });
 
