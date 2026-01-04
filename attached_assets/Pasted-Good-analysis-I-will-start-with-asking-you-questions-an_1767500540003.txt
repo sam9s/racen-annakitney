@@ -1,0 +1,25 @@
+Good analysis. I will start with asking you questions and then I will give you what my logic says.
+
+First of all, this page is huge. Tell me how does vector work? Because when you say the page is split into 20 smaller pieces or chunks, I believe that's pretty less. Can you tell me is the entire page properly ingested and stored into the vector database? That's my first question.
+
+Second question. I am sharing a small part from the website. Okay, it's somewhere in the top page. I need to understand where is this information stored in the vector or is this information stored in the vector? I will tell you why I am asking this question. Now I will explain to you what my logic says, how our chatbot should work, and again, I would need your critical analysis. 
+
+==============
+TELL ME WHERE IS THIS INFO STROED -- >
+
+I’m ready to manifest miracles now!
+Do you deeply desire to elevate your lifestyle beyond your current imagination? To be more, have more, and create more in this life!
+You’re the high achieving woman who is on a mission to pursue big audacious goals. To finally feel financially free. To work from anywhere in the world. To give your kids the best education and life experiences that will prepare them for life. You want ignite the passion and romance back into your love life. To feel the alive, fulfilled and at peace with yourself. To truly live an extraordinary life, now!
+
+Inside the SoulAlign® Manifestation Mastery we’re amplifying your manifestation powers. To expand your capacity to receive more without apology. To no longer hold back, or play small, but to have it all without compromise!
+
+To create a life you’ll love on your own terms. To consciously design and curate your life experiences from your bucket list into reality. To live the life you’ve always dreamed from this moment, rather than waiting for outside circumstances to change. To have it all, and now!
+============================
+
+
+Okay, here is what my logic says. When Anna must have developed the content of this particular page. SoulAlign Manifestation Mastery page has a lot of information. At least till the halfway down, after that, I think it deviates to something else as well. But still, you keep scrolling to keep reading about that program. My logical thinking says that Anna must be putting the most relevant and important information for that program at the top, and as you scroll down, the priority might decrease. I might be totally wrong, but this is how I would think if I am selling a program or giving details for any program that I want my users to purchase. I would want the most important, relevant information to be at the top, and then priority-wise it goes down as you scroll the page.
+
+Let's see what you have to say. So, my logic is that is there a way we can define that our bot picks that information from mostly from the top of the page? Like, maybe, say, for example, right now, the bot has given 8 points. Let's make it 10 points, so 5 points are picked from the top of the page, rest 3 somewhere from the middle, and last 2 from the bottom. Now, I don't know how vector database works, so I'm not sure whether this implementing this logic is even practically or possible/feasible. But this is what I think we can prioritize how our bot gives information......  Once I have clarity on this logic, you know, once you give me your critical analysis, then I would be in a much better position to answer all your four questions that you have asked, okay? 
+
+Let's again have your critical analysis on everything. Remember Anna is a very high-profile client. Remember we need to impress her. It's imperative that we impress her because this is our golden ticket. So I need you to understand and work me on providing the best possible experience to Anna. Okay, this is not the older clients like Joveheal we worked with. This is totally different. 
+
