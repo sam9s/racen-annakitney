@@ -845,11 +845,36 @@ def inject_dynamic_enrollment(response: str, user_message: str, conversation_his
         cleaned_response = re.sub(r'\[Clarity Call\]\([^)]+\)', '', cleaned_response)
         cleaned_response = re.sub(r'Clarity Call', '', cleaned_response, flags=re.IGNORECASE)
         
-        cleaned_response = re.sub(r'(?:we\s+)?(?:first\s+)?recommend\s+scheduling\s+a\s+(?:complimentary\s+)?\.?[^\n]*\n?', '', cleaned_response, flags=re.IGNORECASE)
-        cleaned_response = re.sub(r'To\s+(?:start|begin|enroll)[^.]*\s+a\s+complimentary\s+\.[^\n]*\n?', '', cleaned_response, flags=re.IGNORECASE)
+        orphan_patterns = [
+            r'(?:we\s+)?(?:first\s+)?recommend\s+scheduling\s+a\s+(?:complimentary\s+)?\.?[^\n]*\n?',
+            r'To\s+(?:start|begin|enroll|get\s+started)[^.!?]*,\s*\n',
+            r'To\s+(?:start|begin|enroll)[^.]*\s+a\s+complimentary\s+\.[^\n]*\n?',
+            r'[^.!?\n]*scheduling\s+a\s+complimentary\s+\.\s*[^\n]*\n?',
+            r'[^.!?\n]*book\s+a\s+complimentary\s+\.\s*[^\n]*\n?',
+            r'(?:Wonderful|Great|Fantastic|Excellent)(?:!|,)?\s*To\s+[^.!?]*,\s*\n',
+            r"(?:That's\s+)?(?:a\s+)?(?:fantastic|great|wonderful|excellent)\s+choice[!.]?\s*To\s+[^.!?]*,\s*\n",
+            r'\d+\.\s*\*\*Complimentary\s*\*\*[^\n]*\n?',
+            r'\d+\.\s*\*\*Program Enrollment\*\*[^\n]*\n?',
+            r'Would you like me to help you schedule a complimentary\s*\?\s*\n?',
+            r'Following the call[^\n]*\n?',
+            r'Here are your enrollment options for[^\n]*:\s*\n?',
+            r"you'll want to start by booking with our team[^.]*\.\s*",
+            r'This will allow us to discuss your needs[^.]*\.\s*',
+            r'start by booking[^.]*\.\s*',
+            r'schedule a call first[^.]*\.\s*',
+            r'book a call with[^.]*\.\s*',
+        ]
+        for pattern in orphan_patterns:
+            cleaned_response = re.sub(pattern, '', cleaned_response, flags=re.IGNORECASE)
+        
+        cleaned_response = re.sub(r'\*\*Complimentary\s*\*\*', '', cleaned_response)
+        cleaned_response = re.sub(r'complimentary\s+[-–]\s+', '', cleaned_response, flags=re.IGNORECASE)
+        cleaned_response = re.sub(r'a\s+complimentary\s*[.!?]?', '', cleaned_response, flags=re.IGNORECASE)
         cleaned_response = re.sub(r'\s+\.', '.', cleaned_response)
         cleaned_response = re.sub(r'\s+,', ',', cleaned_response)
         cleaned_response = re.sub(r'a\s+\.\s*', '', cleaned_response)
+        cleaned_response = re.sub(r'^\s*,\s*', '', cleaned_response)
+        cleaned_response = re.sub(r'\n\s*,', '\n', cleaned_response)
     
     if enrollment_data.get("enrollment_mode") == "clarity_call_only":
         if "clarity call" in cleaned_response.lower():
