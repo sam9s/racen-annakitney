@@ -756,11 +756,17 @@ def get_coaching_stats() -> dict:
     }
 
 
-def search_knowledge_base(query: str, n_results: int = 5, retry_count: int = 0) -> List[dict]:
+def search_knowledge_base(query: str, n_results: int = 5, retry_count: int = 0, prefer_programs: bool = True) -> List[dict]:
     """
     Search the knowledge base for relevant content.
     Returns a list of matching documents with their metadata.
     Includes retry logic for ChromaDB index issues.
+    
+    Args:
+        query: Search query
+        n_results: Number of results to return
+        retry_count: Internal retry counter
+        prefer_programs: If True, prioritize program pages over other content types
     """
     try:
         client = get_chroma_client()
@@ -773,27 +779,77 @@ def search_knowledge_base(query: str, n_results: int = 5, retry_count: int = 0) 
         if count == 0:
             return []
         
+        all_documents = []
+        seen_ids = set()
+        
+        if prefer_programs:
+            try:
+                program_results = collection.query(
+                    query_texts=[query],
+                    n_results=min(n_results * 2, count),
+                    where={"type": "program"}
+                )
+                
+                if program_results and program_results.get("documents") and program_results["documents"][0]:
+                    for i, doc in enumerate(program_results["documents"][0]):
+                        doc_id = program_results["ids"][0][i] if program_results.get("ids") else f"prog_{i}"
+                        if doc_id not in seen_ids:
+                            seen_ids.add(doc_id)
+                            metadata = program_results["metadatas"][0][i] if program_results.get("metadatas") else {}
+                            distance = program_results["distances"][0][i] if program_results.get("distances") else None
+                            boosted_score = (1 - distance) * 1.3 if distance else None
+                            
+                            all_documents.append({
+                                "content": doc,
+                                "source": metadata.get("source", "Unknown"),
+                                "type": metadata.get("type", "Unknown"),
+                                "relevance_score": boosted_score,
+                                "id": doc_id
+                            })
+            except Exception as e:
+                print(f"Program-specific search failed, falling back: {e}")
+        
         results = collection.query(
             query_texts=[query],
-            n_results=min(n_results, count)
+            n_results=min(n_results * 2, count)
         )
         
-        if not results or not results.get("documents"):
-            return []
+        if results and results.get("documents") and results["documents"][0]:
+            for i, doc in enumerate(results["documents"][0]):
+                doc_id = results["ids"][0][i] if results.get("ids") else f"doc_{i}"
+                if doc_id not in seen_ids:
+                    seen_ids.add(doc_id)
+                    metadata = results["metadatas"][0][i] if results.get("metadatas") else {}
+                    distance = results["distances"][0][i] if results.get("distances") else None
+                    
+                    doc_type = metadata.get("type", "Unknown")
+                    base_score = 1 - distance if distance else None
+                    
+                    if doc_type == "event":
+                        base_score = base_score * 0.5 if base_score else None
+                    elif doc_type == "program":
+                        base_score = base_score * 1.3 if base_score else None
+                    
+                    all_documents.append({
+                        "content": doc,
+                        "source": metadata.get("source", "Unknown"),
+                        "type": doc_type,
+                        "relevance_score": base_score,
+                        "id": doc_id
+                    })
         
-        documents = []
-        for i, doc in enumerate(results["documents"][0]):
-            metadata = results["metadatas"][0][i] if results.get("metadatas") else {}
-            distance = results["distances"][0][i] if results.get("distances") else None
-            
-            documents.append({
-                "content": doc,
-                "source": metadata.get("source", "Unknown"),
-                "type": metadata.get("type", "Unknown"),
-                "relevance_score": 1 - distance if distance else None
+        all_documents.sort(key=lambda x: x.get("relevance_score") or 0, reverse=True)
+        
+        final_docs = []
+        for doc in all_documents[:n_results]:
+            final_docs.append({
+                "content": doc["content"],
+                "source": doc["source"],
+                "type": doc["type"],
+                "relevance_score": doc["relevance_score"]
             })
         
-        return documents
+        return final_docs
         
     except Exception as e:
         print(f"Error searching knowledge base: {e}")
@@ -801,7 +857,7 @@ def search_knowledge_base(query: str, n_results: int = 5, retry_count: int = 0) 
             print(f"Retrying search with fresh client (attempt {retry_count + 2})...")
             import time
             time.sleep(0.5)
-            return search_knowledge_base(query, n_results, retry_count + 1)
+            return search_knowledge_base(query, n_results, retry_count + 1, prefer_programs)
         return []
 
 

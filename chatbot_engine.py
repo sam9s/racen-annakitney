@@ -100,9 +100,10 @@ def build_context_aware_query(user_message: str, conversation_history: List[dict
         return user_message
     
     program_names = [
-        "Wellness Coaching", "Holistic Health", "Mindfulness",
-        "Stress Management", "Life Balance", "Personal Transformation",
-        "Self-Care", "Mind-Body Wellness", "1:1 Coaching"
+        "Elite Private Advisory", "The Ascend Collective", "VIP Day",
+        "SoulAlign Heal", "SoulAlign Manifestation Mastery", "SoulAlign Money",
+        "Divine Abundance Codes", "Avatar", "Soul Align Business Course",
+        "Launch and Grow Live", "Get Clients Fast Masterclass"
     ]
     
     message_lower = user_message.lower()

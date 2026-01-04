@@ -70,6 +70,34 @@ BASE_DOMAIN = "annakitney.com"
 MAX_DISCOVERY_PAGES = 100
 
 
+def get_content_type(url: str) -> str:
+    """Determine content type based on URL path for metadata tagging."""
+    url_lower = url.lower()
+    
+    if any(prog in url_lower for prog in [
+        'elite-private-advisory', 'ascend-collective', 'vip-day',
+        'soulalign-heal', 'soulalign-manifestation', 'soulalign-money',
+        'divine-abundance', 'avatar', 'soul-align-business',
+        'launch-and-grow', 'get-clients-fast', 'more-love-and-money',
+        'all-the-things', 'work-with-me'
+    ]):
+        return "program"
+    elif '/blog/' in url_lower or any(x in url_lower for x in [
+        'making-the-impossible', 'nervous-system', 'evolution-of-consciousness',
+        'escaping-the-matrix', 'feast-famine', 'coach-anyone', 'universal-law',
+        'entrepreneur-to-ceo', 'art-of-doing-less', 'manifestation-secret', '1million'
+    ]):
+        return "blog"
+    elif '/event' in url_lower or '/2024' in url_lower or '/2025' in url_lower or '/2026' in url_lower:
+        return "event"
+    elif 'contact' in url_lower or 'clarity-call' in url_lower:
+        return "contact"
+    elif 'about' in url_lower or 'testimonial' in url_lower:
+        return "about"
+    else:
+        return "website"
+
+
 def ingest_url(url: str, collection, source_name: str = None) -> int:
     """
     Ingest a single URL into the knowledge base.
@@ -82,6 +110,11 @@ def ingest_url(url: str, collection, source_name: str = None) -> int:
     Returns:
         Number of chunks added
     """
+    url_lower = url.lower()
+    if '/event' in url_lower or '/events/' in url_lower:
+        print(f"Skipping event page: {url}")
+        return 0
+    
     print(f"Ingesting: {url}")
     
     try:
@@ -99,6 +132,8 @@ def ingest_url(url: str, collection, source_name: str = None) -> int:
             path = url.replace("https://", "").replace("http://", "").replace("www.", "")
             source_name = f"website_{path.replace('/', '_').replace('.', '_').rstrip('_')}"
         
+        content_type = get_content_type(url)
+        
         chunks = split_text_into_chunks(content, url)
         chunks_added = 0
         
@@ -111,7 +146,7 @@ def ingest_url(url: str, collection, source_name: str = None) -> int:
                     documents=[chunk["content"]],
                     metadatas=[{
                         "source": url,
-                        "type": "website",
+                        "type": content_type,
                         "chunk_index": chunk["chunk_index"]
                     }]
                 )
@@ -119,7 +154,7 @@ def ingest_url(url: str, collection, source_name: str = None) -> int:
             except Exception as e:
                 print(f"  - Chunk error: {e}")
         
-        print(f"  - Success! ({len(content)} chars, {chunks_added} chunks)")
+        print(f"  - Success! ({len(content)} chars, {chunks_added} chunks, type: {content_type})")
         return chunks_added
         
     except Exception as e:
@@ -165,6 +200,7 @@ def discover_pages(base_url: str, base_domain: str, max_pages: int = 50) -> list
                             '#', '?', 'facebook.com', 'instagram.com', 
                             'youtube.com', 'linkedin.com', 'twitter.com',
                             '/cart/', '/checkout/', '/my-account/',
+                            '/events/', '/event/', '/2024', '/2025', '/2026',
                         ]
                         should_skip = any(pattern in link.lower() for pattern in skip_patterns)
                         if not should_skip:
