@@ -752,6 +752,7 @@ def inject_checkout_urls(response: str, user_message: str = "") -> str:
     
     If the response mentions "checkout page" without an actual URL, this function
     will inject the correct checkout URL based on the program being discussed.
+    Uses PROGRAM_ENROLLMENT_DATA for program-specific checkout info.
     """
     import re
     
@@ -760,7 +761,7 @@ def inject_checkout_urls(response: str, user_message: str = "") -> str:
     
     if re.search(r'\[[^\]]*checkout[^\]]*\]\([^)]+\)', response, re.IGNORECASE):
         return response
-    if re.search(r'https://www\.annakitney\.com/offers/[^/]+/checkout', response):
+    if re.search(r'https://annakitneyportal\.com/offers/[^/]+/checkout', response):
         return response
     
     program_found = None
@@ -768,21 +769,23 @@ def inject_checkout_urls(response: str, user_message: str = "") -> str:
     message_lower = user_message.lower() if user_message else ""
     combined_text = response_lower + " " + message_lower
     
-    for program_name in PROGRAM_CHECKOUT_URLS.keys():
+    for program_name in PROGRAM_ENROLLMENT_DATA.keys():
         if program_name.lower() in combined_text:
             program_found = program_name
             break
     
-    if program_found and program_found in PROGRAM_CHECKOUT_URLS:
-        checkout_url = PROGRAM_CHECKOUT_URLS[program_found]
-        result = re.sub(
-            r'(our\s+)?checkout\s+page(?!\])',
-            f'[the checkout page]({checkout_url})',
-            response,
-            flags=re.IGNORECASE,
-            count=1
-        )
-        return result
+    if program_found and program_found in PROGRAM_ENROLLMENT_DATA:
+        enrollment_data = PROGRAM_ENROLLMENT_DATA[program_found]
+        if enrollment_data.get('payment_options') and len(enrollment_data['payment_options']) > 0:
+            checkout_url = enrollment_data['payment_options'][0]['checkout_url']
+            result = re.sub(
+                r'(our\s+)?checkout\s+page(?!\])',
+                f'[the checkout page]({checkout_url})',
+                response,
+                flags=re.IGNORECASE,
+                count=1
+            )
+            return result
     
     return response
 

@@ -677,6 +677,7 @@
   var ALLOWED_NAVIGATION_DOMAINS = [
     'annakitney.com',
     'www.annakitney.com',
+    'annakitneyportal.com',
     'bit.ly'
   ];
 
