@@ -16,6 +16,44 @@ function extractNavigationUrl(content: string): { url: string | null; cleanConte
   return { url: null, cleanContent };
 }
 
+function parseInlineContent(text: string, lineIndex: number, startCount: number): { nodes: ReactNode[], count: number } {
+  const nodes: ReactNode[] = [];
+  const linkRegex = /\[([^\]]+)\]\(([^)]+)\)/g;
+  let lastIndex = 0;
+  let match;
+  let matchCount = startCount;
+  
+  while ((match = linkRegex.exec(text)) !== null) {
+    if (match.index > lastIndex) {
+      nodes.push(text.substring(lastIndex, match.index));
+    }
+    
+    const linkText = match[1];
+    const linkUrl = match[2];
+    nodes.push(
+      <a
+        key={`link-${lineIndex}-${matchCount}`}
+        href={linkUrl}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="text-primary hover:text-primary/80 underline"
+        data-testid={`link-program-${matchCount}`}
+      >
+        {linkText}
+      </a>
+    );
+    
+    lastIndex = linkRegex.lastIndex;
+    matchCount++;
+  }
+  
+  if (lastIndex < text.length) {
+    nodes.push(text.substring(lastIndex));
+  }
+  
+  return { nodes, count: matchCount };
+}
+
 function renderMessageContent(text: string): ReactNode[] {
   const parts: ReactNode[] = [];
   const lines = text.split('\n');
@@ -29,55 +67,63 @@ function renderMessageContent(text: string): ReactNode[] {
       return;
     }
     
-    const combinedRegex = /(\*\*([^*]+)\*\*)|(\[([^\]]+)\]\(([^)]+)\))|(https?:\/\/[^\s<>")\]]+)/g;
+    const boldRegex = /\*\*([^*]+)\*\*/g;
+    const urlRegex = /(https?:\/\/[^\s<>")\]]+)/g;
     let lastIndex = 0;
     let match;
     let matchCount = 0;
     
-    while ((match = combinedRegex.exec(line)) !== null) {
-      if (match.index > lastIndex) {
-        parts.push(line.substring(lastIndex, match.index));
+    const segments: { start: number; end: number; type: 'bold' | 'url'; content: string }[] = [];
+    
+    while ((match = boldRegex.exec(line)) !== null) {
+      segments.push({ start: match.index, end: boldRegex.lastIndex, type: 'bold', content: match[1] });
+    }
+    
+    while ((match = urlRegex.exec(line)) !== null) {
+      const isInsideBold = segments.some(s => s.type === 'bold' && match!.index >= s.start && match!.index < s.end);
+      const isPartOfMarkdownLink = /\]\(https?:\/\//.test(line.substring(Math.max(0, match.index - 2), match.index + 10));
+      if (!isInsideBold && !isPartOfMarkdownLink) {
+        segments.push({ start: match.index, end: urlRegex.lastIndex, type: 'url', content: match[1] });
+      }
+    }
+    
+    segments.sort((a, b) => a.start - b.start);
+    
+    for (const segment of segments) {
+      if (segment.start > lastIndex) {
+        const textBetween = line.substring(lastIndex, segment.start);
+        const { nodes, count } = parseInlineContent(textBetween, lineIndex, matchCount);
+        parts.push(...nodes);
+        matchCount = count;
       }
       
-      if (match[1]) {
-        parts.push(<strong key={`bold-${lineIndex}-${matchCount}`}>{match[2]}</strong>);
-      } else if (match[3]) {
-        const linkText = match[4];
-        const linkUrl = match[5];
-        parts.push(
-          <a
-            key={`link-${lineIndex}-${matchCount}`}
-            href={linkUrl}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="text-primary hover:text-primary/80 underline"
-            data-testid={`link-program-${matchCount}`}
-          >
-            {linkText}
-          </a>
-        );
-      } else if (match[6]) {
-        const plainUrl = match[6];
+      if (segment.type === 'bold') {
+        const { nodes, count } = parseInlineContent(segment.content, lineIndex, matchCount);
+        parts.push(<strong key={`bold-${lineIndex}-${matchCount}`}>{nodes}</strong>);
+        matchCount = count;
+      } else if (segment.type === 'url') {
         parts.push(
           <a
             key={`url-${lineIndex}-${matchCount}`}
-            href={plainUrl}
+            href={segment.content}
             target="_blank"
             rel="noopener noreferrer"
             className="text-primary hover:text-primary/80 underline break-all"
             data-testid={`link-url-${matchCount}`}
           >
-            {plainUrl}
+            {segment.content}
           </a>
         );
+        matchCount++;
       }
       
-      lastIndex = combinedRegex.lastIndex;
-      matchCount++;
+      lastIndex = segment.end;
     }
     
     if (lastIndex < line.length) {
-      parts.push(line.substring(lastIndex));
+      const remaining = line.substring(lastIndex);
+      const { nodes } = parseInlineContent(remaining, lineIndex, matchCount);
+      parts.push(...nodes);
     }
   });
   
