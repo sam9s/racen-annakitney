@@ -95,19 +95,19 @@ PROGRAM_ENROLLMENT_DATA = {
                 "label": "Pay in Full",
                 "price": "£2,500",
                 "description": "One-time payment",
-                "checkout_url": "https://annakitneyportal.com/offers/wrDLYp8W/checkout"
+                "checkout_url": "https://www.annakitneyportal.com/offers/wrDLYp8W/checkout"
             },
             {
                 "label": "6 Monthly Payments",
                 "price": "£455/month",
                 "description": "6 monthly payments of £455",
-                "checkout_url": "https://annakitneyportal.com/offers/DxDQoW5L/checkout"
+                "checkout_url": "https://www.annakitneyportal.com/offers/DxDQoW5L/checkout"
             },
             {
                 "label": "12 Monthly Payments",
                 "price": "£240/month",
                 "description": "12 monthly payments of £240",
-                "checkout_url": "https://annakitneyportal.com/offers/hcY3LzWm/checkout"
+                "checkout_url": "https://www.annakitneyportal.com/offers/hcY3LzWm/checkout"
             }
         ],
         "info_page": "https://www.annakitney.com/soulalign-manifestation-mastery/"
@@ -120,19 +120,19 @@ PROGRAM_ENROLLMENT_DATA = {
                 "label": "Pay in Full",
                 "price": "£997",
                 "description": "One-time payment",
-                "checkout_url": "https://annakitneyportal.com/offers/o352kRcS/checkout"
+                "checkout_url": "https://www.annakitneyportal.com/offers/o352kRcS/checkout"
             },
             {
                 "label": "3 Monthly Payments",
                 "price": "£370/month",
                 "description": "3 monthly payments",
-                "checkout_url": "https://annakitneyportal.com/offers/JptpD268/checkout"
+                "checkout_url": "https://www.annakitneyportal.com/offers/JptpD268/checkout"
             },
             {
                 "label": "6 Monthly Payments",
                 "price": "£197/month",
                 "description": "6 monthly payments",
-                "checkout_url": "https://annakitneyportal.com/offers/ac939RmL/checkout"
+                "checkout_url": "https://www.annakitneyportal.com/offers/ac939RmL/checkout"
             }
         ],
         "info_page": "https://www.annakitney.com/divine-abundance-codes/"
@@ -165,13 +165,13 @@ PROGRAM_ENROLLMENT_DATA = {
                 "label": "Pay in Full",
                 "price": "Contact for pricing",
                 "description": "One-time payment",
-                "checkout_url": "https://annakitneyportal.com/offers/iuqVzawM/checkout"
+                "checkout_url": "https://www.annakitneyportal.com/offers/iuqVzawM/checkout"
             },
             {
                 "label": "Payment Plan",
                 "price": "Contact for pricing",
                 "description": "Monthly payments available",
-                "checkout_url": "https://annakitneyportal.com/offers/kzLwkAsb/checkout"
+                "checkout_url": "https://www.annakitneyportal.com/offers/kzLwkAsb/checkout"
             }
         ],
         "clarity_call_url": "https://www.annakitney.com/clarity-call/",
