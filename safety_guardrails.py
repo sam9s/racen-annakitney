@@ -731,12 +731,15 @@ def detect_enrollment_intent(user_message: str, response: str = "") -> bool:
     user_msg_lower = user_message.lower()
     
     explicit_enrollment_keywords = [
-        "enroll", "sign up", "signup", "register", 
-        "purchase", "buy", "checkout", "pay now",
-        "i want to join", "i'd like to join", "i would like to join",
-        "take me to checkout", "ready to enroll", "ready to join",
+        "enroll", "enrol", "sign up", "signup", "sign me up", 
+        "register", "join", "purchase", "buy", "checkout",
+        "pay now", "ready to enroll", "ready to join", "ready to pay",
+        "take me to checkout", "let's do it", "i'm in",
         "how do i enroll", "how do i sign up", "how do i join",
-        "how to enroll", "how to sign up", "how to join"
+        "how to enroll", "how to sign up", "how to join",
+        "i want to join", "i'd like to join", "i would like to join",
+        "i want to enroll", "i'd like to enroll", "i would like to enroll",
+        "enroll me", "sign me up for", "get me started"
     ]
     
     return any(kw in user_msg_lower for kw in explicit_enrollment_keywords)
