@@ -1,7 +1,9 @@
 import { useState, useRef, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { Send, RotateCcw, MessageCircle, Loader2 } from "lucide-react";
+import { ThemeToggle } from "@/components/theme-toggle";
+import { Send, RotateCcw, Loader2, MessageCircle } from "lucide-react";
+import logoImage from "@assets/AK_logo_black_compressed_1767495757104.png";
 
 interface Message {
   id: string;
@@ -109,17 +111,20 @@ export default function Home() {
     <div className="flex flex-col h-screen bg-background" data-testid="page-home">
       <header className="flex items-center justify-between gap-2 px-4 py-3 border-b bg-card">
         <div className="flex items-center gap-2">
-          <MessageCircle className="w-5 h-5 text-primary" />
+          <img src={logoImage} alt="Anna Kitney" className="h-8" data-testid="img-logo" />
           <h1 className="text-lg font-semibold" data-testid="text-header-title">Anna Kitney Wellness</h1>
         </div>
-        <Button
-          variant="ghost"
-          size="icon"
-          onClick={resetConversation}
-          data-testid="button-reset-chat"
-        >
-          <RotateCcw className="w-4 h-4" />
-        </Button>
+        <div className="flex items-center gap-1">
+          <ThemeToggle />
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={resetConversation}
+            data-testid="button-reset-chat"
+          >
+            <RotateCcw className="w-4 h-4" />
+          </Button>
+        </div>
       </header>
 
       <div className="flex-1 overflow-y-auto p-4">
