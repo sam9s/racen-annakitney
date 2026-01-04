@@ -163,15 +163,13 @@ PROGRAM_ENROLLMENT_DATA = {
         "payment_options": [
             {
                 "label": "Pay in Full",
-                "price": "Contact for pricing",
                 "description": "One-time payment",
-                "checkout_url": "https://www.annakitneyportal.com/offers/iuqVzawM/checkout"
+                "checkout_url": "https://www.annakitneyportal.com/offers/Y3aiLCMc/checkout"
             },
             {
                 "label": "Payment Plan",
-                "price": "Contact for pricing",
                 "description": "Monthly payments available",
-                "checkout_url": "https://www.annakitneyportal.com/offers/kzLwkAsb/checkout"
+                "checkout_url": "https://www.annakitneyportal.com/offers/iuqVzawM/checkout"
             }
         ],
         "clarity_call_url": "https://www.annakitney.com/clarity-call/",
@@ -810,7 +808,10 @@ def generate_enrollment_options(program_name: str) -> str:
         desc = option.get("description", "")
         url = option.get("checkout_url", "")
         
-        lines.append(f"{i}. **[{label} - {price}]({url})** - {desc}\n")
+        if price:
+            lines.append(f"{i}. **[{label} - {price}]({url})** - {desc}\n")
+        else:
+            lines.append(f"{i}. **[{label}]({url})** - {desc}\n")
     
     lines.append("\nWhich option works best for you? I can take you directly to checkout!")
     
