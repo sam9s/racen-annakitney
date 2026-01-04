@@ -111,8 +111,9 @@ def ingest_url(url: str, collection, source_name: str = None) -> int:
         Number of chunks added
     """
     url_lower = url.lower()
-    if '/event' in url_lower or '/events/' in url_lower:
-        print(f"Skipping event page: {url}")
+    skip_url_patterns = ['/event', '/events/', '/feed', '/rss', '/category/', '/tag/', '/author/']
+    if any(pattern in url_lower for pattern in skip_url_patterns):
+        print(f"Skipping filtered URL: {url}")
         return 0
     
     print(f"Ingesting: {url}")
@@ -201,6 +202,7 @@ def discover_pages(base_url: str, base_domain: str, max_pages: int = 50) -> list
                             'youtube.com', 'linkedin.com', 'twitter.com',
                             '/cart/', '/checkout/', '/my-account/',
                             '/events/', '/event/', '/2024', '/2025', '/2026',
+                            '/feed', '/rss', '/category/', '/tag/', '/author/',
                         ]
                         should_skip = any(pattern in link.lower() for pattern in skip_patterns)
                         if not should_skip:
