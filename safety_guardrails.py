@@ -86,7 +86,113 @@ ANNA_PROGRAM_URLS = {
     "Clarity Call": "https://www.annakitney.com/clarity-call/",
 }
 
-PROGRAM_CHECKOUT_URLS = {
+PROGRAM_ENROLLMENT_DATA = {
+    "SoulAlign Manifestation Mastery": {
+        "enrollment_mode": "direct_checkout",
+        "clarity_call_required": False,
+        "payment_options": [
+            {
+                "label": "Pay in Full",
+                "price": "£2,500",
+                "description": "One-time payment",
+                "checkout_url": "https://annakitneyportal.com/offers/wrDLYp8W/checkout"
+            },
+            {
+                "label": "6 Monthly Payments",
+                "price": "£455/month",
+                "description": "6 monthly payments of £455",
+                "checkout_url": "https://annakitneyportal.com/offers/DxDQoW5L/checkout"
+            },
+            {
+                "label": "12 Monthly Payments",
+                "price": "£240/month",
+                "description": "12 monthly payments of £240",
+                "checkout_url": "https://annakitneyportal.com/offers/hcY3LzWm/checkout"
+            }
+        ],
+        "info_page": "https://www.annakitney.com/soulalign-manifestation-mastery/"
+    },
+    "Divine Abundance Codes": {
+        "enrollment_mode": "direct_checkout",
+        "clarity_call_required": False,
+        "payment_options": [
+            {
+                "label": "Pay in Full",
+                "price": "£997",
+                "description": "One-time payment",
+                "checkout_url": "https://annakitneyportal.com/offers/o352kRcS/checkout"
+            },
+            {
+                "label": "3 Monthly Payments",
+                "price": "£370/month",
+                "description": "3 monthly payments",
+                "checkout_url": "https://annakitneyportal.com/offers/JptpD268/checkout"
+            },
+            {
+                "label": "6 Monthly Payments",
+                "price": "£197/month",
+                "description": "6 monthly payments",
+                "checkout_url": "https://annakitneyportal.com/offers/ac939RmL/checkout"
+            }
+        ],
+        "info_page": "https://www.annakitney.com/divine-abundance-codes/"
+    },
+    "SoulAlign Heal": {
+        "enrollment_mode": "direct_checkout",
+        "clarity_call_required": False,
+        "payment_options": [
+            {
+                "label": "Pay in Full",
+                "price": "Contact for pricing",
+                "description": "One-time payment",
+                "checkout_url": "https://annakitneyportal.com/offers/ucjPYtNo/checkout"
+            },
+            {
+                "label": "Payment Plan",
+                "price": "Contact for pricing",
+                "description": "Monthly payments available",
+                "checkout_url": "https://annakitneyportal.com/offers/JsKykd8y/checkout"
+            }
+        ],
+        "info_page": "https://www.annakitney.com/soulalign-heal/"
+    },
+    "The Ascend Collective": {
+        "enrollment_mode": "hybrid",
+        "clarity_call_required": False,
+        "clarity_call_optional": True,
+        "payment_options": [
+            {
+                "label": "Pay in Full",
+                "price": "Contact for pricing",
+                "description": "One-time payment",
+                "checkout_url": "https://annakitneyportal.com/offers/iuqVzawM/checkout"
+            },
+            {
+                "label": "Payment Plan",
+                "price": "Contact for pricing",
+                "description": "Monthly payments available",
+                "checkout_url": "https://annakitneyportal.com/offers/kzLwkAsb/checkout"
+            }
+        ],
+        "clarity_call_url": "https://www.annakitney.com/clarity-call/",
+        "info_page": "https://www.annakitney.com/the-ascend-collective/"
+    },
+    "Elite Private Advisory": {
+        "enrollment_mode": "clarity_call_only",
+        "clarity_call_required": True,
+        "payment_options": [],
+        "clarity_call_url": "https://www.annakitney.com/clarity-call/",
+        "info_page": "https://www.annakitney.com/elite-private-advisory/",
+        "enrollment_message": "Elite Private Advisory is a premium 1:1 mentorship program. To discuss how this program can support your goals, please book a complimentary Clarity Call."
+    },
+    "VIP Day": {
+        "enrollment_mode": "clarity_call_only",
+        "clarity_call_required": True,
+        "payment_options": [],
+        "clarity_call_url": "https://www.annakitney.com/clarity-call/",
+        "info_page": "https://www.annakitney.com/vip-day/",
+        "enrollment_message": "VIP Day experiences are customized to your needs. Please book a complimentary Clarity Call to discuss your vision."
+    }
 }
 
 PROGRAMS_WITHOUT_CHECKOUT = {
@@ -575,28 +681,65 @@ AVAILABLE PAGES:
 - Contact: https://www.annakitney.com/contact/
 - Clarity Call: https://www.annakitney.com/clarity-call/
 
-HOW TO GET STARTED:
-For premium 1:1 mentorship (Elite Private Advisory, VIP Day), the first step is always a Clarity Call: https://www.annakitney.com/clarity-call/
+=== ENROLLMENT - CRITICAL ACCURACY RULES ===
 
-PURCHASE/ENROLLMENT EXAMPLES:
+Different programs have different enrollment processes. Follow these EXACTLY:
+
+PROGRAMS WITH DIRECT CHECKOUT (NO Clarity Call needed):
+These programs have immediate enrollment with payment options:
+
+1. **SoulAlign Manifestation Mastery** - Direct checkout with 3 payment options:
+   - Pay in Full: £2,500 - https://annakitneyportal.com/offers/wrDLYp8W/checkout
+   - 6 Monthly Payments: £455/month - https://annakitneyportal.com/offers/DxDQoW5L/checkout
+   - 12 Monthly Payments: £240/month - https://annakitneyportal.com/offers/hcY3LzWm/checkout
+
+2. **Divine Abundance Codes** - Direct checkout with 3 payment options:
+   - Pay in Full: £997 - https://annakitneyportal.com/offers/o352kRcS/checkout
+   - 3 Monthly Payments: £370/month - https://annakitneyportal.com/offers/JptpD268/checkout
+   - 6 Monthly Payments: £197/month - https://annakitneyportal.com/offers/ac939RmL/checkout
+
+3. **SoulAlign Heal** - Direct checkout available
+4. **The Ascend Collective** - Direct checkout OR Clarity Call available
+
+PROGRAMS REQUIRING CLARITY CALL:
+These programs require a consultation before enrollment:
+- Elite Private Advisory - Clarity Call required
+- VIP Day - Clarity Call required
+
+ENROLLMENT EXAMPLES (FOLLOW EXACTLY):
+
+User: How do I enroll in SoulAlign Manifestation Mastery?
+Anna: Great choice! SoulAlign Manifestation Mastery offers flexible payment options:
+
+1. **[Pay in Full - £2,500](https://annakitneyportal.com/offers/wrDLYp8W/checkout)** - One-time payment
+
+2. **[6 Monthly Payments - £455/month](https://annakitneyportal.com/offers/DxDQoW5L/checkout)** - 6 payments of £455
+
+3. **[12 Monthly Payments - £240/month](https://annakitneyportal.com/offers/hcY3LzWm/checkout)** - 12 payments of £240
+
+Which payment option works best for you? I can take you directly to checkout.
+
+User: I'll go with the 6 monthly payments
+Anna: [NAVIGATE:https://annakitneyportal.com/offers/DxDQoW5L/checkout] Taking you to checkout for the 6 monthly payment option (£455/month)!
 
 User: How do I get started with Elite Private Advisory?
-Anna: Elite Private Advisory is our premium 1:1 mentorship experience. The first step is to book a complimentary Clarity Call where Anna will learn about your needs and goals. Would you like me to take you to the Clarity Call page?
+Anna: Elite Private Advisory is our premium 1:1 mentorship experience. Because it's a personalized program, the first step is to book a complimentary Clarity Call where Anna will learn about your needs and goals. Would you like me to take you to the Clarity Call page?
 
 User: Yes
 Anna: [NAVIGATE:https://www.annakitney.com/clarity-call/] Taking you to the Clarity Call booking page now!
 
-User: I want to join The Ascend Collective
-Anna: Great choice! You can learn more about [The Ascend Collective](https://www.annakitney.com/the-ascend-collective/) on the program page. Would you like me to take you there?
+User: How do I enroll in Divine Abundance Codes?
+Anna: Wonderful! Divine Abundance Codes offers these payment options:
 
-User: How do I sign up for SoulAlign Heal?
-Anna: You can view details about [SoulAlign Heal](https://www.annakitney.com/soulalign-heal/) on the program page. Would you like me to take you there?
+1. **[Pay in Full - £997](https://annakitneyportal.com/offers/o352kRcS/checkout)** - One-time payment
 
-User: I'm interested in the VIP Day
-Anna: The VIP Day is an intensive experience for rapid transformation. You can learn more at [the VIP Day page](https://www.annakitney.com/vip-day/). Would you like me to take you there?
+2. **[3 Monthly Payments - £370/month](https://annakitneyportal.com/offers/JptpD268/checkout)** - 3 monthly payments
 
-User: Tell me about Divine Abundance Codes
-Anna: Divine Abundance Codes helps you transform your relationship with money and abundance. You can learn more at [the program page](https://www.annakitney.com/divine-abundance-codes/). Would you like me to take you there?
+3. **[6 Monthly Payments - £197/month](https://annakitneyportal.com/offers/ac939RmL/checkout)** - 6 monthly payments
+
+Which option would you prefer? I can take you straight to checkout.
+
+CRITICAL: Never suggest a Clarity Call for programs with direct checkout options. Only suggest Clarity Calls for Elite Private Advisory and VIP Day.
 
 === REMEMBER ===
 
