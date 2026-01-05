@@ -30,11 +30,11 @@ class CalendarServiceError(Exception):
 
 
 def get_upcoming_events(limit: int = 10) -> List[Dict]:
-    """Fetch upcoming events from the calendar API."""
+    """Fetch upcoming events from PostgreSQL database (synced from Google Calendar)."""
     try:
+        # Use the database endpoint for events (synced from Google Calendar)
         response = requests.get(
-            f"{EXPRESS_API_URL}/api/events",
-            params={"limit": limit},
+            f"{EXPRESS_API_URL}/api/events/db",
             timeout=10
         )
         
@@ -47,7 +47,26 @@ def get_upcoming_events(limit: int = 10) -> List[Dict]:
         if "error" in data:
             raise CalendarServiceError(data.get("error", "Unknown error"))
         
-        return data.get("events", [])
+        events = data.get("events", [])
+        
+        # Transform database format to match expected format
+        transformed = []
+        for event in events[:limit]:
+            transformed.append({
+                "title": event.get("title"),
+                "start": event.get("startDate"),
+                "end": event.get("endDate"),
+                "startTimeZone": event.get("timezone"),
+                "location": event.get("location", "Online"),
+                "description": event.get("description", ""),
+                "eventPageUrl": event.get("eventPageUrl", ""),
+                "checkoutUrl": event.get("checkoutUrl", ""),
+                "checkoutUrl6Month": event.get("checkoutUrl6Month", ""),
+                "checkoutUrl12Month": event.get("checkoutUrl12Month", ""),
+                "programPageUrl": event.get("programPageUrl", ""),
+            })
+        
+        return transformed
     except requests.exceptions.Timeout:
         print("[Events Service] Request timeout")
         raise CalendarServiceError("Calendar service timeout")
@@ -57,7 +76,7 @@ def get_upcoming_events(limit: int = 10) -> List[Dict]:
     except CalendarServiceError:
         raise
     except Exception as e:
-        print(f"[Events Service] Error fetching events: {e}")
+        print(f"[Events Service] Error fetching events from database: {e}")
         return []
 
 
@@ -78,17 +97,35 @@ def search_events(query: str) -> List[Dict]:
 
 
 def get_event_by_title(title: str) -> Optional[Dict]:
-    """Get a specific event by title (fuzzy match)."""
+    """Get a specific event by title from PostgreSQL database (fuzzy match)."""
     try:
         response = requests.get(
-            f"{EXPRESS_API_URL}/api/events/by-title/{title}",
+            f"{EXPRESS_API_URL}/api/events/db/by-title/{title}",
             timeout=10
         )
         if response.status_code == 404:
             return None
         response.raise_for_status()
         data = response.json()
-        return data.get("event")
+        
+        event = data.get("event")
+        if not event:
+            return None
+        
+        # Transform to expected format
+        return {
+            "title": event.get("title"),
+            "start": event.get("startDate"),
+            "end": event.get("endDate"),
+            "startTimeZone": event.get("timezone"),
+            "location": event.get("location", "Online"),
+            "description": event.get("description", ""),
+            "eventPageUrl": event.get("eventPageUrl", ""),
+            "checkoutUrl": event.get("checkoutUrl", ""),
+            "checkoutUrl6Month": event.get("checkoutUrl6Month", ""),
+            "checkoutUrl12Month": event.get("checkoutUrl12Month", ""),
+            "programPageUrl": event.get("programPageUrl", ""),
+        }
     except Exception as e:
         print(f"[Events Service] Error fetching event by title: {e}")
         return None
