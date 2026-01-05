@@ -11,6 +11,13 @@ import {
   formatEventsListForChat,
   type EventInfo
 } from "./calendar-service";
+import {
+  syncAllEvents,
+  startScheduledSync,
+  handleCalendarWebhook,
+  getEventsFromDatabase,
+  getEventFromDatabaseByTitle
+} from "./calendar-sync-service";
 
 const FLASK_API_URL = process.env.FLASK_API_URL || "http://localhost:8080";
 const INTERNAL_API_KEY = process.env.INTERNAL_API_KEY;
@@ -250,6 +257,78 @@ export async function registerRoutes(
       res.status(500).json({ error: error.message || "Failed to fetch events" });
     }
   });
+
+  // ============ CALENDAR SYNC ENDPOINTS ============
+
+  // Get events from PostgreSQL database (synced from Google Calendar)
+  app.get("/api/events/db", async (req: Request, res: Response) => {
+    try {
+      const includeInactive = req.query.includeInactive === 'true';
+      const events = await getEventsFromDatabase(includeInactive);
+      res.json({ events, count: events.length });
+    } catch (error: any) {
+      console.error("Error fetching events from database:", error);
+      res.status(500).json({ error: error.message || "Failed to fetch events from database" });
+    }
+  });
+
+  // Get specific event from database by title
+  app.get("/api/events/db/by-title/:title", async (req: Request, res: Response) => {
+    try {
+      const title = decodeURIComponent(req.params.title);
+      const event = await getEventFromDatabaseByTitle(title);
+      if (event) {
+        res.json({ event });
+      } else {
+        res.status(404).json({ error: "Event not found in database" });
+      }
+    } catch (error: any) {
+      console.error("Error fetching event from database:", error);
+      res.status(500).json({ error: error.message || "Failed to fetch event" });
+    }
+  });
+
+  // Manual sync trigger
+  app.post("/api/calendar/sync", async (_req: Request, res: Response) => {
+    try {
+      console.log("Manual calendar sync triggered");
+      const result = await syncAllEvents();
+      res.json({ 
+        success: true, 
+        message: `Sync complete: ${result.synced} events synced, ${result.errors} errors`,
+        ...result
+      });
+    } catch (error: any) {
+      console.error("Error during manual sync:", error);
+      res.status(500).json({ error: error.message || "Sync failed" });
+    }
+  });
+
+  // Google Calendar webhook endpoint
+  // This receives push notifications when calendar changes
+  app.post("/api/calendar/webhook", async (req: Request, res: Response) => {
+    try {
+      const channelId = req.headers['x-goog-channel-id'] as string;
+      const resourceId = req.headers['x-goog-resource-id'] as string;
+      const resourceState = req.headers['x-goog-resource-state'] as string;
+
+      console.log(`Webhook received: state=${resourceState}, channel=${channelId}`);
+
+      if (resourceState && channelId) {
+        await handleCalendarWebhook(channelId, resourceId, resourceState);
+      }
+
+      // Google requires a 200 response
+      res.status(200).send('OK');
+    } catch (error: any) {
+      console.error("Error handling webhook:", error);
+      // Still return 200 to prevent Google from retrying
+      res.status(200).send('OK');
+    }
+  });
+
+  // Start the scheduled sync
+  startScheduledSync();
 
   return httpServer;
 }
