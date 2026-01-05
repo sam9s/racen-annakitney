@@ -1,5 +1,8 @@
 (function() {
   'use strict';
+  
+  // Widget version: 2026-01-05-v2 - Force cache refresh
+  const WIDGET_VERSION = '2026-01-05-v2';
 
   function getApiEndpoint() {
     if (window.ANNA_API_URL) return window.ANNA_API_URL;
