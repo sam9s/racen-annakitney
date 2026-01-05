@@ -1,0 +1,30 @@
+Hi, good morning. I tested again, and we are still missing a lot of things. The question was when is SoulAlign Manifestation Mastery event happening? The details are correct. But many things are still missing, and of course the timing is still incorrect. Let's work on it one by one. First, let me share what I see on the bot or what our bot is giving. 
+
+First, tell me from where the bot is pulling this information that I've just shared below? Because what I see in my calendar when I click that event is a truckload of huge details that are listed there, and I want our bot to give exactly those details. But our bot is missing most of the details. First of all, our bot is giving the start of the event starts from Tuesday, January 20th from 5 p.m., and then it's the ending of that event. Like if I see Google Calendar, or even what is mentioned on Anna's website, this particular event starts from January 20 and ends at April 7th. So exact information on Anna's website is January 20 @ 5:00 pm - April 7 @ 7:00 pm and on my Google calendar, it is. January 20, 2026, 10:30pm – April 7, 2026, 11:30pm. I believe that what our bot should display is exactly what is on the Google Calendar since at the end, our bot will be connected to Anna's Google Calendar. Any user who would be asking any question for any event will be pulled from Anna's Google Calendar, and Google Calendar adjusts the timings accordingly. The truth for exact timings should be picked up from Google Calendar itself. That is why I am saying that brings me to the below question. You are totally free to correct me if I am wrong here. 
+
+So, are we using Google Calendar API to pull the events? That is my first question. If not, then from where are we pulling? If yes, then why can't we pull the entire event information that I see in my Google Calendar exactly as it is?
+
+Coming to the second question, the link to the event is still not there. This is how the flow of this conversation should be if I inquire about any event. For example, here I inquired about the "SoulAlign® Manifestation Mastery" event. It gives me, "Yes, it is happening on Tuesday, January 20th ....etc etc .... The message should end with the link to that particular event. which is  - > https://www.annakitney.com/event/phoenixrising/  
+And then a follow-up question. Would you like to book the event? if user says "yes" then auto navigate to that page which is this for this particular program. 
+
+https://www.annakitneyportal.com/offers/wrDLYp8W/checkout
+
+Now, this is the behavior that I want, but I also want your analysis as to how we will achieve this in the best possible way. Is there a possibility of these links getting changed? I don't see these links in the event that I see in Google calendar. I'm attaching what I see in Google calendar. The Google calendar information is very extensive, and that is what I want our bot to display; however, that information does not include the link to the page.  However, I want my bot (or our bot) to complete giving the user the complete experience of any event. This is how my flow should be. Before you do anything, just analyze what I have said. Give me a complete analysis as to how we should achieve this. Once we are on the same page, then we proceed and execute the changes. I hope you are getting what I am trying to say here. 
+
+Conversation - > 
+When is SoulAlign® Manifestation Mastery event happening?
+SoulAlign® Manifestation Mastery
+
+When: Tuesday, January 20, 2026 from 5:00 PM - 6:00 PM (London time)
+
+Where: Zoom
+
+About this event:
+This 12-week Mastermind experience is designed to expand your energetic capacity to receive abundant overflow into every area of your life. It's for the woman who desires to manifest the extraordinary life she’s always dreamed of.
+
+Would you like me to navigate you to the event page, or add this event to your calendar?
+
+---
+
+*If you'd like to dive deeper, these might resonate with you:*
+SoulAlign Manifestation Mastery | Divine Abundance Codes
