@@ -1,5 +1,7 @@
 import type { Express, Request, Response } from "express";
 import { createServer, type Server } from "http";
+import path from "path";
+import fs from "fs";
 import {
   listCalendars,
   findAnnaCalendar,
@@ -26,6 +28,30 @@ export async function registerRoutes(
   httpServer: Server,
   app: Express
 ): Promise<Server> {
+  
+  // Serve widget.js explicitly BEFORE Vite catches it
+  // This is required because Vite's catch-all returns index.html for all requests
+  app.get("/widget.js", (req: Request, res: Response) => {
+    const widgetPath = path.resolve(process.cwd(), "public", "widget.js");
+    if (fs.existsSync(widgetPath)) {
+      res.setHeader("Content-Type", "application/javascript");
+      res.setHeader("Cache-Control", "no-cache, no-store, must-revalidate");
+      res.sendFile(widgetPath);
+    } else {
+      res.status(404).send("Widget not found");
+    }
+  });
+  
+  // Serve anna-logo.png for the widget avatar
+  app.get("/anna-logo.png", (req: Request, res: Response) => {
+    const logoPath = path.resolve(process.cwd(), "public", "anna-logo.png");
+    if (fs.existsSync(logoPath)) {
+      res.setHeader("Cache-Control", "public, max-age=86400");
+      res.sendFile(logoPath);
+    } else {
+      res.status(404).send("Logo not found");
+    }
+  });
   
   app.post("/api/chat", async (req: Request, res: Response) => {
     try {
