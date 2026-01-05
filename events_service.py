@@ -262,6 +262,7 @@ def format_description_for_display(description: str) -> str:
     """
     Format calendar description for better readability in chat:
     - Convert ALL CAPS lines to *italics* (emphasis headings)
+    - Mark date/subtitle lines with special {{SUBTITLE:...}} marker for teal styling
     - Add spacing between sections
     - Bold key terms like prices, dates
     - Clean up excessive whitespace
@@ -273,6 +274,7 @@ def format_description_for_display(description: str) -> str:
     
     lines = description.split('\n')
     formatted_lines = []
+    first_content_line = True  # Track first non-empty content line
     
     for line in lines:
         stripped = line.strip()
@@ -281,6 +283,18 @@ def format_description_for_display(description: str) -> str:
         if not stripped:
             formatted_lines.append('')
             continue
+        
+        # Detect event subtitle pattern: "DATE | Description" format
+        # This is typically the first content line containing date and pipe separator
+        date_subtitle_pattern = r'^(\d{1,2}(?:ST|ND|RD|TH)?[\s\-]+[A-Z]+(?:[\s\-]+\d{4})?)\s*\|\s*(.+)$'
+        subtitle_match = re.match(date_subtitle_pattern, stripped, re.IGNORECASE)
+        if subtitle_match and first_content_line:
+            # Mark as subtitle for special styling in frontend
+            formatted_lines.append(f"{{{{SUBTITLE:{stripped}}}}}")
+            first_content_line = False
+            continue
+        
+        first_content_line = False
         
         # Detect ALL CAPS lines (headings/emphasis) - at least 3 chars, >70% caps
         if len(stripped) >= 3:

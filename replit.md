@@ -143,6 +143,7 @@ Anna Kitney Coaching calendar: `cms370prol01ksuq304erj1gmdug1v4m@import.calendar
 - **Past Events**: Automatically marked as `isActive: false`
 
 ## Recent Changes
+- **Event Styling Improvements (Jan 2026)**: Enhanced event description formatting with Lora serif font, text justification, teal-colored event subtitles (date | description lines), horizontal rule dividers, and italic text support. Changes applied to both Home.tsx and widget.js for consistency.
 - **Markdown Link Rendering Fix (Jan 2026)**: Fixed both React web UI (Home.tsx) and embeddable widget (widget.js) to render markdown links correctly. Root cause: bold `**text**` was being matched BEFORE markdown links `[text](url)`, breaking `[**text**](url)` syntax. Solution: Match markdown links FIRST, then bold, then raw URLs.
 - **Documentation Reorganization**: Moved all MD files to `/docs` folder for clarity
 - **Two Rendering Systems**: 

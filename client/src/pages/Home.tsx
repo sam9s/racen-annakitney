@@ -70,6 +70,21 @@ function renderMessageContent(text: string): ReactNode[] {
       return;
     }
     
+    // Handle special {{SUBTITLE:...}} marker for event date/description lines
+    const subtitleMatch = line.match(/^\{\{SUBTITLE:(.+)\}\}$/);
+    if (subtitleMatch) {
+      parts.push(
+        <div 
+          key={`subtitle-${lineIndex}`}
+          className="text-base font-medium my-2"
+          style={{ color: 'hsl(var(--wellness-teal))' }}
+        >
+          {subtitleMatch[1]}
+        </div>
+      );
+      return;
+    }
+    
     if (lineIndex > 0) {
       parts.push(<br key={`br-${lineIndex}`} />);
     }
@@ -360,7 +375,10 @@ export default function Home() {
                     : "bg-muted"
                 }`}
               >
-                <div className="text-sm whitespace-pre-wrap leading-relaxed">
+                <div 
+                  className="text-sm whitespace-pre-wrap leading-relaxed text-justify"
+                  style={{ fontFamily: 'var(--font-serif)' }}
+                >
                   {message.role === "assistant" 
                     ? renderMessageContent(message.content)
                     : message.content}

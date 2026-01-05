@@ -1,8 +1,8 @@
 (function() {
   'use strict';
   
-  // Widget version: 2026-01-05-v3 - Fixed markdown link parsing order
-  const WIDGET_VERSION = '2026-01-05-v3';
+  // Widget version: 2026-01-05-v4 - Added Lora font, text justify, event subtitle styling
+  const WIDGET_VERSION = '2026-01-05-v4';
 
   function getApiEndpoint() {
     if (window.ANNA_API_URL) return window.ANNA_API_URL;
@@ -240,8 +240,23 @@
       padding: 10px 14px;
       border-radius: 12px;
       font-size: 14px;
-      line-height: 1.5;
+      line-height: 1.625;
       word-wrap: break-word;
+      font-family: 'Lora', Georgia, serif;
+      text-align: justify;
+    }
+    
+    .anna-event-subtitle {
+      font-size: 16px;
+      font-weight: 500;
+      color: #14b8a6;
+      margin: 8px 0;
+    }
+    
+    .anna-message hr {
+      border: none;
+      border-top: 1px solid rgba(255, 255, 255, 0.2);
+      margin: 12px 0;
     }
 
     @keyframes annaFadeIn {
@@ -462,6 +477,12 @@
   `;
 
   function injectStyles() {
+    // Inject Lora font from Google Fonts
+    const fontLink = document.createElement('link');
+    fontLink.rel = 'stylesheet';
+    fontLink.href = 'https://fonts.googleapis.com/css2?family=Lora:ital,wght@0,400..700;1,400..700&display=swap';
+    document.head.appendChild(fontLink);
+    
     const styleEl = document.createElement('style');
     styleEl.id = 'anna-widget-styles';
     styleEl.textContent = styles;
@@ -731,20 +752,38 @@
     const lines = text.split('\n');
     
     lines.forEach((line, lineIndex) => {
+      const trimmed = line.trim();
+      
+      // Handle horizontal dividers
+      if (trimmed === '---' || trimmed === '***') {
+        container.appendChild(document.createElement('hr'));
+        return;
+      }
+      
+      // Handle special {{SUBTITLE:...}} marker for event date/description lines
+      const subtitleMatch = trimmed.match(/^\{\{SUBTITLE:(.+)\}\}$/);
+      if (subtitleMatch) {
+        const subtitleEl = document.createElement('div');
+        subtitleEl.className = 'anna-event-subtitle';
+        subtitleEl.textContent = subtitleMatch[1];
+        container.appendChild(subtitleEl);
+        return;
+      }
+      
       // Add line break between lines (not before first line)
       if (lineIndex > 0) {
         container.appendChild(document.createElement('br'));
       }
       
       // Skip empty lines but still add the br
-      if (line.trim() === '') {
+      if (trimmed === '') {
         return;
       }
       
-      // Process each line for links, bold, and URLs
-      // IMPORTANT: Markdown links MUST be matched FIRST to prevent bold from breaking link syntax
-      // Regex order: [text](url), then **bold**, then raw URLs
-      const combinedRegex = /(\[([^\]]+)\]\(([^)]+)\))|(\*\*([^*]+)\*\*)|(https?:\/\/[^\s<>"\)]+)/g;
+      // Process each line for links, bold, italic, and URLs
+      // IMPORTANT: Markdown links MUST be matched FIRST to prevent bold/italic from breaking link syntax
+      // Regex order: [text](url), then **bold**, then *italic*, then raw URLs
+      const combinedRegex = /(\[([^\]]+)\]\(([^)]+)\))|(\*\*([^*]+)\*\*)|(?<!\*)\*([^*]+)\*(?!\*)|(https?:\/\/[^\s<>"\)]+)/g;
       let lastIndex = 0;
       let match;
 
@@ -782,8 +821,15 @@
           strong.textContent = boldText;
           container.appendChild(strong);
         } else if (match[6]) {
+          // Italic text: *text*
+          const italicText = match[6];
+          const em = document.createElement('em');
+          em.textContent = italicText;
+          em.style.color = 'rgba(255, 255, 255, 0.7)';
+          container.appendChild(em);
+        } else if (match[7]) {
           // Raw URL
-          const plainUrl = match[6];
+          const plainUrl = match[7];
           const link = document.createElement('a');
           link.href = plainUrl;
           link.textContent = plainUrl;
