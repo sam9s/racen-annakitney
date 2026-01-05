@@ -67,23 +67,41 @@ function renderMessageContent(text: string): ReactNode[] {
       return;
     }
     
+    // IMPORTANT: Match markdown links FIRST to prevent bold from breaking link syntax
+    // Pattern order: [text](url), then **bold**, then raw URLs
+    const mdLinkRegex = /\[([^\]]+)\]\(([^)]+)\)/g;
     const boldRegex = /\*\*([^*]+)\*\*/g;
     const urlRegex = /(https?:\/\/[^\s<>")\]]+)/g;
     let lastIndex = 0;
     let match;
     let matchCount = 0;
     
-    const segments: { start: number; end: number; type: 'bold' | 'url'; content: string }[] = [];
+    const segments: { start: number; end: number; type: 'link' | 'bold' | 'url'; content: string; url?: string }[] = [];
     
-    while ((match = boldRegex.exec(line)) !== null) {
-      segments.push({ start: match.index, end: boldRegex.lastIndex, type: 'bold', content: match[1] });
+    // Find markdown links FIRST
+    while ((match = mdLinkRegex.exec(line)) !== null) {
+      segments.push({ 
+        start: match.index, 
+        end: mdLinkRegex.lastIndex, 
+        type: 'link', 
+        content: match[1], 
+        url: match[2] 
+      });
     }
     
+    // Find bold text that is NOT inside a markdown link
+    while ((match = boldRegex.exec(line)) !== null) {
+      const isInsideLink = segments.some(s => s.type === 'link' && match!.index >= s.start && match!.index < s.end);
+      if (!isInsideLink) {
+        segments.push({ start: match.index, end: boldRegex.lastIndex, type: 'bold', content: match[1] });
+      }
+    }
+    
+    // Find raw URLs that are NOT inside a markdown link or bold
     while ((match = urlRegex.exec(line)) !== null) {
-      const isInsideBold = segments.some(s => s.type === 'bold' && match!.index >= s.start && match!.index < s.end);
-      const isPartOfMarkdownLink = /\]\(https?:\/\//.test(line.substring(Math.max(0, match.index - 2), match.index + 10));
-      if (!isInsideBold && !isPartOfMarkdownLink) {
-        segments.push({ start: match.index, end: urlRegex.lastIndex, type: 'url', content: match[1] });
+      const isInsideOther = segments.some(s => match!.index >= s.start && match!.index < s.end);
+      if (!isInsideOther) {
+        segments.push({ start: match.index, end: urlRegex.lastIndex, type: 'url', content: match[0] });
       }
     }
     
@@ -92,15 +110,35 @@ function renderMessageContent(text: string): ReactNode[] {
     for (const segment of segments) {
       if (segment.start > lastIndex) {
         const textBetween = line.substring(lastIndex, segment.start);
-        const { nodes, count } = parseInlineContent(textBetween, lineIndex, matchCount);
-        parts.push(...nodes);
-        matchCount = count;
+        parts.push(textBetween);
       }
       
-      if (segment.type === 'bold') {
-        const { nodes, count } = parseInlineContent(segment.content, lineIndex, matchCount);
-        parts.push(<strong key={`bold-${lineIndex}-${matchCount}`}>{nodes}</strong>);
-        matchCount = count;
+      if (segment.type === 'link') {
+        // Process bold inside link text: **text** -> <strong>text</strong>
+        let linkContent: ReactNode;
+        const boldMatch = segment.content.match(/^\*\*(.+)\*\*$/);
+        if (boldMatch) {
+          linkContent = <strong>{boldMatch[1]}</strong>;
+        } else {
+          linkContent = segment.content;
+        }
+        
+        parts.push(
+          <a
+            key={`link-${lineIndex}-${matchCount}`}
+            href={segment.url}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-primary hover:text-primary/80 underline"
+            data-testid={`link-program-${matchCount}`}
+          >
+            {linkContent}
+          </a>
+        );
+        matchCount++;
+      } else if (segment.type === 'bold') {
+        parts.push(<strong key={`bold-${lineIndex}-${matchCount}`}>{segment.content}</strong>);
+        matchCount++;
       } else if (segment.type === 'url') {
         parts.push(
           <a
@@ -122,8 +160,7 @@ function renderMessageContent(text: string): ReactNode[] {
     
     if (lastIndex < line.length) {
       const remaining = line.substring(lastIndex);
-      const { nodes } = parseInlineContent(remaining, lineIndex, matchCount);
-      parts.push(...nodes);
+      parts.push(remaining);
     }
   });
   
