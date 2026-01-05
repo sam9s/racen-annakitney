@@ -218,6 +218,7 @@ def format_time_range(start_iso: str, end_iso: str, timezone_str: str = None) ->
     """
     Format start and end times as a range with timezone.
     Converts UTC times to the specified timezone for display.
+    Handles multi-day/multi-week events properly.
     """
     try:
         # Parse as UTC
@@ -229,12 +230,21 @@ def format_time_range(start_iso: str, end_iso: str, timezone_str: str = None) ->
             start_dt = convert_to_timezone(start_dt, timezone_str)
             end_dt = convert_to_timezone(end_dt, timezone_str)
         
-        # Format: Sunday, January 25, 2026 from 11:00 AM - 1:30 PM
-        date_str = start_dt.strftime("%A, %B %d, %Y")
-        start_time = start_dt.strftime("%I:%M %p").lstrip('0')
-        end_time = end_dt.strftime("%I:%M %p").lstrip('0')
+        # Check if this is a multi-day event
+        start_date = start_dt.date()
+        end_date = end_dt.date()
         
-        result = f"{date_str} from {start_time} - {end_time}"
+        if start_date == end_date:
+            # Same day event: "Sunday, January 25, 2026 from 11:00 AM - 1:30 PM"
+            date_str = start_dt.strftime("%A, %B %d, %Y")
+            start_time = start_dt.strftime("%I:%M %p").lstrip('0')
+            end_time = end_dt.strftime("%I:%M %p").lstrip('0')
+            result = f"{date_str} from {start_time} - {end_time}"
+        else:
+            # Multi-day event: "March 4, 2026 - May 20, 2026"
+            start_str = start_dt.strftime("%B %d, %Y")
+            end_str = end_dt.strftime("%B %d, %Y")
+            result = f"{start_str} - {end_str}"
         
         # Add timezone if provided
         tz_name = get_timezone_display_name(timezone_str)
@@ -249,7 +259,8 @@ def format_time_range(start_iso: str, end_iso: str, timezone_str: str = None) ->
 def format_event_for_chat(event: Dict, include_full_description: bool = True) -> str:
     """
     Format a single event for chatbot response with comprehensive details.
-    Includes timezone information and full event description.
+    Includes timezone information and FULL event description from calendar.
+    NO TRUNCATION - show everything from the calendar.
     """
     title = event.get("title", "Untitled Event")
     start_iso = event.get("start", "")
@@ -258,10 +269,11 @@ def format_event_for_chat(event: Dict, include_full_description: bool = True) ->
     location = event.get("location", "Online")
     description = event.get("description", "")
     event_url = event.get("eventPageUrl", "")
+    checkout_url = event.get("checkoutUrl", "")
     
     response = f"**{title}**\n\n"
     
-    # Use time range format with timezone
+    # Use time range format with timezone (handles multi-day events)
     if start_iso and end_iso:
         time_str = format_time_range(start_iso, end_iso, timezone)
         response += f"**When:** {time_str}\n\n"
@@ -270,29 +282,24 @@ def format_event_for_chat(event: Dict, include_full_description: bool = True) ->
     
     response += f"**Where:** {location}\n\n"
     
-    # Include full description for comprehensive event details
+    # Include FULL description - no truncation, no CTA removal
+    # The full calendar description should be shown to the user
     if description and include_full_description:
-        # Clean up HTML-style content but preserve important info
+        # Only clean up excessive whitespace
         clean_desc = description.replace('\n\n\n', '\n\n').strip()
-        
-        # Remove "Get Tickets" and similar CTAs from description
-        for cta in ["Get Tickets", "REGISTER NOW", "Register Now", "Anna Kitney Coaching"]:
-            clean_desc = clean_desc.split(cta)[0].strip()
-        
-        # If description is very long, provide a structured summary
-        if len(clean_desc) > 2000:
-            response += f"**About this event:**\n{clean_desc[:2000]}...\n\n"
-        else:
-            response += f"**About this event:**\n{clean_desc}\n\n"
+        response += f"**About this event:**\n\n{clean_desc}\n\n"
     elif description:
-        # Short version for listings
-        short_desc = description[:300] + "..." if len(description) > 300 else description
-        short_desc = short_desc.split("Get Tickets")[0].strip()
+        # Short version for listings only
+        short_desc = description[:500] + "..." if len(description) > 500 else description
         response += f"**About:** {short_desc}\n\n"
     
-    # Always include event page link
+    # Include event page link
     if event_url:
-        response += f"**Event Page:** {event_url}\n\n"
+        response += f"**Event Page:** [{title}]({event_url})\n\n"
+    
+    # Include checkout link if available
+    if checkout_url:
+        response += f"**Enroll Now:** [Register Here]({checkout_url})\n\n"
     
     return response
 
@@ -387,29 +394,62 @@ def is_navigation_request(message: str) -> bool:
 def _find_event_from_history(conversation_history: List[Dict]) -> Optional[Dict]:
     """
     Find the last discussed event from conversation history.
-    Looks for event titles mentioned in recent messages.
+    Searches for the MOST RECENTLY mentioned specific event title.
+    Prioritizes user messages asking about specific events.
     """
     if not conversation_history:
         return None
     
-    event_patterns = [
-        ("identity overflow", "Identity Overflow"),
-        ("manifestation mastery", "Manifestation Mastery"),
-        ("meditation", "Meditation"),
-        ("success redefined", "Success Redefined"),
-        ("dubai", "Dubai"),
-        ("soulalign coach", "SoulAlign Coach"),
-        ("soulalign heal", "SoulAlign Heal"),
-        ("soulalign business", "SoulAlign Business"),
-    ]
+    # Get all events from the database to match against
+    all_events = get_upcoming_events(20)
+    if not all_events:
+        return None
     
-    # Search recent messages for event mentions
-    for msg in reversed(conversation_history[-10:]):  # Check last 10 messages
+    # Search in reverse order (most recent first)
+    # Focus on user messages asking about specific events
+    for msg in reversed(conversation_history[-10:]):
         content = msg.get("content", "").lower()
-        for keyword, search_term in event_patterns:
-            if keyword in content:
-                event = get_event_by_title(search_term)
-                if event:
+        role = msg.get("role", "")
+        
+        # For user messages, look for specific event mentions
+        if role == "user":
+            # Match against actual event titles from the database
+            for event in all_events:
+                title = event.get("title", "").lower()
+                # Check for title matches (partial is fine)
+                title_words = title.replace("®", "").split()
+                # Check if significant words from title are in the message
+                if any(word.lower() in content for word in title_words if len(word) > 3):
+                    # More specific check - ensure it's really about this event
+                    if "coach" in content and "coach" in title.lower():
+                        return event
+                    if "heal" in content and "heal" in title.lower():
+                        return event
+                    if "business" in content and "business" in title.lower():
+                        return event
+                    if "manifestation" in content and "manifestation" in title.lower():
+                        return event
+                    if "identity" in content and "identity" in title.lower():
+                        return event
+                    if "overflow" in content and "overflow" in title.lower():
+                        return event
+                    if "meditation" in content and "meditation" in title.lower():
+                        return event
+                    if "dubai" in content and "dubai" in title.lower():
+                        return event
+                    if "success" in content and "success" in title.lower():
+                        return event
+    
+    # Fallback: check assistant messages for the last detailed event response
+    for msg in reversed(conversation_history[-10:]):
+        content = msg.get("content", "").lower()
+        role = msg.get("role", "")
+        
+        if role == "assistant":
+            for event in all_events:
+                title = event.get("title", "")
+                # Check if this event was discussed in detail (full title mentioned)
+                if title.lower() in content:
                     return event
     
     return None
@@ -481,29 +521,47 @@ Here are the upcoming events they might be interested in:
 Ask them which event they'd like to add to their calendar.
 """
     
-    specific_events = [
-        ("identity overflow", "Identity Overflow"),
-        ("manifestation mastery", "Manifestation Mastery"),
-        ("meditation", "Meditation"),
-        ("success redefined", "Success Redefined"),
-        ("dubai", "Dubai")
-    ]
+    # Check if user is asking about a specific event by searching all events from database
+    all_events = get_upcoming_events(20)
     
-    for keyword, search_term in specific_events:
-        if keyword in message_lower:
-            event = get_event_by_title(search_term)
-            if event:
-                return f"""
+    # Keywords that indicate user is asking about an event
+    event_detail_keywords = ["details", "about", "tell me", "what is", "give me", "info", "information"]
+    is_asking_for_details = any(kw in message_lower for kw in event_detail_keywords)
+    
+    # Try to match against actual event titles from database
+    for event in all_events:
+        title = event.get("title", "")
+        title_lower = title.lower().replace("®", "")
+        
+        # Extract key identifying words from the title
+        key_words = []
+        if "identity overflow" in title_lower:
+            key_words = ["identity", "overflow"]
+        elif "manifestation mastery" in title_lower:
+            key_words = ["manifestation", "mastery"]
+        elif "success redefined" in title_lower or "meditation" in title_lower:
+            key_words = ["meditation", "success", "dubai"]
+        elif "soulalign" in title_lower and "coach" in title_lower:
+            key_words = ["coach", "soulalign coach", "soul align coach"]
+        elif "soulalign" in title_lower and "heal" in title_lower:
+            key_words = ["heal", "soulalign heal", "soul align heal"]
+        elif "soulalign" in title_lower and "business" in title_lower:
+            key_words = ["business", "soulalign business", "soul align business"]
+        
+        # Check if user message mentions this event
+        if key_words and any(kw in message_lower for kw in key_words):
+            return f"""
 LIVE EVENT INFORMATION (from Anna's calendar):
 {format_event_for_chat(event)}
 
 Event Page: {event.get('eventPageUrl', '')}
 
-IMPORTANT INSTRUCTIONS:
-1. Share these event details with the user
-2. End with: "Would you like me to navigate you to the event page, or add this event to your calendar?"
-3. If they want to navigate, use: [NAVIGATE:{event.get('eventPageUrl', '')}]
-4. If they want to add to calendar, use: [ADD_TO_CALENDAR:{event.get('title')}]
+CRITICAL: You MUST display the FULL event description above to the user.
+Show ALL the details - do not summarize or shorten. This is comprehensive event information.
+
+After sharing the details, ask: "Would you like me to navigate you to the event page, or add this event to your calendar?"
+If they want to navigate, use: [NAVIGATE:{event.get('eventPageUrl', '')}]
+If they want to add to calendar, use: [ADD_TO_CALENDAR:{event.get('title')}]
 """
     
     if any(kw in message_lower for kw in ["events", "upcoming", "what's happening", "schedule", "calendar"]):
