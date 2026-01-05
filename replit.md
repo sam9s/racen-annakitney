@@ -18,11 +18,16 @@ This is a RAG-based wellness chatbot for Anna Kitney's wellness coaching busines
 - `knowledge_base.py` - ChromaDB vector database management
 - `web_scraper.py` - Website content scraping
 - `ingest_anna_website.py` - Script to ingest annakitney.com content
-- `public/widget.js` - Embeddable chat widget
+- `public/widget.js` - Embeddable chat widget for external sites
+- `client/src/pages/Home.tsx` - React web UI for development/preview
 - `events_service.py` - Python service for chatbot event queries
 - `server/calendar-service.ts` - Google Calendar API integration
 - `server/calendar-sync-service.ts` - Calendar to PostgreSQL sync
-- `CALENDAR_EVENTS_GUIDE.md` - Guide for Anna's team on adding event URLs
+
+## Documentation (in /docs folder)
+- `docs/CALENDAR_EVENTS_GUIDE.md` - Guide for Anna's team on adding event URLs
+- `docs/DEPLOYMENT_BLUEPRINT.md` - Deployment instructions
+- `docs/design_guidelines.md` - Frontend design guidelines
 
 ## Environment Variables Required
 - `DATABASE_URL` - PostgreSQL connection string
@@ -138,9 +143,13 @@ Anna Kitney Coaching calendar: `cms370prol01ksuq304erj1gmdug1v4m@import.calendar
 - **Past Events**: Automatically marked as `isActive: false`
 
 ## Recent Changes
+- **Markdown Link Rendering Fix (Jan 2026)**: Fixed both React web UI (Home.tsx) and embeddable widget (widget.js) to render markdown links correctly. Root cause: bold `**text**` was being matched BEFORE markdown links `[text](url)`, breaking `[**text**](url)` syntax. Solution: Match markdown links FIRST, then bold, then raw URLs.
+- **Documentation Reorganization**: Moved all MD files to `/docs` folder for clarity
+- **Two Rendering Systems**: 
+  - `public/widget.js` = Embeddable widget for external sites (annakitney.com)
+  - `client/src/pages/Home.tsx` = React web UI for development/Replit Preview
 - **Calendar PostgreSQL Sync**: Events now sync from Google Calendar to PostgreSQL with full descriptions
 - **URL Parsing**: Anna's team can add checkout/event URLs to calendar descriptions
-- **Documentation**: Added CALENDAR_EVENTS_GUIDE.md for team reference
 - Added Google Calendar integration for live event data
 - Implemented event booking (add to calendar) functionality
 - Updated system prompts with event conversation flow
@@ -151,3 +160,8 @@ Anna Kitney Coaching calendar: `cms370prol01ksuq304erj1gmdug1v4m@import.calendar
 - Updated system prompts for Anna's wellness coaching business
 - Fresh PostgreSQL database created
 - Knowledge base ready for content ingestion
+
+## Important Technical Notes
+- **Markdown Parsing Order**: Always match `[text](url)` BEFORE `**bold**` to prevent breaking links with bold text inside
+- **Two Websites**: annakitney.com (marketing) and annakitneyportal.com (checkout, requires www. prefix)
+- **VERBATIM Delimiters**: Used in chatbot_engine.py to prevent LLM from paraphrasing event data
