@@ -4,11 +4,12 @@
 This is a RAG-based wellness chatbot for Anna Kitney's wellness coaching business (annakitney.com). The bot is named "Anna" and serves as a friendly guide to help visitors learn about wellness coaching programs and services.
 
 ## Architecture
-- **Frontend**: Next.js with React components
+- **Frontend**: React with Express server (Vite)
 - **Backend**: Python Flask API for chat processing
 - **RAG Engine**: OpenAI GPT-4o-mini with ChromaDB vector storage
-- **Database**: PostgreSQL for conversation history
+- **Database**: PostgreSQL for conversation history and calendar events
 - **Embeddable Widget**: `public/widget.js` for embedding on external sites
+- **Calendar Sync**: Google Calendar to PostgreSQL with webhooks + scheduled backup
 
 ## Key Files
 - `chatbot_engine.py` - Core RAG logic and response generation
@@ -18,8 +19,10 @@ This is a RAG-based wellness chatbot for Anna Kitney's wellness coaching busines
 - `web_scraper.py` - Website content scraping
 - `ingest_anna_website.py` - Script to ingest annakitney.com content
 - `public/widget.js` - Embeddable chat widget
-- `src/app/page.tsx` - Main chat interface
-- `src/components/` - React components
+- `events_service.py` - Python service for chatbot event queries
+- `server/calendar-service.ts` - Google Calendar API integration
+- `server/calendar-sync-service.ts` - Calendar to PostgreSQL sync
+- `CALENDAR_EVENTS_GUIDE.md` - Guide for Anna's team on adding event URLs
 
 ## Environment Variables Required
 - `DATABASE_URL` - PostgreSQL connection string
@@ -51,6 +54,7 @@ To embed the chatbot on annakitney.com:
 - Bot name: "Anna"
 - Session prefix: "anna_"
 - Website: annakitney.com
+- Portal: annakitneyportal.com (checkout/course platform - always use www. prefix)
 - Primary color: #03a9f4 (customizable)
 
 ## Safety Features
@@ -59,22 +63,66 @@ To embed the chatbot on annakitney.com:
 - No personal information collection
 - Rate limiting
 
-## Events Integration (Google Calendar)
+## Events Integration (Google Calendar + PostgreSQL)
 
-The chatbot has live integration with Anna's Google Calendar for real-time event information.
+The chatbot has live integration with Anna's Google Calendar, synced to PostgreSQL for reliability and comprehensive event data.
+
+### Architecture
+1. **Google Calendar** - Source of truth for events
+2. **PostgreSQL `calendar_events` table** - Synced copy with full descriptions and URLs
+3. **Sync Service** - Webhooks for real-time + 30-minute scheduled backup
+4. **Chatbot** - Reads from PostgreSQL for event queries
 
 ### Key Files
-- `server/calendar-service.ts` - Google Calendar API integration (Express/TypeScript)
+- `server/calendar-sync-service.ts` - Sync logic, URL parsing, scheduled sync
+- `server/calendar-service.ts` - Google Calendar API integration
 - `events_service.py` - Python service for chatbot event queries
+- `shared/schema.ts` - Database schema including `calendarEvents` table
 
-### Features
-- **Live Event Data**: Fetches upcoming events from Anna's synced Google Calendar
-- **Event Queries**: Users can ask "What events are coming up?" or ask about specific events
-- **Navigation**: Bot navigates users to event pages (pattern: `/event/[event-slug]/`)
-- **Calendar Booking**: Users can add events to their calendar with "add to my calendar"
+### Database Table: calendar_events
+| Column | Type | Description |
+|--------|------|-------------|
+| id | serial | Primary key |
+| googleEventId | varchar | Unique Google Calendar event ID |
+| title | varchar | Event title |
+| startDate | timestamp | Event start (UTC) |
+| endDate | timestamp | Event end (UTC) |
+| timezone | varchar | Original timezone (e.g., "Asia/Dubai") |
+| location | text | Event location |
+| description | text | Full event description |
+| eventPageUrl | text | Link to event page on annakitney.com |
+| checkoutUrl | text | Pay-in-full checkout link |
+| checkoutUrl6Month | text | 6-month payment plan link |
+| checkoutUrl12Month | text | 12-month payment plan link |
+| programPageUrl | text | Program info page link |
+| isActive | boolean | False for past events |
+| lastSynced | timestamp | Last sync time |
+
+### URL Parsing
+Anna's team can add URLs to calendar event descriptions using this format:
+```
+---URLS---
+EVENT_PAGE: https://www.annakitney.com/event/your-event/
+CHECKOUT: https://www.annakitneyportal.com/checkout/product
+CHECKOUT_6MONTH: https://www.annakitneyportal.com/checkout/product-6
+CHECKOUT_12MONTH: https://www.annakitneyportal.com/checkout/product-12
+PROGRAM_PAGE: https://www.annakitney.com/program-page/
+---END_URLS---
+```
 
 ### API Endpoints
-- `GET /api/events` - List upcoming events
+
+#### Database Events (Primary - use these)
+- `GET /api/events/db` - All active events from PostgreSQL
+- `GET /api/events/db?includeInactive=true` - All events including past
+- `GET /api/events/db/by-title/:title` - Specific event by title (fuzzy match)
+
+#### Calendar Sync
+- `POST /api/calendar/sync` - Trigger manual sync
+- `POST /api/calendar/webhook` - Google Calendar webhook endpoint
+
+#### Legacy Direct Calendar (still functional)
+- `GET /api/events` - Direct from Google Calendar
 - `GET /api/events/search?q=query` - Search events
 - `GET /api/events/by-title/:title` - Get specific event
 - `POST /api/events/book` - Add event to calendar
@@ -83,7 +131,16 @@ The chatbot has live integration with Anna's Google Calendar for real-time event
 ### Calendar ID
 Anna Kitney Coaching calendar: `cms370prol01ksuq304erj1gmdug1v4m@import.calendar.google.com`
 
+### Sync Behavior
+- **Startup**: Full sync on application start
+- **Scheduled**: Every 30 minutes
+- **Webhooks**: Real-time when Google Calendar changes
+- **Past Events**: Automatically marked as `isActive: false`
+
 ## Recent Changes
+- **Calendar PostgreSQL Sync**: Events now sync from Google Calendar to PostgreSQL with full descriptions
+- **URL Parsing**: Anna's team can add checkout/event URLs to calendar descriptions
+- **Documentation**: Added CALENDAR_EVENTS_GUIDE.md for team reference
 - Added Google Calendar integration for live event data
 - Implemented event booking (add to calendar) functionality
 - Updated system prompts with event conversation flow
