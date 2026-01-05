@@ -1,8 +1,8 @@
 (function() {
   'use strict';
   
-  // Widget version: 2026-01-05-v2 - Force cache refresh
-  const WIDGET_VERSION = '2026-01-05-v2';
+  // Widget version: 2026-01-05-v3 - Fixed markdown link parsing order
+  const WIDGET_VERSION = '2026-01-05-v3';
 
   function getApiEndpoint() {
     if (window.ANNA_API_URL) return window.ANNA_API_URL;
@@ -741,9 +741,10 @@
         return;
       }
       
-      // Process each line for bold, links, and URLs
-      // Combined regex for: **bold**, [text](url), and raw URLs
-      const combinedRegex = /(\*\*([^*]+)\*\*)|(\[([^\]]+)\]\(([^)]+)\))|(https?:\/\/[^\s<>"\)]+)/g;
+      // Process each line for links, bold, and URLs
+      // IMPORTANT: Markdown links MUST be matched FIRST to prevent bold from breaking link syntax
+      // Regex order: [text](url), then **bold**, then raw URLs
+      const combinedRegex = /(\[([^\]]+)\]\(([^)]+)\))|(\*\*([^*]+)\*\*)|(https?:\/\/[^\s<>"\)]+)/g;
       let lastIndex = 0;
       let match;
 
@@ -754,23 +755,32 @@
         }
         
         if (match[1]) {
-          // Bold text: **text**
-          const boldText = match[2];
-          const strong = document.createElement('strong');
-          strong.textContent = boldText;
-          container.appendChild(strong);
-        } else if (match[3]) {
-          // Markdown link: [text](url)
-          const linkText = match[4];
-          const linkUrl = match[5];
+          // Markdown link: [text](url) - MUST be checked first
+          let linkText = match[2];
+          const linkUrl = match[3];
           const link = document.createElement('a');
           link.href = linkUrl;
-          link.textContent = linkText;
           link.target = '_blank';
           link.rel = 'noopener noreferrer';
           link.style.color = '#03a9f4';
           link.style.textDecoration = 'underline';
+          
+          // Process bold inside link text: **text** -> <strong>text</strong>
+          const boldInLink = linkText.match(/^\*\*(.+)\*\*$/);
+          if (boldInLink) {
+            const strong = document.createElement('strong');
+            strong.textContent = boldInLink[1];
+            link.appendChild(strong);
+          } else {
+            link.textContent = linkText;
+          }
           container.appendChild(link);
+        } else if (match[4]) {
+          // Bold text: **text**
+          const boldText = match[5];
+          const strong = document.createElement('strong');
+          strong.textContent = boldText;
+          container.appendChild(strong);
         } else if (match[6]) {
           // Raw URL
           const plainUrl = match[6];
