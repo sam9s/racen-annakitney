@@ -59,6 +59,17 @@ function renderMessageContent(text: string): ReactNode[] {
   const lines = text.split('\n');
   
   lines.forEach((line, lineIndex) => {
+    // Handle horizontal dividers
+    if (line.trim() === '---' || line.trim() === '***') {
+      parts.push(
+        <hr 
+          key={`hr-${lineIndex}`} 
+          className="my-3 border-t border-border/50" 
+        />
+      );
+      return;
+    }
+    
     if (lineIndex > 0) {
       parts.push(<br key={`br-${lineIndex}`} />);
     }
@@ -67,16 +78,17 @@ function renderMessageContent(text: string): ReactNode[] {
       return;
     }
     
-    // IMPORTANT: Match markdown links FIRST to prevent bold from breaking link syntax
-    // Pattern order: [text](url), then **bold**, then raw URLs
+    // IMPORTANT: Match markdown links FIRST to prevent bold/italic from breaking link syntax
+    // Pattern order: [text](url), then **bold**, then *italic*, then raw URLs
     const mdLinkRegex = /\[([^\]]+)\]\(([^)]+)\)/g;
     const boldRegex = /\*\*([^*]+)\*\*/g;
+    const italicRegex = /(?<!\*)\*([^*]+)\*(?!\*)/g;  // Single * not preceded/followed by *
     const urlRegex = /(https?:\/\/[^\s<>")\]]+)/g;
     let lastIndex = 0;
     let match;
     let matchCount = 0;
     
-    const segments: { start: number; end: number; type: 'link' | 'bold' | 'url'; content: string; url?: string }[] = [];
+    const segments: { start: number; end: number; type: 'link' | 'bold' | 'italic' | 'url'; content: string; url?: string }[] = [];
     
     // Find markdown links FIRST
     while ((match = mdLinkRegex.exec(line)) !== null) {
@@ -97,7 +109,15 @@ function renderMessageContent(text: string): ReactNode[] {
       }
     }
     
-    // Find raw URLs that are NOT inside a markdown link or bold
+    // Find italic text that is NOT inside a link or bold
+    while ((match = italicRegex.exec(line)) !== null) {
+      const isInsideOther = segments.some(s => match!.index >= s.start && match!.index < s.end);
+      if (!isInsideOther) {
+        segments.push({ start: match.index, end: italicRegex.lastIndex, type: 'italic', content: match[1] });
+      }
+    }
+    
+    // Find raw URLs that are NOT inside any other segment
     while ((match = urlRegex.exec(line)) !== null) {
       const isInsideOther = segments.some(s => match!.index >= s.start && match!.index < s.end);
       if (!isInsideOther) {
@@ -138,6 +158,9 @@ function renderMessageContent(text: string): ReactNode[] {
         matchCount++;
       } else if (segment.type === 'bold') {
         parts.push(<strong key={`bold-${lineIndex}-${matchCount}`}>{segment.content}</strong>);
+        matchCount++;
+      } else if (segment.type === 'italic') {
+        parts.push(<em key={`italic-${lineIndex}-${matchCount}`} className="text-muted-foreground">{segment.content}</em>);
         matchCount++;
       } else if (segment.type === 'url') {
         parts.push(
@@ -337,7 +360,7 @@ export default function Home() {
                     : "bg-muted"
                 }`}
               >
-                <div className="text-sm whitespace-pre-wrap">
+                <div className="text-sm whitespace-pre-wrap leading-relaxed">
                   {message.role === "assistant" 
                     ? renderMessageContent(message.content)
                     : message.content}

@@ -258,11 +258,70 @@ def format_time_range(start_iso: str, end_iso: str, timezone_str: str = None) ->
         return format_date_friendly(start_iso, timezone_str)
 
 
+def format_description_for_display(description: str) -> str:
+    """
+    Format calendar description for better readability in chat:
+    - Convert ALL CAPS lines to *italics* (emphasis headings)
+    - Add spacing between sections
+    - Bold key terms like prices, dates
+    - Clean up excessive whitespace
+    """
+    import re
+    
+    if not description:
+        return ""
+    
+    lines = description.split('\n')
+    formatted_lines = []
+    
+    for line in lines:
+        stripped = line.strip()
+        
+        # Skip empty lines but preserve structure
+        if not stripped:
+            formatted_lines.append('')
+            continue
+        
+        # Detect ALL CAPS lines (headings/emphasis) - at least 3 chars, >70% caps
+        if len(stripped) >= 3:
+            alpha_chars = [c for c in stripped if c.isalpha()]
+            if alpha_chars:
+                upper_ratio = sum(1 for c in alpha_chars if c.isupper()) / len(alpha_chars)
+                # If >70% uppercase letters, treat as heading - make italic
+                # KEEP ORIGINAL CASING to preserve brand names
+                if upper_ratio > 0.7 and len(alpha_chars) > 3:
+                    formatted_lines.append(f"\n*{stripped}*\n")
+                    continue
+        
+        # Bold price patterns like $150M+, £2,500, $7M+
+        line_formatted = re.sub(
+            r'([\$£€]\d[\d,\.]*[MKk]?\+?)',
+            r'**\1**',
+            stripped
+        )
+        
+        # Bold "Pay in Full" type patterns
+        line_formatted = re.sub(
+            r'(Pay in Full|PAY IN FULL|ENROL NOW|I\'M READY)',
+            r'**\1**',
+            line_formatted,
+            flags=re.IGNORECASE
+        )
+        
+        formatted_lines.append(line_formatted)
+    
+    # Join and clean up excessive newlines
+    result = '\n'.join(formatted_lines)
+    result = re.sub(r'\n{4,}', '\n\n\n', result)  # Max 3 newlines
+    
+    return result.strip()
+
+
 def format_event_for_chat(event: Dict, include_full_description: bool = True) -> str:
     """
     Format a single event for chatbot response with comprehensive details.
     Includes timezone information and FULL event description from calendar.
-    NO TRUNCATION - show everything from the calendar.
+    Uses enhanced formatting for better readability.
     """
     title = event.get("title", "Untitled Event")
     start_iso = event.get("start", "")
@@ -273,9 +332,10 @@ def format_event_for_chat(event: Dict, include_full_description: bool = True) ->
     event_url = event.get("eventPageUrl", "")
     checkout_url = event.get("checkoutUrl", "")
     
+    # Start with title as main heading
     response = f"**{title}**\n\n"
     
-    # Use time range format with timezone (handles multi-day events)
+    # Event metadata section
     if start_iso and end_iso:
         time_str = format_time_range(start_iso, end_iso, timezone)
         response += f"**When:** {time_str}\n\n"
@@ -284,24 +344,28 @@ def format_event_for_chat(event: Dict, include_full_description: bool = True) ->
     
     response += f"**Where:** {location}\n\n"
     
-    # Include FULL description - no truncation, no CTA removal
-    # The full calendar description should be shown to the user
-    if description and include_full_description:
-        # Only clean up excessive whitespace
-        clean_desc = description.replace('\n\n\n', '\n\n').strip()
-        response += f"**About this event:**\n\n{clean_desc}\n\n"
-    elif description:
-        # Short version for listings only
-        short_desc = description[:500] + "..." if len(description) > 500 else description
-        response += f"**About:** {short_desc}\n\n"
+    # Section divider before description
+    response += "---\n\n"
+    response += "**About this event:**\n\n"
     
-    # Include event page link
+    # Include formatted description
+    if description and include_full_description:
+        formatted_desc = format_description_for_display(description)
+        response += f"{formatted_desc}\n\n"
+    elif description:
+        short_desc = description[:500] + "..." if len(description) > 500 else description
+        response += f"{short_desc}\n\n"
+    
+    # Section divider before links
+    response += "---\n\n"
+    
+    # Include event page link if available
     if event_url:
-        response += f"**Event Page:** [{title}]({event_url})\n\n"
+        response += f"[**View Event Page**]({event_url})\n\n"
     
     # Include checkout link if available
     if checkout_url:
-        response += f"**Enroll Now:** [Register Here]({checkout_url})\n\n"
+        response += f"[**Enroll Now**]({checkout_url})\n\n"
     
     return response
 
@@ -553,6 +617,26 @@ Ask them which event they'd like to add to their calendar.
         # Check if user message mentions this event
         if key_words and any(kw in message_lower for kw in key_words):
             formatted_event = format_event_for_chat(event)
+            event_page = event.get('eventPageUrl', '')
+            event_title = event.get('title', '')
+            
+            # Build follow-up instruction based on available URLs
+            if event_page:
+                follow_up = f"""
+MANDATORY FOLLOW-UP (add this at the very end of your response):
+"Would you like me to take you to the [event page]({event_page}) to learn more or enroll?"
+
+If user says yes/navigate: Use [NAVIGATE:{event_page}]
+If user wants calendar: Use [ADD_TO_CALENDAR:{event_title}]
+"""
+            else:
+                follow_up = f"""
+FOLLOW-UP (add this at the very end of your response):
+"Would you like to add this event to your calendar, or do you have any questions about it?"
+
+If user wants calendar: Use [ADD_TO_CALENDAR:{event_title}]
+"""
+            
             return f"""
 === VERBATIM EVENT DATA (DO NOT PARAPHRASE) ===
 {formatted_event}
@@ -560,14 +644,10 @@ Ask them which event they'd like to add to their calendar.
 
 CRITICAL INSTRUCTIONS FOR THIS RESPONSE:
 1. Copy the event information above EXACTLY as shown - DO NOT rewrite, summarize, or paraphrase
-2. Preserve ALL markdown formatting including **bold** text and [links](url)
+2. Preserve ALL markdown formatting including **bold**, *italics*, [links](url), and --- dividers
 3. Keep EVERY detail including dates, times, locations, and the full description
 4. DO NOT drop any information or shorten the content
-5. After the event details, ask: "Would you like me to navigate you to the event page, or add this event to your calendar?"
-
-For navigation use: [NAVIGATE:{event.get('eventPageUrl', '')}]
-For calendar add use: [ADD_TO_CALENDAR:{event.get('title')}]
-"""
+{follow_up}"""
     
     if any(kw in message_lower for kw in ["events", "upcoming", "what's happening", "schedule", "calendar"]):
         events = get_upcoming_events(10)
