@@ -241,10 +241,12 @@ def format_time_range(start_iso: str, end_iso: str, timezone_str: str = None) ->
             end_time = end_dt.strftime("%I:%M %p").lstrip('0')
             result = f"{date_str} from {start_time} - {end_time}"
         else:
-            # Multi-day event: "March 4, 2026 - May 20, 2026"
-            start_str = start_dt.strftime("%B %d, %Y")
+            # Multi-day event: Include the session time too
+            # "March 4 - May 20, 2026 | Sessions at 5:00 PM"
+            start_str = start_dt.strftime("%B %d")
             end_str = end_dt.strftime("%B %d, %Y")
-            result = f"{start_str} - {end_str}"
+            session_time = start_dt.strftime("%I:%M %p").lstrip('0')
+            result = f"{start_str} - {end_str} | Sessions at {session_time}"
         
         # Add timezone if provided
         tz_name = get_timezone_display_name(timezone_str)
@@ -550,33 +552,39 @@ Ask them which event they'd like to add to their calendar.
         
         # Check if user message mentions this event
         if key_words and any(kw in message_lower for kw in key_words):
+            formatted_event = format_event_for_chat(event)
             return f"""
-LIVE EVENT INFORMATION (from Anna's calendar):
-{format_event_for_chat(event)}
+=== VERBATIM EVENT DATA (DO NOT PARAPHRASE) ===
+{formatted_event}
+=== END VERBATIM DATA ===
 
-Event Page: {event.get('eventPageUrl', '')}
+CRITICAL INSTRUCTIONS FOR THIS RESPONSE:
+1. Copy the event information above EXACTLY as shown - DO NOT rewrite, summarize, or paraphrase
+2. Preserve ALL markdown formatting including **bold** text and [links](url)
+3. Keep EVERY detail including dates, times, locations, and the full description
+4. DO NOT drop any information or shorten the content
+5. After the event details, ask: "Would you like me to navigate you to the event page, or add this event to your calendar?"
 
-CRITICAL: You MUST display the FULL event description above to the user.
-Show ALL the details - do not summarize or shorten. This is comprehensive event information.
-
-After sharing the details, ask: "Would you like me to navigate you to the event page, or add this event to your calendar?"
-If they want to navigate, use: [NAVIGATE:{event.get('eventPageUrl', '')}]
-If they want to add to calendar, use: [ADD_TO_CALENDAR:{event.get('title')}]
+For navigation use: [NAVIGATE:{event.get('eventPageUrl', '')}]
+For calendar add use: [ADD_TO_CALENDAR:{event.get('title')}]
 """
     
     if any(kw in message_lower for kw in ["events", "upcoming", "what's happening", "schedule", "calendar"]):
         events = get_upcoming_events(10)
+        events_list = format_events_list(events)
         return f"""
-LIVE EVENT INFORMATION (from Anna's calendar):
-{format_events_list(events)}
+=== VERBATIM EVENT LIST (DO NOT PARAPHRASE) ===
+{events_list}
+=== END VERBATIM DATA ===
+
+CRITICAL INSTRUCTIONS FOR THIS RESPONSE:
+1. Copy the event list above EXACTLY as shown - DO NOT rewrite or paraphrase
+2. Preserve ALL markdown formatting including **bold**, [links](url), and numbered list format
+3. Each event MUST include its clickable link as shown above
+4. Keep all dates, times, and locations exactly as formatted
+5. After the list, ask which event they'd like to know more about
 
 Events Page: https://www.annakitney.com/events/
-
-IMPORTANT INSTRUCTIONS:
-1. Share this list of upcoming events with the user
-2. Ask which event they'd like to know more about
-3. If they ask for more details on a specific event, provide the full information
-4. You can offer to navigate them to the events page: [NAVIGATE:https://www.annakitney.com/events/]
 """
     
     return ""
