@@ -2,9 +2,18 @@
 Chatbot Engine for Anna Kitney Wellness
 
 This module handles the core chatbot logic:
-- Query processing with RAG
+- Intent-first routing (EVENT vs KNOWLEDGE vs HYBRID)
+- Query processing with RAG (for knowledge queries)
+- SQL event queries (for event queries)
 - Integration with OpenAI for response generation
 - Context management for multi-turn conversations
+
+ARCHITECTURE:
+User Query → IntentRouter.classify() → Appropriate Handler
+    ├── EVENT → SQL only (skip RAG)
+    ├── KNOWLEDGE → RAG only (skip events)
+    ├── HYBRID → Both with priority rules
+    └── CLARIFICATION → Ask clarifying question
 """
 
 import os
@@ -15,6 +24,7 @@ from tenacity import retry, stop_after_attempt, wait_exponential, retry_if_excep
 from knowledge_base import search_knowledge_base, get_knowledge_base_stats
 from safety_guardrails import apply_safety_filters, get_system_prompt, filter_response_for_safety, inject_program_links, inject_checkout_urls, append_contextual_links, format_numbered_lists, inject_dynamic_enrollment
 from events_service import is_event_query, get_event_context_for_llm, process_calendar_action, fix_navigation_urls
+from intent_router import get_intent_router, IntentType, refresh_router_data
 
 _openai_client = None
 
@@ -255,9 +265,84 @@ def generate_response(
             "safety_category": "safety_redirect"
         }
     
-    search_query = build_context_aware_query(user_message, conversation_history)
-    relevant_docs = search_knowledge_base(search_query, n_results=n_context_docs)
-    context = format_context_from_docs(relevant_docs)
+    # ═══════════════════════════════════════════════════════════════════════
+    # INTENT-FIRST ROUTING: Classify intent BEFORE any database queries
+    # This prevents RAG from polluting event queries and vice versa
+    # ═══════════════════════════════════════════════════════════════════════
+    router = get_intent_router()
+    intent_result = router.classify(user_message, conversation_history)
+    
+    print(f"[IntentRouter] Intent: {intent_result.intent.value}, Confidence: {intent_result.confidence:.2f}, Reason: {intent_result.reasoning}", flush=True)
+    
+    # Handle CLARIFICATION intent - ask user before proceeding
+    if intent_result.intent == IntentType.CLARIFICATION and intent_result.clarification_question:
+        return {
+            "response": intent_result.clarification_question,
+            "sources": [],
+            "safety_triggered": False,
+            "safety_category": None,
+            "intent": "clarification"
+        }
+    
+    # Handle GREETING intent - simple greeting without database queries
+    if intent_result.intent == IntentType.GREETING:
+        greeting_name = f", {user_name}" if user_name else ""
+        return {
+            "response": f"Hello{greeting_name}! I'm Anna's wellness assistant. I'm here to help you learn about our transformational programs and upcoming events. What would you like to explore today?",
+            "sources": [],
+            "safety_triggered": False,
+            "intent": "greeting"
+        }
+    
+    # ═══════════════════════════════════════════════════════════════════════
+    # INTENT-BASED DATABASE ROUTING
+    # EVENT → SQL only (skip RAG to avoid pollution)
+    # KNOWLEDGE → RAG only (skip events)
+    # HYBRID/OTHER → Both sources
+    # ═══════════════════════════════════════════════════════════════════════
+    
+    context = ""
+    relevant_docs = []
+    event_context = ""
+    direct_event_content = None
+    
+    # Only query RAG for KNOWLEDGE, HYBRID, or OTHER intents
+    if intent_result.intent in [IntentType.KNOWLEDGE, IntentType.HYBRID, IntentType.OTHER]:
+        search_query = build_context_aware_query(user_message, conversation_history)
+        relevant_docs = search_knowledge_base(search_query, n_results=n_context_docs)
+        context = format_context_from_docs(relevant_docs)
+        print(f"[IntentRouter] Queried RAG (knowledge base)", flush=True)
+    
+    # Only query SQL events for EVENT or HYBRID intents
+    if intent_result.intent in [IntentType.EVENT, IntentType.HYBRID]:
+        event_context = get_event_context_for_llm(user_message, conversation_history)
+        print(f"[IntentRouter] Queried SQL (events database)", flush=True)
+        
+        # Check for DIRECT_EVENT marker - bypass LLM paraphrasing
+        if "{{DIRECT_EVENT}}" in event_context and "{{/DIRECT_EVENT}}" in event_context:
+            import re
+            direct_match = re.search(r'\{\{DIRECT_EVENT\}\}(.*?)\{\{/DIRECT_EVENT\}\}', event_context, re.DOTALL)
+            if direct_match:
+                direct_event_content = direct_match.group(1).strip()
+                event_context = event_context.split("{{/DIRECT_EVENT}}")[1] if "{{/DIRECT_EVENT}}" in event_context else ""
+    
+    # If we have direct event content for EVENT intent, return immediately without LLM
+    if direct_event_content and intent_result.intent == IntentType.EVENT:
+        if "I don't have any events scheduled" in direct_event_content or "No events" in direct_event_content:
+            final_response = direct_event_content
+        else:
+            intro = "Here are the details for this event:\n\n"
+            final_response = intro + direct_event_content
+        
+        return {
+            "response": final_response,
+            "sources": [],
+            "safety_triggered": False,
+            "safety_category": None,
+            "calendar_action": False,
+            "direct_event": True,
+            "intent": intent_result.intent.value
+        }
     
     system_prompt = get_system_prompt()
     
@@ -290,41 +375,6 @@ Welcome them back warmly and ask how you can help today.
 DO NOT mention any specific topics like "stress", "career", "relationships" or any programs as if you discussed them before.
 ONLY say something like: "Great to see you back! How can I help you today?"
 """
-    
-    event_context = ""
-    direct_event_content = None
-    
-    if is_event_query(user_message, conversation_history):
-        event_context = get_event_context_for_llm(user_message, conversation_history)
-        
-        # Check for DIRECT_EVENT marker - bypass LLM paraphrasing
-        # When this marker is present, event data is injected directly without LLM rewriting
-        if "{{DIRECT_EVENT}}" in event_context and "{{/DIRECT_EVENT}}" in event_context:
-            import re
-            direct_match = re.search(r'\{\{DIRECT_EVENT\}\}(.*?)\{\{/DIRECT_EVENT\}\}', event_context, re.DOTALL)
-            if direct_match:
-                direct_event_content = direct_match.group(1).strip()
-                # Extract metadata for navigation/calendar actions
-                event_context = event_context.split("{{/DIRECT_EVENT}}")[1] if "{{/DIRECT_EVENT}}" in event_context else ""
-    
-    # If we have direct event content, return it immediately without LLM
-    if direct_event_content:
-        # Check if this is a "no events found" response (don't add misleading intro)
-        if "I don't have any events scheduled" in direct_event_content or "No events" in direct_event_content:
-            final_response = direct_event_content
-        else:
-            # Add a brief intro for actual event details
-            intro = "Here are the details for this event:\n\n"
-            final_response = intro + direct_event_content
-        
-        return {
-            "response": final_response,
-            "sources": [],
-            "safety_triggered": False,
-            "safety_category": None,
-            "calendar_action": False,
-            "direct_event": True  # Flag indicating this bypassed LLM
-        }
     
     augmented_system_prompt = f"""{system_prompt}
 {personalization_context}

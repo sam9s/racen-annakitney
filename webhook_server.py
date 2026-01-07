@@ -20,6 +20,7 @@ from channel_handlers import (
     get_channel_status
 )
 from chatbot_engine import generate_response, generate_response_stream, generate_conversation_summary, fix_typos_with_llm
+from intent_router import refresh_router_data
 from somera_engine import generate_somera_response, generate_somera_response_stream
 from conversation_logger import log_feedback, log_conversation, ensure_session_exists
 from database import get_or_create_user, get_user_conversation_history, get_conversation_summary, upsert_conversation_summary
@@ -60,6 +61,13 @@ def init_knowledge_base_on_startup():
         sys.exit(1)
 
 init_knowledge_base_on_startup()
+
+# Initialize IntentRouter with current event titles and program names
+try:
+    refresh_router_data()
+    print("[Startup] IntentRouter initialized with event/program data")
+except Exception as e:
+    print(f"[Startup] Warning: IntentRouter initialization failed: {e}")
 
 conversation_histories = {}
 
