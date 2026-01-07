@@ -201,6 +201,11 @@ When the same name exists for both a program and an event (e.g., "SoulAlign Heal
 3. Add handler in `chatbot_engine.py` after intent classification block
 
 ## Recent Changes
+- **Intent Classification Improvements (Jan 2026)**: Fixed UnboundLocalError by adding `import re` at module level in chatbot_engine.py. Expanded TIME_PATTERNS in intent_router.py to recognize:
+  - Month-based event queries ("events in March", "January events")
+  - Generic event queries ("what events", "any events", "show me events")
+  - Location queries ("where is X held", "location of")
+  - Test suite now at 100% pass rate with 31 scenarios
 - **Single Decision Point Follow-up Architecture (Jan 2026)**: Implemented FOLLOWUP_SELECT and FOLLOWUP_CONFIRM intent types in IntentRouter. Router is now the SINGLE decision point for all follow-up detection, eliminating competing logic in events_service.py. Key features:
   - Date patterns like "June 1st" are protected from ordinal matching (date queries always take priority)
   - `_extract_events_from_history()` parses numbered lists from previous bot messages
