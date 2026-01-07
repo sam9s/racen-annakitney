@@ -555,6 +555,70 @@ def is_event_query(message: str, conversation_history: list = None) -> bool:
     return False
 
 
+def extract_month_filter(message: str) -> Optional[int]:
+    """
+    Extract month number from user message if they're asking about a specific month.
+    Returns 1-12 for month, or None if no specific month mentioned.
+    """
+    message_lower = message.lower()
+    
+    # Month name to number mapping
+    month_names = {
+        "january": 1, "jan": 1,
+        "february": 2, "feb": 2,
+        "march": 3, "mar": 3,
+        "april": 4, "apr": 4,
+        "may": 5,
+        "june": 6, "jun": 6,
+        "july": 7, "jul": 7,
+        "august": 8, "aug": 8,
+        "september": 9, "sept": 9, "sep": 9,
+        "october": 10, "oct": 10,
+        "november": 11, "nov": 11,
+        "december": 12, "dec": 12
+    }
+    
+    # Check for month names with context (e.g., "in June", "events in March")
+    for month_name, month_num in month_names.items():
+        # Match patterns like "in june", "during june", "for june", "june events"
+        patterns = [
+            rf"\bin\s+{month_name}\b",
+            rf"\bduring\s+{month_name}\b",
+            rf"\bfor\s+{month_name}\b",
+            rf"\b{month_name}\s+events?\b",
+            rf"\bevents?\s+in\s+{month_name}\b",
+            rf"\bhappening\s+in\s+{month_name}\b",
+            rf"\b{month_name}\s+\d{{4}}\b",  # "June 2026"
+        ]
+        for pattern in patterns:
+            if re.search(pattern, message_lower):
+                return month_num
+    
+    return None
+
+
+def filter_events_by_month(events: List[Dict], month: int) -> List[Dict]:
+    """Filter events list to only include events in the specified month."""
+    from datetime import datetime
+    filtered = []
+    for event in events:
+        # Check both "start" (transformed format) and "startDate" (raw format)
+        start_date = event.get("start") or event.get("startDate", "")
+        if start_date:
+            try:
+                # Parse the date and check month
+                if isinstance(start_date, str):
+                    # Try ISO format
+                    dt = datetime.fromisoformat(start_date.replace("Z", "+00:00"))
+                else:
+                    dt = start_date
+                if dt.month == month:
+                    filtered.append(event)
+            except Exception as e:
+                print(f"[Events Service] Date parse error for {event.get('title', 'unknown')}: {e}")
+    return filtered
+
+
 def is_booking_request(message: str) -> bool:
     """Detect if user wants to add event to their calendar."""
     message_lower = message.lower()
@@ -775,8 +839,44 @@ Ask them which event they'd like to add to their calendar.
     
     # Check if user is asking about upcoming events list
     if any(kw in message_lower for kw in ["events", "upcoming", "what's happening", "schedule", "calendar"]):
-        events = get_upcoming_events(10)
-        events_list = format_events_list(events)
+        events = get_upcoming_events(20)  # Get more events to allow for filtering
+        
+        # Check if user is asking about a specific month
+        month_filter = extract_month_filter(user_message)
+        if month_filter:
+            events = filter_events_by_month(events, month_filter)
+            month_names = ["", "January", "February", "March", "April", "May", "June", 
+                          "July", "August", "September", "October", "November", "December"]
+            month_name = month_names[month_filter]
+            
+            if not events:
+                return f"""
+No events found for {month_name}. Here are all upcoming events:
+
+{format_events_list(get_upcoming_events(10))}
+
+Would you like details about any of these events?
+"""
+            
+            events_list = format_events_list(events)
+            return f"""
+=== VERBATIM EVENT LIST FOR {month_name.upper()} (DO NOT PARAPHRASE) ===
+{events_list}
+=== END VERBATIM DATA ===
+
+CRITICAL INSTRUCTIONS FOR THIS RESPONSE:
+1. Copy the event list above EXACTLY as shown - DO NOT rewrite or paraphrase
+2. State clearly that these are the events happening in {month_name}
+3. Preserve ALL markdown formatting including **bold**, [links](url), and numbered list format
+4. Each event MUST include its clickable link as shown above
+5. Keep all dates, times, and locations exactly as formatted
+6. After the list, ask which event they'd like to know more about
+
+Events Page: https://www.annakitney.com/events/
+"""
+        
+        # No month filter - show all upcoming events
+        events_list = format_events_list(events[:10])
         return f"""
 === VERBATIM EVENT LIST (DO NOT PARAPHRASE) ===
 {events_list}
