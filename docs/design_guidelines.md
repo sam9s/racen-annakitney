@@ -100,6 +100,52 @@
 - **Emphasis**: Bold for important terms, italic for gentle emphasis
 - **Line height**: leading-relaxed (1.625) for comfortable reading
 
+### CRITICAL: Markdown Link Parsing Order
+
+**Problem**: The LLM outputs `**[text](url)**` format where bold `**` WRAPS around the markdown link. If you match bold first, the link inside becomes plain text.
+
+**Solution**: Parse in this exact order (highest priority first):
+1. `**[text](url)**` - Bold-wrapped links
+2. `[text](url)` - Plain markdown links
+3. `**text**` - Bold text
+4. Raw URLs (https://...)
+
+**Files to update**:
+- `client/src/pages/Home.tsx` - `renderMessageContent()` function
+- `public/widget.js` - `createSafeContent()` function
+
+**Implementation Pattern**:
+```javascript
+// 1. Define separate regex patterns
+const boldLinkRegex = /\*\*\[([^\]]+)\]\(([^)]+)\)\*\*/g;  // **[text](url)**
+const linkRegex = /\[([^\]]+)\]\(([^)]+)\)/g;              // [text](url)
+const boldRegex = /\*\*([^*]+)\*\*/g;                      // **text**
+const urlRegex = /(https?:\/\/[^\s<>")\]]+)/g;             // raw URLs
+
+// 2. Find all matches, checking for overlaps
+const allMatches = [];
+
+// Find bold-wrapped links FIRST
+while ((m = boldLinkRegex.exec(line)) !== null) {
+  allMatches.push({ start: m.index, end: m.index + m[0].length, type: 'boldLink', ... });
+}
+
+// Find plain links (skip if overlaps with bold link)
+while ((m = linkRegex.exec(line)) !== null) {
+  const overlaps = allMatches.some(x => m.index >= x.start && m.index < x.end);
+  if (!overlaps) {
+    allMatches.push({ start: m.index, end: m.index + m[0].length, type: 'link', ... });
+  }
+}
+
+// Same pattern for bold and URLs...
+
+// 3. Sort by position and render in order
+allMatches.sort((a, b) => a.start - b.start);
+```
+
+**Test Case**: Ask "what programs you offer" - links should render as clickable blue text, not raw `[text](url)` syntax.
+
 ### Loading States
 - **Typing indicator**: Three animated dots (8px each), space-x-1, subtle bounce animation
 - **Message sending**: Slight opacity on user message until confirmed
