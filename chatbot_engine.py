@@ -17,6 +17,7 @@ User Query → IntentRouter.classify() → Appropriate Handler
 """
 
 import os
+import re
 from typing import List, Optional
 
 from tenacity import retry, stop_after_attempt, wait_exponential, retry_if_exception
@@ -373,7 +374,6 @@ def generate_response(
         
         # Check for DIRECT_EVENT marker - bypass LLM paraphrasing
         if "{{DIRECT_EVENT}}" in event_context and "{{/DIRECT_EVENT}}" in event_context:
-            import re
             direct_match = re.search(r'\{\{DIRECT_EVENT\}\}(.*?)\{\{/DIRECT_EVENT\}\}', event_context, re.DOTALL)
             if direct_match:
                 direct_event_content = direct_match.group(1).strip()
@@ -601,7 +601,6 @@ ONLY say something like: "Great to see you back! How can I help you today?"
         
         # Check for DIRECT_EVENT marker - bypass LLM paraphrasing
         if "{{DIRECT_EVENT}}" in event_context_stream and "{{/DIRECT_EVENT}}" in event_context_stream:
-            import re
             direct_match = re.search(r'\{\{DIRECT_EVENT\}\}(.*?)\{\{/DIRECT_EVENT\}\}', event_context_stream, re.DOTALL)
             if direct_match:
                 direct_event_content_stream = direct_match.group(1).strip()
