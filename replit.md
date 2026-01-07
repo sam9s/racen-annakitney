@@ -143,6 +143,12 @@ Anna Kitney Coaching calendar: `cms370prol01ksuq304erj1gmdug1v4m@import.calendar
 - **Past Events**: Automatically marked as `isActive: false`
 
 ## Recent Changes
+- **Multi-day Event Support (Jan 2026)**: Added comprehensive support for multi-day/recurring events:
+  - New `extract_specific_date()` function parses queries like "June 26", "1st of June", "26th July 2026"
+  - New `filter_events_by_specific_date()` checks if a date falls within event's start-end range
+  - Updated `filter_events_by_month()` to include events whose range overlaps the requested month
+  - Updated `format_events_list()` to display date ranges for multi-day events (e.g., "Jun 03 - Sep 30, 2026")
+  - Now correctly answers "any event on June 26" when SoulAlign® Heal runs June 3 - Sept 30
 - **Follow-up Detection Safeguard (Jan 2026)**: Fixed `is_event_query()` and follow-up detection to require conversation history with an event before treating "yes" responses as event queries. Prevents misclassifying generic "yes" as event follow-ups when no event context exists. Updated `is_event_query(message, conversation_history)` signature to accept optional history parameter.
 - **Event Styling Improvements (Jan 2026)**: Enhanced event description formatting with Lora serif font, text justification, teal-colored event subtitles (date | description lines), horizontal rule dividers, and italic text support. Changes applied to both Home.tsx and widget.js for consistency.
 - **Markdown Link Rendering Fix (Jan 2026)**: Fixed both React web UI (Home.tsx) and embeddable widget (widget.js) to render markdown links correctly. Root cause: bold `**text**` was being matched BEFORE markdown links `[text](url)`, breaking `[**text**](url)` syntax. Solution: Match markdown links FIRST, then bold, then raw URLs.

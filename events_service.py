@@ -463,6 +463,7 @@ def format_events_list(events: List[Dict], include_links: bool = True) -> str:
     """
     Format multiple events as a list for chatbot response.
     Each event includes a clickable link to its event page.
+    For multi-day events, shows the full date range.
     """
     if not events:
         return "I don't see any upcoming events at the moment. Please check back soon or visit the events page at https://www.annakitney.com/events/ for the latest updates!"
@@ -472,12 +473,23 @@ def format_events_list(events: List[Dict], include_links: bool = True) -> str:
     for i, event in enumerate(events, 1):
         title = event.get("title", "Untitled")
         start = event.get("start", "")
+        end = event.get("end", "")
         location = event.get("location", "Online")
         event_url = event.get("eventPageUrl", "")
         
         try:
-            dt = datetime.fromisoformat(start.replace('Z', '+00:00'))
-            date_str = dt.strftime("%b %d, %Y")
+            start_dt = datetime.fromisoformat(start.replace('Z', '+00:00'))
+            end_dt = datetime.fromisoformat(end.replace('Z', '+00:00')) if end else None
+            
+            # Check if this is a multi-day event (more than 1 day difference)
+            if end_dt and (end_dt.date() - start_dt.date()).days > 1:
+                # Multi-day event - show date range
+                start_str = start_dt.strftime("%b %d")
+                end_str = end_dt.strftime("%b %d, %Y")
+                date_str = f"{start_str} - {end_str}"
+            else:
+                # Single day or short event
+                date_str = start_dt.strftime("%b %d, %Y")
         except:
             date_str = start[:10] if start else "TBD"
         
@@ -597,25 +609,147 @@ def extract_month_filter(message: str) -> Optional[int]:
     return None
 
 
-def filter_events_by_month(events: List[Dict], month: int) -> List[Dict]:
-    """Filter events list to only include events in the specified month."""
-    from datetime import datetime
+def parse_event_date(date_str: str) -> Optional[datetime]:
+    """Parse an event date string to datetime object."""
+    if not date_str:
+        return None
+    try:
+        if isinstance(date_str, str):
+            return datetime.fromisoformat(date_str.replace("Z", "+00:00"))
+        return date_str
+    except Exception:
+        return None
+
+
+def extract_specific_date(message: str, default_year: int = 2026) -> Optional[Tuple[int, int, int]]:
+    """
+    Extract a specific date from user message (e.g., "June 26", "1st of June", "26th June 2026").
+    Returns (year, month, day) tuple or None if no specific date found.
+    """
+    message_lower = message.lower()
+    
+    # Month name to number mapping
+    month_names = {
+        "january": 1, "jan": 1,
+        "february": 2, "feb": 2,
+        "march": 3, "mar": 3,
+        "april": 4, "apr": 4,
+        "may": 5,
+        "june": 6, "jun": 6,
+        "july": 7, "jul": 7,
+        "august": 8, "aug": 8,
+        "september": 9, "sept": 9, "sep": 9,
+        "october": 10, "oct": 10,
+        "november": 11, "nov": 11,
+        "december": 12, "dec": 12
+    }
+    
+    # Patterns for specific dates
+    patterns = [
+        # "June 26", "June 26th", "June 26, 2026"
+        r"(january|jan|february|feb|march|mar|april|apr|may|june|jun|july|jul|august|aug|september|sept|sep|october|oct|november|nov|december|dec)\s+(\d{1,2})(?:st|nd|rd|th)?(?:,?\s*(\d{4}))?",
+        # "26 June", "26th of June", "26th June 2026"
+        r"(\d{1,2})(?:st|nd|rd|th)?\s+(?:of\s+)?(january|jan|february|feb|march|mar|april|apr|may|june|jun|july|jul|august|aug|september|sept|sep|october|oct|november|nov|december|dec)(?:\s+(\d{4}))?",
+        # "1st of June", "2nd of march"
+        r"(\d{1,2})(?:st|nd|rd|th)\s+of\s+(january|jan|february|feb|march|mar|april|apr|may|june|jun|july|jul|august|aug|september|sept|sep|october|oct|november|nov|december|dec)(?:\s+(\d{4}))?",
+    ]
+    
+    for pattern in patterns:
+        match = re.search(pattern, message_lower)
+        if match:
+            groups = match.groups()
+            # Determine which group is month vs day
+            if groups[0].isdigit() if groups[0] else False:
+                # Day first pattern (e.g., "26 June")
+                day = int(groups[0])
+                month_str = groups[1]
+                year = int(groups[2]) if groups[2] else default_year
+            else:
+                # Month first pattern (e.g., "June 26")
+                month_str = groups[0]
+                day = int(groups[1])
+                year = int(groups[2]) if len(groups) > 2 and groups[2] else default_year
+            
+            month = month_names.get(month_str)
+            if month and 1 <= day <= 31:
+                return (year, month, day)
+    
+    return None
+
+
+def is_date_in_event_range(target_date: Tuple[int, int, int], event: Dict) -> bool:
+    """
+    Check if a specific date falls within an event's date range.
+    target_date is (year, month, day) tuple.
+    Handles multi-day events like SoulAlign® Heal (June 3 - Sept 30).
+    """
+    start_str = event.get("start") or event.get("startDate", "")
+    end_str = event.get("end") or event.get("endDate", "")
+    
+    start_dt = parse_event_date(start_str)
+    end_dt = parse_event_date(end_str)
+    
+    if not start_dt:
+        return False
+    
+    # Create target datetime (use noon to avoid timezone issues)
+    target_dt = datetime(target_date[0], target_date[1], target_date[2], 12, 0, 0, tzinfo=start_dt.tzinfo)
+    
+    # If no end date, treat as single-day event (just check start date)
+    if not end_dt:
+        return start_dt.date() == target_dt.date()
+    
+    # Check if target date falls within the event's range (inclusive)
+    return start_dt.date() <= target_dt.date() <= end_dt.date()
+
+
+def filter_events_by_specific_date(events: List[Dict], target_date: Tuple[int, int, int]) -> List[Dict]:
+    """
+    Filter events to include those that are active on a specific date.
+    Handles both single-day and multi-day/recurring events.
+    """
+    return [event for event in events if is_date_in_event_range(target_date, event)]
+
+
+def is_month_in_event_range(month: int, year: int, event: Dict) -> bool:
+    """
+    Check if any day of the given month falls within an event's date range.
+    Used for month-based filtering of multi-day events.
+    """
+    import calendar
+    
+    start_str = event.get("start") or event.get("startDate", "")
+    end_str = event.get("end") or event.get("endDate", "")
+    
+    start_dt = parse_event_date(start_str)
+    end_dt = parse_event_date(end_str)
+    
+    if not start_dt:
+        return False
+    
+    # Get first and last day of the target month
+    _, last_day = calendar.monthrange(year, month)
+    month_start = datetime(year, month, 1, tzinfo=start_dt.tzinfo)
+    month_end = datetime(year, month, last_day, 23, 59, 59, tzinfo=start_dt.tzinfo)
+    
+    # If no end date, just check if event starts in this month
+    if not end_dt:
+        return start_dt.month == month and start_dt.year == year
+    
+    # Check if event range overlaps with the month
+    # Event is in month if: event starts before month ends AND event ends after month starts
+    return start_dt <= month_end and end_dt >= month_start
+
+
+def filter_events_by_month(events: List[Dict], month: int, year: int = 2026) -> List[Dict]:
+    """
+    Filter events list to include events that are active during the specified month.
+    Handles both single-day and multi-day events spanning across months.
+    """
     filtered = []
     for event in events:
-        # Check both "start" (transformed format) and "startDate" (raw format)
-        start_date = event.get("start") or event.get("startDate", "")
-        if start_date:
-            try:
-                # Parse the date and check month
-                if isinstance(start_date, str):
-                    # Try ISO format
-                    dt = datetime.fromisoformat(start_date.replace("Z", "+00:00"))
-                else:
-                    dt = start_date
-                if dt.month == month:
-                    filtered.append(event)
-            except Exception as e:
-                print(f"[Events Service] Date parse error for {event.get('title', 'unknown')}: {e}")
+        if is_month_in_event_range(month, year, event):
+            filtered.append(event)
     return filtered
 
 
@@ -835,6 +969,56 @@ Here are the upcoming events they might be interested in:
 {format_events_list(events)}
 
 Ask them which event they'd like to add to their calendar.
+"""
+    
+    # ========== SPECIFIC DATE QUERY HANDLING ==========
+    # Check if user is asking about events on a specific date (e.g., "June 26", "1st of June")
+    # This MUST come before the general "events" keyword check
+    specific_date = extract_specific_date(user_message)
+    if specific_date:
+        year, month, day = specific_date
+        month_names = ["", "January", "February", "March", "April", "May", "June", 
+                      "July", "August", "September", "October", "November", "December"]
+        date_str = f"{month_names[month]} {day}, {year}"
+        
+        events = get_upcoming_events(20)
+        matching_events = filter_events_by_specific_date(events, specific_date)
+        
+        if matching_events:
+            if len(matching_events) == 1:
+                # Single event on this date - show full details
+                event = matching_events[0]
+                return f"""
+=== VERBATIM EVENT DATA FOR {date_str.upper()} (DO NOT PARAPHRASE) ===
+{{{{DIRECT_EVENT}}}}
+{format_event_for_chat(event)}
+=== END VERBATIM DATA ===
+
+CRITICAL: This event is happening on/includes {date_str}. 
+Copy the event details EXACTLY as shown above.
+Note: This may be a multi-day event that spans across multiple dates.
+"""
+            else:
+                # Multiple events on this date
+                events_list = format_events_list(matching_events)
+                return f"""
+=== VERBATIM EVENT LIST FOR {date_str.upper()} (DO NOT PARAPHRASE) ===
+{events_list}
+=== END VERBATIM DATA ===
+
+CRITICAL: These events are happening on/include {date_str}.
+Copy the event list EXACTLY as shown above.
+Ask which event they'd like to know more about.
+"""
+        else:
+            # No events on this specific date - show all events
+            return f"""
+No events are specifically scheduled for {date_str}. 
+
+Here are all upcoming events:
+{format_events_list(events[:10])}
+
+Would you like details about any of these events?
 """
     
     # Check if user is asking about upcoming events list
