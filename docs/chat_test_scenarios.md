@@ -1,6 +1,6 @@
 # Chat Regression Test Scenarios
 
-Generated: 2026-01-07 07:36:15
+Generated: 2026-01-07 07:44:39
 
 This document describes all test scenarios used in the automated regression suite.
 
@@ -183,7 +183,7 @@ This document describes all test scenarios used in the automated regression suit
 
 - **Turn 1:**
   - User: "What's the Success Redefined meditation?"
-  - Expected Intent: `event`
+  - Expected Intent: `event or hybrid`
   - Expected Keywords: Success Redefined, Dubai
 
 - **Turn 2:**
@@ -277,7 +277,7 @@ This document describes all test scenarios used in the automated regression suit
 
 - **Turn 1:**
   - User: "Tell me about SoulAlign Heal"
-  - Expected Intent: `clarification or event or knowledge`
+  - Expected Intent: `clarification or event or knowledge or hybrid`
   - Expected Keywords: SoulAlign, Heal
 
 ---

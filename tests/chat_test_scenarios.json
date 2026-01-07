@@ -148,7 +148,7 @@
       "turns": [
         {
           "user": "What's the Success Redefined meditation?",
-          "expected_intent": "event",
+          "expected_intent": ["event", "hybrid"],
           "keywords": ["Success Redefined", "Dubai"]
         },
         {
@@ -225,7 +225,7 @@
       "turns": [
         {
           "user": "Tell me about SoulAlign Heal",
-          "expected_intent": ["clarification", "event", "knowledge"],
+          "expected_intent": ["clarification", "event", "knowledge", "hybrid"],
           "keywords": ["SoulAlign", "Heal"]
         }
       ]

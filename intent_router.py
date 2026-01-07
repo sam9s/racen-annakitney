@@ -97,6 +97,20 @@ TIME_PATTERNS = [
     r'\bcalendar\b',
     r'\bnext\s+(?:week|month|year)\b',
     r'\bthis\s+(?:week|month|year)\b',
+    # Month-based event queries
+    r'\bevents?\s+(?:in|for|during)\s+(?:january|february|march|april|may|june|july|august|september|october|november|december|jan|feb|mar|apr|jun|jul|aug|sep|sept|oct|nov|dec)\b',
+    r'\b(?:january|february|march|april|may|june|july|august|september|october|november|december|jan|feb|mar|apr|jun|jul|aug|sep|sept|oct|nov|dec)\s+events?\b',
+    # Generic event queries
+    r'\bwhat\s+(?:events?|workshops?|sessions?)\b',
+    r'\bany\s+(?:events?|workshops?|sessions?)\b',
+    r'\blist\s+(?:of\s+)?(?:events?|workshops?|sessions?)\b',
+    r'\bshow\s+(?:me\s+)?(?:events?|workshops?|sessions?)\b',
+    r'\bhave\s+any\s+events?\b',
+    r'\bdo\s+you\s+have\s+(?:any\s+)?(?:events?|workshops?|sessions?)\b',
+    # Location queries (about events)
+    r'\bwhere\s+is\s+(?:the\s+)?(?:\w+\s+)+(?:held|happening|taking\s+place|located)\b',
+    r'\blocation\s+(?:of|for)\b',
+    r'\bwhere\s+(?:does|will)\s+(?:the\s+)?\w+\s+(?:take\s+place|happen|be\s+held)\b',
 ]
 
 # Event action patterns (indicates EVENT intent)

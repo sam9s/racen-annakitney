@@ -1,15 +1,15 @@
 # Chat Regression Test Results
 
-**Run Date:** 2026-01-07 07:37:36
+**Run Date:** 2026-01-07 07:46:18
 
 ## Summary
 
 | Metric | Value |
 |--------|-------|
 | Total Tests | 31 |
-| Passed | 23 |
-| Failed | 8 |
-| Pass Rate | 74.2% |
+| Passed | 31 |
+| Failed | 0 |
+| Pass Rate | 100.0% |
 
 ---
 
@@ -24,7 +24,7 @@
 - **User:** "Hello!"
 - **Expected Intent:** `greeting`
 - **Actual Intent:** `greeting`
-- **Response Time:** 1177ms
+- **Response Time:** 373ms
 - **Keywords Found:** hello, wellness, programs, events
 
 **Response Excerpt:**
@@ -41,7 +41,7 @@ Hello! I'm Anna's wellness assistant. I'm here to help you learn about our trans
 - **User:** "Hi there"
 - **Expected Intent:** `greeting`
 - **Actual Intent:** `greeting`
-- **Response Time:** 419ms
+- **Response Time:** 524ms
 - **Keywords Found:** hello, wellness
 
 **Response Excerpt:**
@@ -58,7 +58,7 @@ Hello! I'm Anna's wellness assistant. I'm here to help you learn about our trans
 - **User:** "Are there any events on June 1st?"
 - **Expected Intent:** `event`
 - **Actual Intent:** `event`
-- **Response Time:** 549ms
+- **Response Time:** 744ms
 - **Keywords Found:** event, June
 
 **Response Excerpt:**
@@ -82,97 +82,88 @@ Here are the upcoming events:
 - **User:** "Is there anything happening on June 26?"
 - **Expected Intent:** `event`
 - **Actual Intent:** `event`
-- **Response Time:** 2685ms
+- **Response Time:** 1999ms
 - **Keywords Found:** SoulAlign, Heal
 
 **Response Excerpt:**
 ```
-Yes! On June 26, 2026, we are hosting **SoulAlign® Heal**. Here are the details:
+Yes, we have an exciting event happening on June 26, 2026:
+
+**SoulAlign® Heal**
 
 **When:** June 03 - September 30, 2026 | Sessions at 4:00 PM (London time)
 
 **Where:** Zoom
 
----
-
-**About this event:**
-
-*SOULALIGN® QUANTUM HEALING THROUGH GOD CONSCIOUSNESS TO HAVE IT ALL!*
-
-SoulAlign® Heal is a mult...
+**About this event:** 
+SoulAlign® Heal is an expansive healing journey designed to transition from limited human identities in...
 ```
 
 ### Month Query - March
 
 *Test month-based event filtering*
 
-**Turn 1:** FAIL
+**Turn 1:** PASS
 
 - **User:** "What events are happening in March?"
 - **Expected Intent:** `event`
-- **Actual Intent:** `knowledge`
-- **Response Time:** 2125ms
-- **Keywords Found:** March, SoulAlign
-- **Keywords Missing:** Coach
+- **Actual Intent:** `event`
+- **Response Time:** 2534ms
+- **Keywords Found:** March, SoulAlign, Coach
 
 **Response Excerpt:**
 ```
-Here are our upcoming events in March:
+Here are the upcoming events happening in March:
 
-**[SoulAlign Manifestation Mastery](https://www.annakitney.com/soulalign-manifestation-mastery/)**  
-Starts: March 5, 2026  
-Time: 5:00 PM GMT  
-Description: A 12-week mastermind experience to expand your energetic capacity to receive abundant overflow into ev...
+1. [**SoulAlign® Manifestation Mastery**](https://www.annakitney.com/event/soulalign-manifestation-mastery/) - Jan 20 - Apr 07, 2026 (Zoom)
+
+2. [**SoulAlign® Coach**](https://www.annakitney.com/event/soulalign-coach/) - Mar 04 - May 20, 2026 (Zoom)
+
+...
 ```
 
 ### Month Query - January
 
 *Test January events*
 
-**Turn 1:** FAIL
+**Turn 1:** PASS
 
 - **User:** "Show me events in January"
 - **Expected Intent:** `event`
-- **Actual Intent:** `knowledge`
-- **Response Time:** 2094ms
-- **Keywords Found:** January
-- **Keywords Missing:** Identity Switch, Success Redefined
+- **Actual Intent:** `event`
+- **Response Time:** 2465ms
+- **Keywords Found:** January, Identity Switch, Success Redefined
 
 **Response Excerpt:**
 ```
-Here are our upcoming events in January:
+Here are the upcoming events happening in January:
 
-**The Identity Overflow**
-- **Date:** January 9-11, 2026
-- **Time:** Check event page for start times
-- **Description:** This 3-Part Challenge focuses on personal growth and understanding.
+1. [**The Identity Overflow**](https://www.annakitney.com/event/the-identity-overflow/) - Jan 09 - Jan 11, 2026 (Zoom)
 
-Would you like to know more about this event or any others?
-
----
-
-*I...
+2. [**SoulAlign® Manifestation Mastery**](https://www.annakitney.com/event/soulalign-manifestation-mastery/) - Jan 20 - Apr 07, ...
 ```
 
 ### Ordinal Selection from List
 
 *User selects '1' after seeing a numbered list*
 
-**Turn 1:** FAIL
+**Turn 1:** PASS
 
 - **User:** "What events do you have?"
 - **Expected Intent:** `event`
-- **Actual Intent:** `knowledge`
-- **Response Time:** 2144ms
-- **Keywords Missing:** 1., 2.
+- **Actual Intent:** `event`
+- **Response Time:** 4160ms
+- **Keywords Found:** 1., 2.
 
 **Response Excerpt:**
 ```
 Here are our upcoming events:
 
-- **The Identity Overflow**: A 3-Part Challenge happening January 9-11, 2026 on Zoom.
+1. [**The Identity Overflow**](https://www.annakitney.com/event/the-identity-overflow/) - Jan 09 - Jan 11, 2026 (Zoom)
 
-Would you like more details about any of these?
+2. [**SoulAlign® Manifestation Mastery**](https://www.annakitney.com/event/soulalign-manifestation-mastery/) - Jan 20 - Apr 07, 2026 (Zoom)
+
+3. [**Th...
 ```
 
 **Turn 2:** PASS
@@ -180,7 +171,7 @@ Would you like more details about any of these?
 - **User:** "1"
 - **Expected Intent:** `followup_select`
 - **Actual Intent:** `followup_select`
-- **Response Time:** 60ms
+- **Response Time:** 67ms
 
 **Response Excerpt:**
 ```
@@ -208,7 +199,7 @@ Rew...
 - **User:** "Tell me about upcoming events"
 - **Expected Intent:** `event`
 - **Actual Intent:** `event`
-- **Response Time:** 3895ms
+- **Response Time:** 3685ms
 - **Keywords Found:** 1., 2.
 
 **Response Excerpt:**
@@ -227,7 +218,7 @@ Here are our upcoming events:
 - **User:** "the first one"
 - **Expected Intent:** `followup_select`
 - **Actual Intent:** `followup_select`
-- **Response Time:** 369ms
+- **Response Time:** 367ms
 
 **Response Excerpt:**
 ```
@@ -250,23 +241,23 @@ Rew...
 
 *User says 'option 2' to select second item*
 
-**Turn 1:** FAIL
+**Turn 1:** PASS
 
 - **User:** "What events are coming up?"
 - **Expected Intent:** `event`
-- **Actual Intent:** `knowledge`
-- **Response Time:** 1942ms
-- **Keywords Missing:** 1., 2.
+- **Actual Intent:** `event`
+- **Response Time:** 4806ms
+- **Keywords Found:** 1., 2.
 
 **Response Excerpt:**
 ```
-Here are our upcoming events:
+Here are the upcoming events:
 
-**The Identity Overflow**  
-Date: January 9-11, 2026  
-Description: Join us for a transformative 3-Part Challenge designed to enhance your self-discovery and growth.
+1. [**The Identity Overflow**](https://www.annakitney.com/event/the-identity-overflow/) - Jan 09 - Jan 11, 2026 (Zoom)
 
-Would you like more details about any of these?
+2. [**SoulAlign® Manifestation Mastery**](https://www.annakitney.com/event/soulalign-manifestation-mastery/) - Jan 20 - Apr 07, 2026 (Zoom)
+
+3. [**Th...
 ```
 
 **Turn 2:** PASS
@@ -274,7 +265,7 @@ Would you like more details about any of these?
 - **User:** "option 2"
 - **Expected Intent:** `followup_select`
 - **Actual Intent:** `followup_select`
-- **Response Time:** 385ms
+- **Response Time:** 396ms
 
 **Response Excerpt:**
 ```
@@ -302,7 +293,7 @@ Rew...
 - **User:** "Tell me about The Identity Switch"
 - **Expected Intent:** `event`
 - **Actual Intent:** `event`
-- **Response Time:** 426ms
+- **Response Time:** 329ms
 - **Keywords Found:** Identity Switch, January
 
 **Response Excerpt:**
@@ -330,7 +321,7 @@ And You’r...
 - **User:** "yes"
 - **Expected Intent:** `followup_confirm`
 - **Actual Intent:** `followup_confirm`
-- **Response Time:** 618ms
+- **Response Time:** 459ms
 
 **Response Excerpt:**
 ```
@@ -355,19 +346,17 @@ And You’re About to Switch Timelines.
 
 *User asks for more info*
 
-**Turn 1:** FAIL
+**Turn 1:** PASS
 
 - **User:** "What's the Success Redefined meditation?"
-- **Expected Intent:** `event`
+- **Expected Intent:** `event, hybrid`
 - **Actual Intent:** `hybrid`
-- **Response Time:** 2406ms
+- **Response Time:** 3750ms
 - **Keywords Found:** Success Redefined, Dubai
 
 **Response Excerpt:**
 ```
-**Success Redefined - The Meditation: LIVE IN DUBAI** is an immersive live event designed to explore the deeper aspects of success through meditation. This experience invites participants to redefine success on their own terms, aligning with their true purpose and intentions. 
-
-Would you like me to ...
+**Success Redefined - The Meditation: LIVE IN DUBAI** is a transformational live event designed to help participants shift their mindset and connect with their true potential. Through guided meditation and powerful teachings, attendees will explore a redefined perspective on success, tapping into th...
 ```
 
 **Turn 2:** PASS
@@ -375,7 +364,7 @@ Would you like me to ...
 - **User:** "tell me more"
 - **Expected Intent:** `followup_confirm`
 - **Actual Intent:** `followup_confirm`
-- **Response Time:** 475ms
+- **Response Time:** 321ms
 
 **Response Excerpt:**
 ```
@@ -395,12 +384,14 @@ Would you like me to ...
 - **User:** "Is there an event on July 15th?"
 - **Expected Intent:** `event`
 - **Actual Intent:** `event`
-- **Response Time:** 3639ms
+- **Response Time:** 2656ms
 - **Keywords Found:** SoulAlign, Heal
 
 **Response Excerpt:**
 ```
-Here are our upcoming events:
+Yes, we do have an event on July 15,
+
+2026. Here are the details:
 
 **SoulAlign® Heal**
 
@@ -414,13 +405,7 @@ Here are our upcoming events:
 
 *SOULALIGN® QUANTUM HEALING THROUGH GOD CONSCIOUSNESS TO HAVE IT ALL!*
 
-SoulAlign® Heal
-
-*WITH ANNA KITNEY*
-
-**$150M+**
-
-*COMBI...
+SoulAlign® Heal is ...
 ```
 
 ### Program Pricing Query
@@ -432,12 +417,12 @@ SoulAlign® Heal
 - **User:** "How much does SoulAlign Coach cost?"
 - **Expected Intent:** `knowledge`
 - **Actual Intent:** `knowledge`
-- **Response Time:** 1564ms
+- **Response Time:** 2667ms
 - **Keywords Missing:** investment, price, $
 
 **Response Excerpt:**
 ```
-I don’t have specific information about the cost of the SoulAlign Coach program. I recommend reaching out to our team for the most accurate details. You can contact us at https://www.annakitney.com/contact. We're here to help!
+I don’t have specific information about a program called "SoulAlign Coach." However, we do offer other fantastic programs like SoulAlign Business and [SoulAlign Money](https://www.annakitney.com/soulalign-money/) which have their own pricing. If you're interested, I can provide details about those o...
 ```
 
 ### Program Features Query
@@ -449,16 +434,14 @@ I don’t have specific information about the cost of the SoulAlign Coach progra
 - **User:** "What's included in the SoulAlign Business program?"
 - **Expected Intent:** `knowledge`
 - **Actual Intent:** `knowledge`
-- **Response Time:** 3067ms
+- **Response Time:** 3393ms
 - **Keywords Found:** business, coaching, program
 
 **Response Excerpt:**
 ```
-The SoulAlign® Business program is designed to help start-ups and established coaches, healers, therapists, and spiritual teachers serve their soul-aligned clients. Here’s what’s included:
+The SoulAlign® Business program is designed to help start-ups and established coaches, healers, and spiritual teachers serve their soul-aligned clients. Here’s what's included:
 
-1. **Lifetime access to the online course** - Learn at your own pace with all self-study materials.
-
-2. **8 we...
+1. **Online Course** - Lifetime access to the SoulAlign® Business Online course, designed to assist you in building your b...
 ```
 
 ### Event Registration Intent
@@ -470,7 +453,7 @@ The SoulAlign® Business program is designed to help start-ups and established c
 - **User:** "How do I register for The Identity Switch?"
 - **Expected Intent:** `event`
 - **Actual Intent:** `event`
-- **Response Time:** 450ms
+- **Response Time:** 465ms
 - **Keywords Found:** Identity Switch
 - **Keywords Missing:** register, ticket
 
@@ -503,7 +486,7 @@ And You’r...
 - **User:** "I want to book a spot at the Dubai meditation event"
 - **Expected Intent:** `event`
 - **Actual Intent:** `event`
-- **Response Time:** 425ms
+- **Response Time:** 447ms
 - **Keywords Found:** Dubai, meditation, Success Redefined
 
 **Response Excerpt:**
@@ -521,21 +504,19 @@ Here are the details for this event:
 
 *Test when name exists as both program and event*
 
-**Turn 1:** FAIL
+**Turn 1:** PASS
 
 - **User:** "Tell me about SoulAlign Heal"
-- **Expected Intent:** `clarification, event, knowledge`
+- **Expected Intent:** `clarification, event, knowledge, hybrid`
 - **Actual Intent:** `hybrid`
-- **Response Time:** 3137ms
+- **Response Time:** 3727ms
 - **Keywords Found:** SoulAlign, Heal
 
 **Response Excerpt:**
 ```
-SoulAlign® Heal is a multidimensional recalibration experience designed for those ready to step beyond traditional healing and embrace their divine consciousness. Here's what it offers:
+SoulAlign® Heal is a transformative multidimensional recalibration experience designed for those ready to leave behind the patterns of trauma and step into their God Consciousness. It's about shifting from merely healing the body to recognizing that you are the frequency broadcasting through it.
 
-1. **Radical Shift** - Transition from fixing the past to remembering your inherent wholeness and divinity.
-
-2. *...
+He...
 ```
 
 ### Date '1st of June' Not Ordinal
@@ -547,7 +528,7 @@ SoulAlign® Heal is a multidimensional recalibration experience designed for tho
 - **User:** "Any events on the 1st of June?"
 - **Expected Intent:** `event`
 - **Actual Intent:** `event`
-- **Response Time:** 392ms
+- **Response Time:** 472ms
 - **Keywords Found:** June
 
 **Response Excerpt:**
@@ -571,79 +552,73 @@ Here are the upcoming events:
 - **User:** "What's happening on 3rd July?"
 - **Expected Intent:** `event`
 - **Actual Intent:** `event`
-- **Response Time:** 3934ms
+- **Response Time:** 10374ms
 - **Keywords Found:** event
 - **Keywords Missing:** July
 
 **Response Excerpt:**
 ```
-Here are our upcoming events: 
+Here are our upcoming events:  
 
 **SoulAlign® Heal**  
 **When:** June 03 - September 30, 2026 | Sessions at 4:00 PM (London time)  
 **Where:** Zoom  
 
----
+---  
 
-**About this event:**
+**About this event:**  
 
-*SOULALIGN® QUANTUM HEALING THROUGH GOD CONSCIOUSNESS TO HAVE IT ALL!*
+*SOULALIGN® QUANTUM HEALING THROUGH GOD CONSCIOUSNESS TO HAVE IT ALL!*  
 
-SoulAlign® Heal
+SoulAlign® Heal  
 
-*WITH ANNA KITNEY*
+*WITH ANNA KITNEY*  
 
-**$150M+**  
-...
+**...
 ```
 
 ### General Upcoming Events
 
 *Test general event listing*
 
-**Turn 1:** FAIL
+**Turn 1:** PASS
 
 - **User:** "What events are coming up?"
 - **Expected Intent:** `event`
-- **Actual Intent:** `knowledge`
-- **Response Time:** 1677ms
-- **Keywords Found:** event
-- **Keywords Missing:** 1., 2.
+- **Actual Intent:** `event`
+- **Response Time:** 4369ms
+- **Keywords Found:** event, 1., 2.
 
 **Response Excerpt:**
 ```
 Here are our upcoming events:
 
-**The Identity Overflow**  
-Date: January 9-11, 2026  
-Location: Zoom  
-Description: Join us for a transformative 3-Part Challenge designed to explore and expand your identity. 
+1. [**The Identity Overflow**](https://www.annakitney.com/event/the-identity-overflow/) - Jan 09 - Jan 11, 2026 (Zoom)
 
-Would you like more details about any of these?
+2. [**SoulAlign® Manifestation Mastery**](https://www.annakitney.com/event/soulalign-manifestation-mastery/) - Jan 20 - Apr 07, 2026 (Zoom)
+
+3. [**Th...
 ```
 
 ### Event Location Query
 
 *Test event with location focus*
 
-**Turn 1:** FAIL
+**Turn 1:** PASS
 
 - **User:** "Are there any events in Dubai?"
 - **Expected Intent:** `event`
-- **Actual Intent:** `knowledge`
-- **Response Time:** 2366ms
-- **Keywords Found:** Dubai
-- **Keywords Missing:** Success Redefined, meditation
+- **Actual Intent:** `event`
+- **Response Time:** 4481ms
+- **Keywords Found:** Dubai, Success Redefined, meditation
 
 **Response Excerpt:**
 ```
-Here are our upcoming events in Dubai:
+Here are the upcoming events:
 
-1. **The Identity Overflow**  
-   Date: January 9-11, 2026  
-   Description: A 3-Part Challenge focused on unlocking your potential.
-
-Would you like more details about this event or any other upcoming events?
+1. [**The Identity Overflow**](https://www.annakitney.com/event/the-identity-overflow/) - Jan 09 - Jan 11, 2026 (Zoom)
+2. [**SoulAlign® Manifestation Mastery**](https://www.annakitney.com/event/soulalign-manifestation-mastery/) - Jan 20 - Apr 07, 2026 (Zoom)
+3. [**The ...
 ```
 
 ### Enrollment Intent
@@ -655,13 +630,12 @@ Would you like more details about this event or any other upcoming events?
 - **User:** "How do I enroll in SoulAlign Coach?"
 - **Expected Intent:** `knowledge, event`
 - **Actual Intent:** `knowledge`
-- **Response Time:** 1923ms
-- **Keywords Found:** enroll
-- **Keywords Missing:** SoulAlign Coach
+- **Response Time:** 2680ms
+- **Keywords Found:** enroll, SoulAlign Coach
 
 **Response Excerpt:**
 ```
-Wonderful! To enroll in the SoulAlign® Coach program, the first step is to schedule a complimentary [Clarity Call](https://www.annakitney.com/clarity-call/) with us. This will help us understand your goals and see how this program can best support you. Would you like me to take you to the Clarity Ca...
+Wonderful! SoulAlign Coach is part of our SoulAlign programs designed to help you create a thriving coaching business. The first step to enroll is to book a complimentary [Clarity Call](https://www.annakitney.com/clarity-call/). This allows us to understand your goals and see how this program can su...
 ```
 
 ### Bare 'yes' Without Context
@@ -673,7 +647,7 @@ Wonderful! To enroll in the SoulAlign® Coach program, the first step is to sche
 - **User:** "Hello"
 - **Expected Intent:** `greeting`
 - **Actual Intent:** `greeting`
-- **Response Time:** 392ms
+- **Response Time:** 389ms
 
 **Response Excerpt:**
 ```
@@ -685,11 +659,16 @@ Hello! I'm Anna's wellness assistant. I'm here to help you learn about our trans
 - **User:** "yes"
 - **Expected Intent:** `other, greeting, followup_confirm`
 - **Actual Intent:** `followup_confirm`
-- **Response Time:** 1354ms
+- **Response Time:** 1317ms
 
 **Response Excerpt:**
 ```
-I'm glad you're here! What specific questions or topics are you interested in? We can discuss our programs, upcoming events, or anything else on your mind.
+Great! What would you like to know more about? Our programs, upcoming events, or something else on your mind?
+
+---
+
+*Feel free to explore more when you're ready:*
+[Work With Me](https://www.annakitney.com/work-with-me/) | [All Programs](https://www.annakitney.com/all-the-things/)
 ```
 
 ### Add to Calendar Request
@@ -701,7 +680,7 @@ I'm glad you're here! What specific questions or topics are you interested in? W
 - **User:** "Can I add The Identity Switch to my calendar?"
 - **Expected Intent:** `event`
 - **Actual Intent:** `event`
-- **Response Time:** 2086ms
+- **Response Time:** 1760ms
 - **Keywords Found:** calendar, Identity Switch
 
 **Response Excerpt:**
@@ -718,7 +697,7 @@ I've added The Identity Switch to your calendar!
 - **User:** "What's happening in September 2026?"
 - **Expected Intent:** `event`
 - **Actual Intent:** `event`
-- **Response Time:** 1643ms
+- **Response Time:** 1483ms
 - **Keywords Found:** SoulAlign
 - **Keywords Missing:** September
 
@@ -732,18 +711,3 @@ Here are the upcoming events:
 
 Would you like more details about any of t...
 ```
-
----
-
-## Failed Tests Summary
-
-| Scenario | Turn | User Message | Expected | Actual |
-|----------|------|--------------|----------|--------|
-| date_month_query_march | 1 | What events are happening in M... | event | knowledge |
-| date_month_query_january | 1 | Show me events in January... | event | knowledge |
-| ordinal_selection_after_list | 1 | What events do you have?... | event | knowledge |
-| ordinal_option_2 | 1 | What events are coming up?... | event | knowledge |
-| followup_tell_me_more | 1 | What's the Success Redefined m... | event | hybrid |
-| disambiguation_soualign_heal | 1 | Tell me about SoulAlign Heal... | clarification, event, knowledge | hybrid |
-| upcoming_events_general | 1 | What events are coming up?... | event | knowledge |
-| event_location | 1 | Are there any events in Dubai?... | event | knowledge |
