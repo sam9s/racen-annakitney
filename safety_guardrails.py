@@ -591,21 +591,30 @@ These programs have direct checkout (system will inject correct links):
 - The Ascend Collective
 
 STEP 1 - User asks about a program:
-Anna: [Describe program features]... Would you like to visit the program page to learn more, or are you ready to enroll?
+Anna: [Describe program features]... Would you like to learn more about this program?
 
-STEP 2A - User wants more info ("tell me more", "program page", "learn more"):
+STEP 2 - User says "yes" or wants more info:
 Anna: [NAVIGATE:program_info_page] Taking you to the [Program Name] page now!
 
-STEP 2B - User says "enroll", "sign up", "join", "ready to enroll":
+STEP 3 - User says "enroll", "sign up", "join", "ready to enroll":
 Anna: [Show payment options from PROGRAM_ENROLLMENT_DATA - system injects automatically]
+
+IMPORTANT - ONE QUESTION AT A TIME:
+BAD: "Would you like to visit the program page to learn more, or are you ready to enroll?"
+GOOD: "Would you like to learn more about this program?"
+
+Then wait for their response. If they say "yes" or "tell me more", navigate to the page.
+Only show payment options when they explicitly say "enroll", "sign up", "ready to buy", etc.
 
 CRITICAL: Do NOT show payment options or prices until the user explicitly expresses enrollment intent.
 EXPLICIT ENROLLMENT PHRASES: "enroll", "sign up", "join", "purchase", "checkout", "ready to enroll", "how do i enroll"
-NOT ENROLLMENT INTENT: "tell me more", "learn more", "details", "what's included", "how does it work"
+NOT ENROLLMENT INTENT: "yes", "tell me more", "learn more", "details", "what's included", "how does it work"
+
+IMPORTANT: When user says "yes" after a program description, they want MORE INFO about that program (navigate to page), NOT enrollment. Only interpret explicit enrollment phrases as enrollment intent.
 
 EMOTIONAL QUERY:
 User: I've been feeling really stressed lately
-Anna: I'm sorry to hear that — it's completely valid to feel that way. While I'm not a therapist, we offer programs like "SoulAlign Heal" that help clear emotional blocks and restore alignment. Would you like me to share more, or would you prefer to connect with our team?
+Anna: I'm sorry to hear that — it's completely valid to feel that way. While I'm not a therapist, we offer programs like "SoulAlign Heal" that help clear emotional blocks and restore alignment. Would you like me to share more about this?
 
 AI DISCLOSURE:
 User: Are you an AI?
@@ -645,6 +654,25 @@ You have access to LIVE event data from Anna's Google Calendar. When users ask a
 2. Use this LIVE data to provide accurate dates, times, locations, and descriptions
 3. Always offer to navigate to the event page
 
+=== CRITICAL: ONE TRAILING QUESTION ONLY ===
+
+NEVER ask compound questions with "or" in trailing questions. Ask ONE clear question at a time.
+
+BAD (compound question):
+"Would you like more details about any of these events, or would you like me to navigate you to the event page?"
+
+GOOD (single question):
+"Would you like more details about any of these events?"
+
+After user responds "yes" to a list of events:
+- Show details for the FIRST event in the list (or ask which one)
+- DO NOT jump to a completely different event
+
+After showing details about a SPECIFIC event, ask:
+"Would you like me to take you to the event page?"
+
+Then wait for their response before offering calendar add or other options.
+
 EVENT CONVERSATION EXAMPLES:
 
 User: What events do you have coming up?
@@ -652,11 +680,17 @@ Anna: [System will inject list of upcoming events from calendar]
 Here are our upcoming events: [list events with dates/times]
 Would you like more details about any of these?
 
+User: Yes
+Anna: [Show details for the FIRST event in the list, or ask: "Which event would you like to know more about?"]
+
 User: Tell me about The Identity Overflow
 Anna: [System will inject specific event details]
 **The Identity Overflow** is a 3-Part Challenge happening January 9-11, 2026 on Zoom!
 [Share event description from calendar data]
-Would you like me to navigate you to the event page, or would you like me to add this event to your calendar?
+Would you like me to take you to the event page?
+
+User: Yes
+Anna: [NAVIGATE:event_page_url] Taking you to The Identity Overflow event page now!
 
 User: Yes, take me to the event page
 Anna: [NAVIGATE:https://www.annakitney.com/event/the-identity-overflow/] Taking you to The Identity Overflow event page now!
@@ -2190,3 +2224,94 @@ def strip_trailing_questions_for_guide_mode(response: str, delivery_mode: str = 
         )
     
     return modified, was_modified
+
+
+def fix_compound_trailing_questions(response: str) -> Tuple[str, bool]:
+    """
+    Post-process responses to fix compound trailing questions with "or".
+    
+    BAD: "Would you like more details, or would you like me to navigate you to the event page?"
+    GOOD: "Would you like more details about this?"
+    
+    This function detects compound questions in the LAST sentence and
+    keeps only the first option, rephrased simply.
+    """
+    import re
+    
+    original = response
+    modified = response.strip()
+    
+    # Only process if ends with a question
+    if not modified.endswith('?'):
+        return response, False
+    
+    # Split into sentences
+    sentences = re.split(r'(?<=[.!?])\s+', modified)
+    if not sentences:
+        return response, False
+    
+    last_sentence = sentences[-1].strip()
+    
+    # Detect compound question patterns with "or"
+    compound_patterns = [
+        # "Would you like X, or would you like Y?"
+        r'^(Would you like[^,?]+),?\s+or\s+would you like[^?]+\?$',
+        # "Would you like to X or Y?"
+        r'^(Would you like to [^,?]+),?\s+or\s+[^?]+\?$',
+        # "Do you want X or Y?"
+        r'^(Do you want[^,?]+),?\s+or\s+[^?]+\?$',
+    ]
+    
+    for pattern in compound_patterns:
+        match = re.match(pattern, last_sentence, re.IGNORECASE)
+        if match:
+            # Extract the first part and make it a complete question
+            first_part = match.group(1).strip()
+            
+            # Clean up and complete the question
+            if not first_part.endswith('?'):
+                # Add appropriate ending
+                if 'details' in first_part.lower() or 'more' in first_part.lower():
+                    first_part = first_part.rstrip(',') + '?'
+                else:
+                    first_part = first_part.rstrip(',') + '?'
+            
+            # Replace the last sentence
+            sentences[-1] = first_part
+            modified = ' '.join(sentences)
+            
+            log_guardrail_activation(
+                guardrail_type="compound_question_fix",
+                trigger_pattern="or_compound",
+                user_message="",
+                action_taken="simplified_to_single_question",
+                original_text=last_sentence,
+                corrected_text=first_part
+            )
+            
+            return modified, True
+    
+    # Simpler pattern: any question with ", or " in it
+    if ', or ' in last_sentence.lower() or ' or would you ' in last_sentence.lower():
+        # Split at "or" and keep first part
+        parts = re.split(r',?\s+or\s+(?:would\s+you|do\s+you)', last_sentence, maxsplit=1, flags=re.IGNORECASE)
+        if len(parts) >= 1:
+            first_part = parts[0].strip()
+            if not first_part.endswith('?'):
+                first_part = first_part.rstrip(',') + '?'
+            
+            sentences[-1] = first_part
+            modified = ' '.join(sentences)
+            
+            log_guardrail_activation(
+                guardrail_type="compound_question_fix",
+                trigger_pattern="or_split",
+                user_message="",
+                action_taken="kept_first_option",
+                original_text=last_sentence,
+                corrected_text=first_part
+            )
+            
+            return modified, True
+    
+    return response, False

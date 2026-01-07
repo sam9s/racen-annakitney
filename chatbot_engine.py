@@ -23,7 +23,7 @@ from typing import List, Optional
 from tenacity import retry, stop_after_attempt, wait_exponential, retry_if_exception
 
 from knowledge_base import search_knowledge_base, get_knowledge_base_stats
-from safety_guardrails import apply_safety_filters, get_system_prompt, filter_response_for_safety, inject_program_links, inject_checkout_urls, append_contextual_links, format_numbered_lists, inject_dynamic_enrollment
+from safety_guardrails import apply_safety_filters, get_system_prompt, filter_response_for_safety, inject_program_links, inject_checkout_urls, append_contextual_links, format_numbered_lists, inject_dynamic_enrollment, fix_compound_trailing_questions
 from events_service import is_event_query, get_event_context_for_llm, process_calendar_action, fix_navigation_urls
 from intent_router import get_intent_router, IntentType, refresh_router_data
 
@@ -472,7 +472,8 @@ FOLLOW-UP QUESTIONS (choose ONE that's most relevant):
         assistant_message = response.choices[0].message.content
         
         formatted_response = format_numbered_lists(assistant_message)
-        filtered_response, was_filtered = filter_response_for_safety(formatted_response)
+        fixed_questions_response, _ = fix_compound_trailing_questions(formatted_response)
+        filtered_response, was_filtered = filter_response_for_safety(fixed_questions_response)
         
         response_with_enrollment = inject_dynamic_enrollment(filtered_response, user_message, conversation_history)
         
@@ -665,7 +666,8 @@ FOLLOW-UP QUESTIONS (choose ONE that's most relevant):
                     yield {"type": "content", "content": content}
         
         formatted_response = format_numbered_lists(full_response)
-        filtered_response, was_filtered = filter_response_for_safety(formatted_response)
+        fixed_questions_response, _ = fix_compound_trailing_questions(formatted_response)
+        filtered_response, was_filtered = filter_response_for_safety(fixed_questions_response)
         response_with_enrollment = inject_dynamic_enrollment(filtered_response, user_message, conversation_history)
         response_with_checkout_urls = inject_checkout_urls(response_with_enrollment, user_message)
         response_with_links = inject_program_links(response_with_checkout_urls)
