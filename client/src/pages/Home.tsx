@@ -93,27 +93,80 @@ function renderMessageContent(text: string): ReactNode[] {
       return;
     }
     
-    // CRITICAL: Use a single combined regex to parse in correct order
-    // This ensures markdown links are fully matched before URLs inside them can be matched separately
-    // Order: [text](url) -> **bold** -> *italic* -> raw https URLs
-    const combinedRegex = /\[([^\]]+)\]\(([^)]+)\)|(\*\*)([^*]+)\*\*|(?:^|[^*])(\*)([^*]+)\*(?:[^*]|$)|(https?:\/\/[^\s<>")\]]+)/g;
-    let lastIndex = 0;
-    let match;
-    let matchCount = 0;
+    // CRITICAL: Parse markdown in correct order to handle **[text](url)** pattern
+    // The LLM outputs bold-wrapped links like **[Elite Private Advisory](url)**
+    // We need to match: 1) bold-wrapped links, 2) plain links, 3) bold, 4) raw URLs
+    const boldLinkRegex = /\*\*\[([^\]]+)\]\(([^)]+)\)\*\*/g;
+    const linkRegex = /\[([^\]]+)\]\(([^)]+)\)/g;
+    const boldRegex = /\*\*([^*]+)\*\*/g;
+    const urlRegex = /(https?:\/\/[^\s<>")\]]+)/g;
     
+    let lastIndex = 0;
+    let matchCount = 0;
     const lineNodes: ReactNode[] = [];
     
-    while ((match = combinedRegex.exec(line)) !== null) {
+    // Build a list of all matches with their positions
+    type MatchInfo = { start: number; end: number; type: string; groups: string[] };
+    const allMatches: MatchInfo[] = [];
+    
+    // Find bold-wrapped links FIRST (highest priority)
+    let m;
+    while ((m = boldLinkRegex.exec(line)) !== null) {
+      allMatches.push({ start: m.index, end: m.index + m[0].length, type: 'boldLink', groups: [m[1], m[2]] });
+    }
+    
+    // Find plain links (skip if overlaps with bold link)
+    while ((m = linkRegex.exec(line)) !== null) {
+      const overlaps = allMatches.some(x => m!.index >= x.start && m!.index < x.end);
+      if (!overlaps) {
+        allMatches.push({ start: m.index, end: m.index + m[0].length, type: 'link', groups: [m[1], m[2]] });
+      }
+    }
+    
+    // Find bold text (skip if overlaps)
+    while ((m = boldRegex.exec(line)) !== null) {
+      const overlaps = allMatches.some(x => m!.index >= x.start && m!.index < x.end);
+      if (!overlaps) {
+        allMatches.push({ start: m.index, end: m.index + m[0].length, type: 'bold', groups: [m[1]] });
+      }
+    }
+    
+    // Find raw URLs (skip if overlaps)
+    while ((m = urlRegex.exec(line)) !== null) {
+      const overlaps = allMatches.some(x => m!.index >= x.start && m!.index < x.end);
+      if (!overlaps) {
+        allMatches.push({ start: m.index, end: m.index + m[0].length, type: 'url', groups: [m[0]] });
+      }
+    }
+    
+    // Sort by position
+    allMatches.sort((a, b) => a.start - b.start);
+    
+    // Process matches in order
+    for (const match of allMatches) {
       // Add text before this match
-      if (match.index > lastIndex) {
-        lineNodes.push(line.substring(lastIndex, match.index));
+      if (match.start > lastIndex) {
+        lineNodes.push(line.substring(lastIndex, match.start));
       }
       
-      if (match[1] !== undefined && match[2] !== undefined) {
-        // Markdown link: [text](url)
-        let linkText = match[1];
-        const linkUrl = match[2];
-        
+      if (match.type === 'boldLink') {
+        // **[text](url)** - bold link
+        lineNodes.push(
+          <a
+            key={`link-${lineIndex}-${matchCount}`}
+            href={match.groups[1]}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-primary hover:text-primary/80 underline font-bold"
+            data-testid={`link-program-${matchCount}`}
+          >
+            {match.groups[0]}
+          </a>
+        );
+        matchCount++;
+      } else if (match.type === 'link') {
+        // [text](url) - plain link
+        let linkText = match.groups[0];
         // Check if link text has bold markers **text**
         const boldInLink = linkText.match(/^\*\*(.+)\*\*$/);
         const linkContent = boldInLink ? <strong>{boldInLink[1]}</strong> : linkText;
@@ -121,7 +174,7 @@ function renderMessageContent(text: string): ReactNode[] {
         lineNodes.push(
           <a
             key={`link-${lineIndex}-${matchCount}`}
-            href={linkUrl}
+            href={match.groups[1]}
             target="_blank"
             rel="noopener noreferrer"
             className="text-primary hover:text-primary/80 underline"
@@ -131,44 +184,26 @@ function renderMessageContent(text: string): ReactNode[] {
           </a>
         );
         matchCount++;
-        lastIndex = match.index + match[0].length;
-      } else if (match[3] !== undefined && match[4] !== undefined) {
-        // Bold text: **text**
-        lineNodes.push(<strong key={`bold-${lineIndex}-${matchCount}`}>{match[4]}</strong>);
+      } else if (match.type === 'bold') {
+        lineNodes.push(<strong key={`bold-${lineIndex}-${matchCount}`}>{match.groups[0]}</strong>);
         matchCount++;
-        lastIndex = match.index + match[0].length;
-      } else if (match[5] !== undefined && match[6] !== undefined) {
-        // Italic text: *text* (with boundary handling)
-        // Add any leading non-* char back
-        const fullMatch = match[0];
-        const italicStart = fullMatch.indexOf('*');
-        const italicEnd = fullMatch.lastIndexOf('*');
-        if (italicStart > 0) {
-          lineNodes.push(fullMatch.substring(0, italicStart));
-        }
-        lineNodes.push(<em key={`italic-${lineIndex}-${matchCount}`} className="text-muted-foreground">{match[6]}</em>);
-        if (italicEnd < fullMatch.length - 1) {
-          lineNodes.push(fullMatch.substring(italicEnd + 1));
-        }
-        matchCount++;
-        lastIndex = match.index + match[0].length;
-      } else if (match[7] !== undefined) {
-        // Raw URL
+      } else if (match.type === 'url') {
         lineNodes.push(
           <a
             key={`url-${lineIndex}-${matchCount}`}
-            href={match[7]}
+            href={match.groups[0]}
             target="_blank"
             rel="noopener noreferrer"
             className="text-primary hover:text-primary/80 underline break-all"
             data-testid={`link-url-${matchCount}`}
           >
-            {match[7]}
+            {match.groups[0]}
           </a>
         );
         matchCount++;
-        lastIndex = match.index + match[0].length;
       }
+      
+      lastIndex = match.end;
     }
     
     // Add remaining text after last match

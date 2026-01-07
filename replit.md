@@ -163,6 +163,11 @@ Anna Kitney Coaching calendar: `cms370prol01ksuq304erj1gmdug1v4m@import.calendar
 - Knowledge base ready for content ingestion
 
 ## Important Technical Notes
-- **Markdown Parsing Order**: Always match `[text](url)` BEFORE `**bold**` to prevent breaking links with bold text inside
+- **Markdown Parsing Order**: The LLM outputs `**[text](url)**` format (bold WRAPPING the link). The parsing order MUST be:
+  1. `**[text](url)**` - Bold-wrapped links (highest priority)
+  2. `[text](url)` - Plain markdown links
+  3. `**text**` - Bold text
+  4. Raw URLs
+  This is implemented in both `Home.tsx` (renderMessageContent) and `widget.js` (createSafeContent) using separate regex patterns with overlap detection.
 - **Two Websites**: annakitney.com (marketing) and annakitneyportal.com (checkout, requires www. prefix)
 - **VERBATIM Delimiters**: Used in chatbot_engine.py to prevent LLM from paraphrasing event data

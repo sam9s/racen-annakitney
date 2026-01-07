@@ -780,53 +780,97 @@
         return;
       }
       
-      // Process each line for links, bold, italic, and URLs
-      // CRITICAL: Markdown links MUST be matched FIRST to prevent URLs inside them from being matched separately
-      // Order: [text](url) -> **bold** -> *italic* -> raw https URLs
-      // NOTE: No lookbehind assertions for browser compatibility
-      const combinedRegex = /\[([^\]]+)\]\(([^)]+)\)|(\*\*)([^*]+)\*\*|(https?:\/\/[^\s<>"\)\]]+)/g;
+      // CRITICAL: Parse markdown in correct order to handle **[text](url)** pattern
+      // The LLM outputs bold-wrapped links like **[Elite Private Advisory](url)**
+      // We need to match: 1) bold-wrapped links, 2) plain links, 3) bold, 4) raw URLs
+      const boldLinkRegex = /\*\*\[([^\]]+)\]\(([^)]+)\)\*\*/g;
+      const linkRegex = /\[([^\]]+)\]\(([^)]+)\)/g;
+      const boldRegex = /\*\*([^*]+)\*\*/g;
+      const urlRegex = /(https?:\/\/[^\s<>"\)\]]+)/g;
+      
       let lastIndex = 0;
-      let match;
-
-      while ((match = combinedRegex.exec(line)) !== null) {
-        if (match.index > lastIndex) {
-          const textBefore = line.substring(lastIndex, match.index);
-          container.appendChild(document.createTextNode(textBefore));
+      const allMatches = [];
+      let m;
+      
+      // Find bold-wrapped links FIRST (highest priority)
+      while ((m = boldLinkRegex.exec(line)) !== null) {
+        allMatches.push({ start: m.index, end: m.index + m[0].length, type: 'boldLink', text: m[1], url: m[2] });
+      }
+      
+      // Find plain links (skip if overlaps with bold link)
+      while ((m = linkRegex.exec(line)) !== null) {
+        const overlaps = allMatches.some(function(x) { return m.index >= x.start && m.index < x.end; });
+        if (!overlaps) {
+          allMatches.push({ start: m.index, end: m.index + m[0].length, type: 'link', text: m[1], url: m[2] });
+        }
+      }
+      
+      // Find bold text (skip if overlaps)
+      while ((m = boldRegex.exec(line)) !== null) {
+        const overlaps = allMatches.some(function(x) { return m.index >= x.start && m.index < x.end; });
+        if (!overlaps) {
+          allMatches.push({ start: m.index, end: m.index + m[0].length, type: 'bold', text: m[1] });
+        }
+      }
+      
+      // Find raw URLs (skip if overlaps)
+      while ((m = urlRegex.exec(line)) !== null) {
+        const overlaps = allMatches.some(function(x) { return m.index >= x.start && m.index < x.end; });
+        if (!overlaps) {
+          allMatches.push({ start: m.index, end: m.index + m[0].length, type: 'url', text: m[0] });
+        }
+      }
+      
+      // Sort by position
+      allMatches.sort(function(a, b) { return a.start - b.start; });
+      
+      // Process matches in order
+      for (var i = 0; i < allMatches.length; i++) {
+        var match = allMatches[i];
+        
+        // Add text before this match
+        if (match.start > lastIndex) {
+          container.appendChild(document.createTextNode(line.substring(lastIndex, match.start)));
         }
         
-        if (match[1] !== undefined && match[2] !== undefined) {
-          // Markdown link: [text](url) - MUST be checked first
-          let linkText = match[1];
-          const linkUrl = match[2];
+        if (match.type === 'boldLink') {
+          // **[text](url)** - bold link
           const link = document.createElement('a');
-          link.href = linkUrl;
+          link.href = match.url;
+          link.target = '_blank';
+          link.rel = 'noopener noreferrer';
+          link.style.color = '#03a9f4';
+          link.style.textDecoration = 'underline';
+          link.style.fontWeight = 'bold';
+          link.textContent = match.text;
+          container.appendChild(link);
+        } else if (match.type === 'link') {
+          // [text](url) - plain link
+          const link = document.createElement('a');
+          link.href = match.url;
           link.target = '_blank';
           link.rel = 'noopener noreferrer';
           link.style.color = '#03a9f4';
           link.style.textDecoration = 'underline';
           
-          // Process bold inside link text: **text** -> <strong>text</strong>
-          const boldInLink = linkText.match(/^\*\*(.+)\*\*$/);
+          // Check if link text has bold markers **text**
+          const boldInLink = match.text.match(/^\*\*(.+)\*\*$/);
           if (boldInLink) {
             const strong = document.createElement('strong');
             strong.textContent = boldInLink[1];
             link.appendChild(strong);
           } else {
-            link.textContent = linkText;
+            link.textContent = match.text;
           }
           container.appendChild(link);
-        } else if (match[3] !== undefined && match[4] !== undefined) {
-          // Bold text: **text**
-          const boldText = match[4];
+        } else if (match.type === 'bold') {
           const strong = document.createElement('strong');
-          strong.textContent = boldText;
+          strong.textContent = match.text;
           container.appendChild(strong);
-        } else if (match[5] !== undefined) {
-          // Raw URL
-          const plainUrl = match[5];
+        } else if (match.type === 'url') {
           const link = document.createElement('a');
-          link.href = plainUrl;
-          link.textContent = plainUrl;
+          link.href = match.text;
+          link.textContent = match.text;
           link.target = '_blank';
           link.rel = 'noopener noreferrer';
           link.style.color = '#03a9f4';
@@ -834,7 +878,7 @@
           container.appendChild(link);
         }
         
-        lastIndex = match.index + match[0].length;
+        lastIndex = match.end;
       }
       
       if (lastIndex < line.length) {
