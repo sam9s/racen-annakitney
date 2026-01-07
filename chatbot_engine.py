@@ -292,8 +292,35 @@ ONLY say something like: "Great to see you back! How can I help you today?"
 """
     
     event_context = ""
+    direct_event_content = None
+    
     if is_event_query(user_message):
         event_context = get_event_context_for_llm(user_message, conversation_history)
+        
+        # Check for DIRECT_EVENT marker - bypass LLM paraphrasing
+        # When this marker is present, event data is injected directly without LLM rewriting
+        if "{{DIRECT_EVENT}}" in event_context and "{{/DIRECT_EVENT}}" in event_context:
+            import re
+            direct_match = re.search(r'\{\{DIRECT_EVENT\}\}(.*?)\{\{/DIRECT_EVENT\}\}', event_context, re.DOTALL)
+            if direct_match:
+                direct_event_content = direct_match.group(1).strip()
+                # Extract metadata for navigation/calendar actions
+                event_context = event_context.split("{{/DIRECT_EVENT}}")[1] if "{{/DIRECT_EVENT}}" in event_context else ""
+    
+    # If we have direct event content, return it immediately without LLM
+    if direct_event_content:
+        # Add a brief intro from LLM, then inject event data directly
+        intro = "Here are the details for this event:\n\n"
+        final_response = intro + direct_event_content
+        
+        return {
+            "response": final_response,
+            "sources": [],
+            "safety_triggered": False,
+            "safety_category": None,
+            "calendar_action": False,
+            "direct_event": True  # Flag indicating this bypassed LLM
+        }
     
     augmented_system_prompt = f"""{system_prompt}
 {personalization_context}
@@ -457,8 +484,28 @@ ONLY say something like: "Great to see you back! How can I help you today?"
 """
     
     event_context_stream = ""
+    direct_event_content_stream = None
+    
     if is_event_query(user_message):
         event_context_stream = get_event_context_for_llm(user_message, conversation_history)
+        
+        # Check for DIRECT_EVENT marker - bypass LLM paraphrasing
+        if "{{DIRECT_EVENT}}" in event_context_stream and "{{/DIRECT_EVENT}}" in event_context_stream:
+            import re
+            direct_match = re.search(r'\{\{DIRECT_EVENT\}\}(.*?)\{\{/DIRECT_EVENT\}\}', event_context_stream, re.DOTALL)
+            if direct_match:
+                direct_event_content_stream = direct_match.group(1).strip()
+                event_context_stream = event_context_stream.split("{{/DIRECT_EVENT}}")[1] if "{{/DIRECT_EVENT}}" in event_context_stream else ""
+    
+    # If we have direct event content, yield it immediately without LLM
+    if direct_event_content_stream:
+        intro = "Here are the details for this event:\n\n"
+        final_response = intro + direct_event_content_stream
+        
+        # Yield as single chunk for direct event responses
+        yield {"type": "content", "content": final_response}
+        yield {"type": "done", "sources": [], "safety_triggered": False, "direct_event": True}
+        return
     
     augmented_system_prompt = f"""{system_prompt}
 {personalization_context}

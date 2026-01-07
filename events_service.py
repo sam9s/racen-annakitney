@@ -3,12 +3,19 @@ Events Service for Anna Kitney Wellness Chatbot
 
 Fetches event data from Google Calendar via the Express API.
 Provides formatted event information for chatbot responses.
+
+CRITICAL: This service uses FUZZY MATCHING for event lookup.
+- No hardcoded event names - works with any event in the database
+- Returns event data DIRECTLY without LLM paraphrasing
+- Disambiguation prompt when multiple events match
 """
 
 import os
+import re
 import requests
-from typing import List, Optional, Dict
+from typing import List, Optional, Dict, Tuple
 from datetime import datetime, timezone, timedelta
+from difflib import SequenceMatcher
 
 # Common timezone offsets (hours from UTC)
 TIMEZONE_OFFSETS = {
@@ -23,6 +30,74 @@ TIMEZONE_OFFSETS = {
 }
 
 EXPRESS_API_URL = os.environ.get("EXPRESS_API_URL", "http://localhost:5000")
+
+# Fuzzy matching threshold - events scoring above this are considered matches
+FUZZY_MATCH_THRESHOLD = 0.4  # 40% similarity minimum
+CONFIDENT_MATCH_THRESHOLD = 0.6  # 60%+ means high confidence single match
+
+
+def fuzzy_match_score(query: str, text: str) -> float:
+    """
+    Calculate fuzzy match score between query and text.
+    Uses multiple strategies for robust matching:
+    1. Exact substring match (highest score)
+    2. Word overlap ratio
+    3. Sequence similarity
+    
+    Returns score between 0.0 and 1.0
+    """
+    query_lower = query.lower().strip()
+    text_lower = text.lower().strip()
+    
+    # Exact substring match = perfect score
+    if query_lower in text_lower:
+        return 1.0
+    
+    # Check if all query words appear in text
+    query_words = set(re.findall(r'\w+', query_lower))
+    text_words = set(re.findall(r'\w+', text_lower))
+    
+    if query_words and query_words.issubset(text_words):
+        return 0.95
+    
+    # Word overlap ratio
+    common_words = query_words & text_words
+    if query_words:
+        word_overlap = len(common_words) / len(query_words)
+    else:
+        word_overlap = 0
+    
+    # Sequence similarity (handles typos, partial matches)
+    sequence_score = SequenceMatcher(None, query_lower, text_lower).ratio()
+    
+    # Combined score (weighted average)
+    return max(word_overlap * 0.7 + sequence_score * 0.3, sequence_score)
+
+
+def find_matching_events(query: str, events: List[Dict]) -> List[Tuple[Dict, float]]:
+    """
+    Find all events that match the query using fuzzy matching.
+    Returns list of (event, score) tuples sorted by score descending.
+    
+    This works with ANY event name - no hardcoding required.
+    """
+    matches = []
+    
+    for event in events:
+        title = event.get("title", "")
+        
+        # Calculate match score against title
+        score = fuzzy_match_score(query, title)
+        
+        # Only include events above threshold
+        if score >= FUZZY_MATCH_THRESHOLD:
+            matches.append((event, score))
+    
+    # Sort by score descending
+    matches.sort(key=lambda x: x[1], reverse=True)
+    
+    return matches
+
 
 class CalendarServiceError(Exception):
     """Raised when the calendar service is unavailable."""
@@ -557,7 +632,12 @@ The live event calendar is temporarily unavailable. Please direct the user to:
 
 
 def _get_event_context_internal(user_message: str, conversation_history: List[Dict] = None) -> str:
-    """Internal implementation of get_event_context_for_llm."""
+    """
+    Internal implementation of get_event_context_for_llm.
+    
+    Uses FUZZY MATCHING to find events - NO HARDCODED EVENT NAMES.
+    This works with any event in the database regardless of name changes.
+    """
     message_lower = user_message.lower()
     
     # Handle navigation requests (user wants to go to event page)
@@ -601,88 +681,7 @@ Here are the upcoming events they might be interested in:
 Ask them which event they'd like to add to their calendar.
 """
     
-    # Check if user is asking about a specific event by searching all events from database
-    all_events = get_upcoming_events(20)
-    
-    # Keywords that indicate user is asking about an event
-    event_detail_keywords = ["details", "about", "tell me", "what is", "give me", "info", "information"]
-    is_asking_for_details = any(kw in message_lower for kw in event_detail_keywords)
-    
-    # Try to match against actual event titles from database
-    # CRITICAL: Use specific multi-word phrases FIRST to avoid false positives
-    # Sort events to prioritize more specific matches
-    
-    best_match = None
-    best_match_score = 0
-    
-    for event in all_events:
-        title = event.get("title", "")
-        title_lower = title.lower().replace("®", "")
-        
-        # Calculate match score - higher score = better match
-        match_score = 0
-        
-        # Specific multi-word phrase matches (highest priority)
-        if "identity switch" in title_lower and "identity switch" in message_lower:
-            match_score = 100
-        elif "identity switch" in title_lower and "switch" in message_lower:
-            match_score = 90
-        elif "identity overflow" in title_lower and ("overflow" in message_lower or "identity overflow" in message_lower):
-            match_score = 100
-        elif "manifestation mastery" in title_lower and ("manifestation" in message_lower or "mastery" in message_lower):
-            match_score = 80
-        elif "success redefined" in title_lower and ("success redefined" in message_lower or ("success" in message_lower and "meditation" in message_lower)):
-            match_score = 100
-        elif ("meditation" in title_lower and "dubai" in title_lower) and ("meditation" in message_lower or "dubai" in message_lower):
-            match_score = 85
-        elif "soulalign" in title_lower and "coach" in title_lower and "coach" in message_lower:
-            match_score = 80
-        elif "soulalign" in title_lower and "heal" in title_lower and "heal" in message_lower:
-            match_score = 80
-        elif "soulalign" in title_lower and "business" in title_lower and "business" in message_lower:
-            match_score = 80
-        
-        # Track best match
-        if match_score > best_match_score:
-            best_match = event
-            best_match_score = match_score
-    
-    # Use best matching event if found
-    if best_match and best_match_score > 0:
-        event = best_match
-        formatted_event = format_event_for_chat(event)
-        event_page = event.get('eventPageUrl', '')
-        event_title = event.get('title', '')
-        
-        # Build follow-up instruction based on available URLs
-        if event_page:
-            follow_up = f"""
-MANDATORY FOLLOW-UP (add this at the very end of your response):
-"Would you like me to take you to the [event page]({event_page}) to learn more or enroll?"
-
-If user says yes/navigate: Use [NAVIGATE:{event_page}]
-If user wants calendar: Use [ADD_TO_CALENDAR:{event_title}]
-"""
-        else:
-            follow_up = f"""
-FOLLOW-UP (add this at the very end of your response):
-"Would you like to add this event to your calendar, or do you have any questions about it?"
-
-If user wants calendar: Use [ADD_TO_CALENDAR:{event_title}]
-"""
-        
-        return f"""
-=== VERBATIM EVENT DATA (DO NOT PARAPHRASE) ===
-{formatted_event}
-=== END VERBATIM DATA ===
-
-CRITICAL INSTRUCTIONS FOR THIS RESPONSE:
-1. Copy the event information above EXACTLY as shown - DO NOT rewrite, summarize, or paraphrase
-2. Preserve ALL markdown formatting including **bold**, *italics*, [links](url), and --- dividers
-3. Keep EVERY detail including dates, times, locations, and the full description
-4. DO NOT drop any information or shorten the content
-{follow_up}"""
-    
+    # Check if user is asking about upcoming events list
     if any(kw in message_lower for kw in ["events", "upcoming", "what's happening", "schedule", "calendar"]):
         events = get_upcoming_events(10)
         events_list = format_events_list(events)
@@ -701,7 +700,107 @@ CRITICAL INSTRUCTIONS FOR THIS RESPONSE:
 Events Page: https://www.annakitney.com/events/
 """
     
+    # FUZZY MATCHING: Find events that match user's query
+    # This works with ANY event name - no hardcoding required
+    all_events = get_upcoming_events(20)
+    
+    if not all_events:
+        return ""
+    
+    # Use fuzzy matching to find relevant events
+    matches = find_matching_events(user_message, all_events)
+    
+    if not matches:
+        # No matches found - return empty, let LLM handle naturally
+        return ""
+    
+    # Check if we have a confident single match
+    top_match, top_score = matches[0]
+    
+    # If top match is significantly better than second best, use it directly
+    if len(matches) == 1 or (len(matches) > 1 and top_score >= CONFIDENT_MATCH_THRESHOLD):
+        # Single confident match - return full details
+        return _build_single_event_response(top_match)
+    
+    # Multiple close matches - check if they're actually close in score
+    if len(matches) > 1:
+        second_score = matches[1][1]
+        score_gap = top_score - second_score
+        
+        # If top match is clearly better (>20% gap), use it
+        if score_gap > 0.2:
+            return _build_single_event_response(top_match)
+        
+        # Close scores - ask for disambiguation
+        return _build_disambiguation_response(matches[:5])  # Max 5 options
+    
     return ""
+
+
+def _build_single_event_response(event: Dict) -> str:
+    """
+    Build response for a single matched event.
+    Returns formatted event data with DIRECT_EVENT marker for bypassing LLM paraphrasing.
+    """
+    formatted_event = format_event_for_chat(event)
+    event_page = event.get('eventPageUrl', '')
+    event_title = event.get('title', '')
+    
+    # Build follow-up instruction based on available URLs
+    if event_page:
+        follow_up = f"""
+
+Would you like me to take you to the [event page]({event_page}) to learn more or enroll?"""
+    else:
+        follow_up = """
+
+Would you like to add this event to your calendar, or do you have any questions about it?"""
+    
+    # DIRECT_EVENT marker tells chatbot_engine to inject this directly
+    return f"""{{{{DIRECT_EVENT}}}}
+{formatted_event}{follow_up}
+{{{{/DIRECT_EVENT}}}}
+
+EVENT_METADATA:
+- Title: {event_title}
+- Event Page: {event_page}
+- For navigation: [NAVIGATE:{event_page}]
+- For calendar: [ADD_TO_CALENDAR:{event_title}]
+"""
+
+
+def _build_disambiguation_response(matches: List[Tuple[Dict, float]]) -> str:
+    """
+    Build response asking user to clarify which event they mean.
+    Used when multiple events match the query with similar scores.
+    """
+    options = []
+    for i, (event, score) in enumerate(matches, 1):
+        title = event.get("title", "Unknown")
+        start = event.get("start", "")
+        location = event.get("location", "Online")
+        
+        try:
+            dt = datetime.fromisoformat(start.replace('Z', '+00:00'))
+            date_str = dt.strftime("%b %d, %Y")
+        except:
+            date_str = "TBD"
+        
+        options.append(f"{i}. **{title}** - {date_str} ({location})")
+    
+    options_text = "\n".join(options)
+    
+    return f"""
+DISAMBIGUATION REQUIRED:
+Multiple events match what the user is asking about. Ask them to clarify:
+
+{options_text}
+
+INSTRUCTIONS:
+1. Tell the user you found multiple events that might match
+2. List the options above and ask which one they'd like details about
+3. DO NOT make assumptions - wait for user to clarify
+"""
 
 
 def fix_navigation_urls(response: str, conversation_history: List[Dict] = None) -> str:
