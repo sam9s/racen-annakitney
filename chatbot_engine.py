@@ -294,7 +294,7 @@ ONLY say something like: "Great to see you back! How can I help you today?"
     event_context = ""
     direct_event_content = None
     
-    if is_event_query(user_message):
+    if is_event_query(user_message, conversation_history):
         event_context = get_event_context_for_llm(user_message, conversation_history)
         
         # Check for DIRECT_EVENT marker - bypass LLM paraphrasing
@@ -486,7 +486,7 @@ ONLY say something like: "Great to see you back! How can I help you today?"
     event_context_stream = ""
     direct_event_content_stream = None
     
-    if is_event_query(user_message):
+    if is_event_query(user_message, conversation_history):
         event_context_stream = get_event_context_for_llm(user_message, conversation_history)
         
         # Check for DIRECT_EVENT marker - bypass LLM paraphrasing

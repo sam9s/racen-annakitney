@@ -503,21 +503,56 @@ def format_no_events_response(query_context: str = None) -> str:
     return "I don't see any events matching that timeframe. Would you like to see all upcoming events instead? You can also visit https://www.annakitney.com/events/ for the full calendar."
 
 
-def is_event_query(message: str) -> bool:
-    """Detect if user message is asking about events."""
+def is_event_query(message: str, conversation_history: list = None) -> bool:
+    """
+    Detect if user message is asking about events.
+    
+    Uses THREE strategies:
+    1. Keyword matching for common event-related words
+    2. Fuzzy matching against actual event titles in the database
+    3. Follow-up detection (only when conversation history has an event)
+    
+    This is DYNAMIC - works with any event name.
+    """
     message_lower = message.lower()
     
+    # Strategy 1: Common event keywords
     event_keywords = [
         "event", "events", "workshop", "workshops", "webinar", "webinars",
         "challenge", "live", "session", "sessions", "retreat", "retreats",
         "upcoming", "schedule", "calendar", "when is", "what's happening",
-        "identity overflow", "manifestation mastery live", "meditation live",
-        "success redefined", "in person", "in-person", "dubai",
+        "in person", "in-person", "dubai",
         "add to calendar", "book event", "add event", "save event",
         "add to my calendar", "put it in my calendar"
     ]
     
-    return any(keyword in message_lower for keyword in event_keywords)
+    if any(keyword in message_lower for keyword in event_keywords):
+        return True
+    
+    # Strategy 2: Check if message fuzzy-matches any event title
+    # This makes the detection DYNAMIC - works with any event name
+    try:
+        all_events = get_upcoming_events(20)
+        if all_events:
+            matches = find_matching_events(message, all_events)
+            if matches and matches[0][1] >= FUZZY_MATCH_THRESHOLD:
+                return True
+    except Exception:
+        pass  # If there's an error, fall back to keyword-only detection
+    
+    # Strategy 3: Check for follow-up responses (yes, tell me more, etc.)
+    # ONLY trigger if there's actually an event in conversation history
+    # This prevents misclassifying generic "yes" as an event query
+    if is_followup_response(message) and conversation_history:
+        # Check if there's an event in history before treating as event query
+        try:
+            last_event = _find_event_from_history(conversation_history)
+            if last_event:
+                return True
+        except Exception:
+            pass
+    
+    return False
 
 
 def is_booking_request(message: str) -> bool:
@@ -546,11 +581,74 @@ def is_navigation_request(message: str) -> bool:
     return any(keyword in message_lower for keyword in nav_keywords)
 
 
+def is_followup_response(message: str) -> bool:
+    """
+    Detect if user message is a follow-up response to a previous question.
+    This is DYNAMIC - works with any affirmative/selection phrase.
+    """
+    msg_lower = message.lower().strip()
+    
+    # Direct affirmatives
+    affirmatives = ["yes", "yeah", "yep", "yup", "sure", "ok", "okay", "please", 
+                    "definitely", "absolutely", "of course", "go ahead", "sounds good"]
+    if msg_lower in affirmatives:
+        return True
+    
+    # Phrases that indicate wanting more info about previously discussed topic
+    more_info_phrases = ["tell me more", "more details", "more info", "more information",
+                         "i want to know", "i'd like to know", "interested", "sounds interesting",
+                         "that one", "this one", "that sounds good", "let's do it"]
+    if any(phrase in msg_lower for phrase in more_info_phrases):
+        return True
+    
+    # Ordinal/number selections (for picking from a list)
+    # "the first one", "number 1", "1", "option 2", etc.
+    ordinal_patterns = [
+        r"^[1-9]$",  # Just a number
+        r"^#[1-9]$",  # #1, #2, etc.
+        r"(first|second|third|fourth|fifth|1st|2nd|3rd|4th|5th)",
+        r"(option|number|choice)\s*[1-9]",
+        r"the\s*(first|second|third|1st|2nd|3rd)\s*(one)?",
+    ]
+    for pattern in ordinal_patterns:
+        if re.search(pattern, msg_lower):
+            return True
+    
+    return False
+
+
+def extract_selection_index(message: str) -> Optional[int]:
+    """
+    Extract which item the user selected from a list.
+    Returns 0-based index, or None if not a selection.
+    """
+    msg_lower = message.lower().strip()
+    
+    # Direct numbers
+    if re.match(r"^[1-9]$", msg_lower):
+        return int(msg_lower) - 1
+    
+    # #1, #2, etc.
+    match = re.match(r"^#([1-9])$", msg_lower)
+    if match:
+        return int(match.group(1)) - 1
+    
+    # Ordinals
+    ordinals = {"first": 0, "1st": 0, "second": 1, "2nd": 1, "third": 2, "3rd": 2,
+                "fourth": 3, "4th": 3, "fifth": 4, "5th": 4}
+    for ordinal, idx in ordinals.items():
+        if ordinal in msg_lower:
+            return idx
+    
+    return None
+
+
 def _find_event_from_history(conversation_history: List[Dict]) -> Optional[Dict]:
     """
     Find the last discussed event from conversation history.
-    Searches for the MOST RECENTLY mentioned specific event title.
-    Prioritizes user messages asking about specific events.
+    Uses FUZZY MATCHING - NO HARDCODED EVENT NAMES.
+    
+    Searches conversation in reverse order to find the most recently discussed event.
     """
     if not conversation_history:
         return None
@@ -561,39 +659,16 @@ def _find_event_from_history(conversation_history: List[Dict]) -> Optional[Dict]
         return None
     
     # Search in reverse order (most recent first)
-    # Focus on user messages asking about specific events
     for msg in reversed(conversation_history[-10:]):
-        content = msg.get("content", "").lower()
+        content = msg.get("content", "")
         role = msg.get("role", "")
         
-        # For user messages, look for specific event mentions
+        # For user messages, use fuzzy matching to find event mentions
         if role == "user":
-            # Match against actual event titles from the database
-            for event in all_events:
-                title = event.get("title", "").lower()
-                # Check for title matches (partial is fine)
-                title_words = title.replace("®", "").split()
-                # Check if significant words from title are in the message
-                if any(word.lower() in content for word in title_words if len(word) > 3):
-                    # More specific check - ensure it's really about this event
-                    if "coach" in content and "coach" in title.lower():
-                        return event
-                    if "heal" in content and "heal" in title.lower():
-                        return event
-                    if "business" in content and "business" in title.lower():
-                        return event
-                    if "manifestation" in content and "manifestation" in title.lower():
-                        return event
-                    if "identity" in content and "identity" in title.lower():
-                        return event
-                    if "overflow" in content and "overflow" in title.lower():
-                        return event
-                    if "meditation" in content and "meditation" in title.lower():
-                        return event
-                    if "dubai" in content and "dubai" in title.lower():
-                        return event
-                    if "success" in content and "success" in title.lower():
-                        return event
+            # Use the same fuzzy matching function
+            matches = find_matching_events(content, all_events)
+            if matches and matches[0][1] >= FUZZY_MATCH_THRESHOLD:
+                return matches[0][0]
     
     # Fallback: check assistant messages for the last detailed event response
     for msg in reversed(conversation_history[-10:]):
@@ -635,10 +710,27 @@ def _get_event_context_internal(user_message: str, conversation_history: List[Di
     """
     Internal implementation of get_event_context_for_llm.
     
-    Uses FUZZY MATCHING to find events - NO HARDCODED EVENT NAMES.
-    This works with any event in the database regardless of name changes.
+    DYNAMIC ARCHITECTURE:
+    1. Check if this is a follow-up response (yes, tell me more, ordinals)
+    2. If follow-up, use conversation history to find the last discussed event
+    3. Otherwise, use fuzzy matching
+    4. If fuzzy matching fails, STILL fall back to conversation history
+    
+    This works with ANY event name and ANY follow-up phrase - no hardcoding.
     """
     message_lower = user_message.lower()
+    
+    # ========== FOLLOW-UP DETECTION (DYNAMIC) ==========
+    # If user is responding to a previous question about events, use conversation history
+    # IMPORTANT: Only trigger for bare affirmatives when there's actually an event in history
+    # This prevents misclassifying generic "yes" responses unrelated to events
+    if is_followup_response(user_message):
+        last_event = _find_event_from_history(conversation_history)
+        if last_event:
+            print(f"[Events Service] Follow-up detected, using last event: {last_event.get('title')}")
+            return _build_single_event_response(last_event)
+        # If no event in history, don't treat this as an event follow-up
+        # Let the LLM handle it as a general response
     
     # Handle navigation requests (user wants to go to event page)
     if is_navigation_request(message_lower):
@@ -700,7 +792,7 @@ CRITICAL INSTRUCTIONS FOR THIS RESPONSE:
 Events Page: https://www.annakitney.com/events/
 """
     
-    # FUZZY MATCHING: Find events that match user's query
+    # ========== FUZZY MATCHING (DYNAMIC) ==========
     # This works with ANY event name - no hardcoding required
     all_events = get_upcoming_events(20)
     
@@ -710,29 +802,32 @@ Events Page: https://www.annakitney.com/events/
     # Use fuzzy matching to find relevant events
     matches = find_matching_events(user_message, all_events)
     
-    if not matches:
-        # No matches found - return empty, let LLM handle naturally
-        return ""
-    
-    # Check if we have a confident single match
-    top_match, top_score = matches[0]
-    
-    # If top match is significantly better than second best, use it directly
-    if len(matches) == 1 or (len(matches) > 1 and top_score >= CONFIDENT_MATCH_THRESHOLD):
-        # Single confident match - return full details
-        return _build_single_event_response(top_match)
-    
-    # Multiple close matches - check if they're actually close in score
-    if len(matches) > 1:
-        second_score = matches[1][1]
-        score_gap = top_score - second_score
+    # If fuzzy matching found confident results, use them
+    if matches:
+        top_match, top_score = matches[0]
         
-        # If top match is clearly better (>20% gap), use it
-        if score_gap > 0.2:
+        # If top match is confident enough, use it directly
+        if len(matches) == 1 or top_score >= CONFIDENT_MATCH_THRESHOLD:
             return _build_single_event_response(top_match)
         
-        # Close scores - ask for disambiguation
-        return _build_disambiguation_response(matches[:5])  # Max 5 options
+        # Multiple matches - check if top is clearly better
+        if len(matches) > 1:
+            second_score = matches[1][1]
+            score_gap = top_score - second_score
+            
+            if score_gap > 0.2:
+                return _build_single_event_response(top_match)
+            
+            # Close scores - ask for disambiguation
+            return _build_disambiguation_response(matches[:5])
+    
+    # ========== FALLBACK TO CONVERSATION HISTORY ==========
+    # If fuzzy matching failed, check if there's a recent event in history
+    # This handles cases where user refers to an event indirectly
+    last_event = _find_event_from_history(conversation_history)
+    if last_event:
+        print(f"[Events Service] Fuzzy match failed, falling back to history: {last_event.get('title')}")
+        return _build_single_event_response(last_event)
     
     return ""
 
