@@ -781,9 +781,10 @@
       }
       
       // Process each line for links, bold, italic, and URLs
-      // IMPORTANT: Markdown links MUST be matched FIRST to prevent bold/italic from breaking link syntax
-      // Regex order: [text](url), then **bold**, then *italic*, then raw URLs
-      const combinedRegex = /(\[([^\]]+)\]\(([^)]+)\))|(\*\*([^*]+)\*\*)|(?<!\*)\*([^*]+)\*(?!\*)|(https?:\/\/[^\s<>"\)]+)/g;
+      // CRITICAL: Markdown links MUST be matched FIRST to prevent URLs inside them from being matched separately
+      // Order: [text](url) -> **bold** -> *italic* -> raw https URLs
+      // NOTE: No lookbehind assertions for browser compatibility
+      const combinedRegex = /\[([^\]]+)\]\(([^)]+)\)|(\*\*)([^*]+)\*\*|(https?:\/\/[^\s<>"\)\]]+)/g;
       let lastIndex = 0;
       let match;
 
@@ -793,10 +794,10 @@
           container.appendChild(document.createTextNode(textBefore));
         }
         
-        if (match[1]) {
+        if (match[1] !== undefined && match[2] !== undefined) {
           // Markdown link: [text](url) - MUST be checked first
-          let linkText = match[2];
-          const linkUrl = match[3];
+          let linkText = match[1];
+          const linkUrl = match[2];
           const link = document.createElement('a');
           link.href = linkUrl;
           link.target = '_blank';
@@ -814,22 +815,15 @@
             link.textContent = linkText;
           }
           container.appendChild(link);
-        } else if (match[4]) {
+        } else if (match[3] !== undefined && match[4] !== undefined) {
           // Bold text: **text**
-          const boldText = match[5];
+          const boldText = match[4];
           const strong = document.createElement('strong');
           strong.textContent = boldText;
           container.appendChild(strong);
-        } else if (match[6]) {
-          // Italic text: *text*
-          const italicText = match[6];
-          const em = document.createElement('em');
-          em.textContent = italicText;
-          em.style.color = 'rgba(255, 255, 255, 0.7)';
-          container.appendChild(em);
-        } else if (match[7]) {
+        } else if (match[5] !== undefined) {
           // Raw URL
-          const plainUrl = match[7];
+          const plainUrl = match[5];
           const link = document.createElement('a');
           link.href = plainUrl;
           link.textContent = plainUrl;
@@ -840,7 +834,7 @@
           container.appendChild(link);
         }
         
-        lastIndex = combinedRegex.lastIndex;
+        lastIndex = match.index + match[0].length;
       }
       
       if (lastIndex < line.length) {

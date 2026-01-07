@@ -93,75 +93,35 @@ function renderMessageContent(text: string): ReactNode[] {
       return;
     }
     
-    // IMPORTANT: Match markdown links FIRST to prevent bold/italic from breaking link syntax
-    // Pattern order: [text](url), then **bold**, then *italic*, then raw URLs
-    const mdLinkRegex = /\[([^\]]+)\]\(([^)]+)\)/g;
-    const boldRegex = /\*\*([^*]+)\*\*/g;
-    const italicRegex = /(?<!\*)\*([^*]+)\*(?!\*)/g;  // Single * not preceded/followed by *
-    const urlRegex = /(https?:\/\/[^\s<>")\]]+)/g;
+    // CRITICAL: Use a single combined regex to parse in correct order
+    // This ensures markdown links are fully matched before URLs inside them can be matched separately
+    // Order: [text](url) -> **bold** -> *italic* -> raw https URLs
+    const combinedRegex = /\[([^\]]+)\]\(([^)]+)\)|(\*\*)([^*]+)\*\*|(?:^|[^*])(\*)([^*]+)\*(?:[^*]|$)|(https?:\/\/[^\s<>")\]]+)/g;
     let lastIndex = 0;
     let match;
     let matchCount = 0;
     
-    const segments: { start: number; end: number; type: 'link' | 'bold' | 'italic' | 'url'; content: string; url?: string }[] = [];
+    const lineNodes: ReactNode[] = [];
     
-    // Find markdown links FIRST
-    while ((match = mdLinkRegex.exec(line)) !== null) {
-      segments.push({ 
-        start: match.index, 
-        end: mdLinkRegex.lastIndex, 
-        type: 'link', 
-        content: match[1], 
-        url: match[2] 
-      });
-    }
-    
-    // Find bold text that is NOT inside a markdown link
-    while ((match = boldRegex.exec(line)) !== null) {
-      const isInsideLink = segments.some(s => s.type === 'link' && match!.index >= s.start && match!.index < s.end);
-      if (!isInsideLink) {
-        segments.push({ start: match.index, end: boldRegex.lastIndex, type: 'bold', content: match[1] });
-      }
-    }
-    
-    // Find italic text that is NOT inside a link or bold
-    while ((match = italicRegex.exec(line)) !== null) {
-      const isInsideOther = segments.some(s => match!.index >= s.start && match!.index < s.end);
-      if (!isInsideOther) {
-        segments.push({ start: match.index, end: italicRegex.lastIndex, type: 'italic', content: match[1] });
-      }
-    }
-    
-    // Find raw URLs that are NOT inside any other segment
-    while ((match = urlRegex.exec(line)) !== null) {
-      const isInsideOther = segments.some(s => match!.index >= s.start && match!.index < s.end);
-      if (!isInsideOther) {
-        segments.push({ start: match.index, end: urlRegex.lastIndex, type: 'url', content: match[0] });
-      }
-    }
-    
-    segments.sort((a, b) => a.start - b.start);
-    
-    for (const segment of segments) {
-      if (segment.start > lastIndex) {
-        const textBetween = line.substring(lastIndex, segment.start);
-        parts.push(textBetween);
+    while ((match = combinedRegex.exec(line)) !== null) {
+      // Add text before this match
+      if (match.index > lastIndex) {
+        lineNodes.push(line.substring(lastIndex, match.index));
       }
       
-      if (segment.type === 'link') {
-        // Process bold inside link text: **text** -> <strong>text</strong>
-        let linkContent: ReactNode;
-        const boldMatch = segment.content.match(/^\*\*(.+)\*\*$/);
-        if (boldMatch) {
-          linkContent = <strong>{boldMatch[1]}</strong>;
-        } else {
-          linkContent = segment.content;
-        }
+      if (match[1] !== undefined && match[2] !== undefined) {
+        // Markdown link: [text](url)
+        let linkText = match[1];
+        const linkUrl = match[2];
         
-        parts.push(
+        // Check if link text has bold markers **text**
+        const boldInLink = linkText.match(/^\*\*(.+)\*\*$/);
+        const linkContent = boldInLink ? <strong>{boldInLink[1]}</strong> : linkText;
+        
+        lineNodes.push(
           <a
             key={`link-${lineIndex}-${matchCount}`}
-            href={segment.url}
+            href={linkUrl}
             target="_blank"
             rel="noopener noreferrer"
             className="text-primary hover:text-primary/80 underline"
@@ -171,35 +131,52 @@ function renderMessageContent(text: string): ReactNode[] {
           </a>
         );
         matchCount++;
-      } else if (segment.type === 'bold') {
-        parts.push(<strong key={`bold-${lineIndex}-${matchCount}`}>{segment.content}</strong>);
+        lastIndex = match.index + match[0].length;
+      } else if (match[3] !== undefined && match[4] !== undefined) {
+        // Bold text: **text**
+        lineNodes.push(<strong key={`bold-${lineIndex}-${matchCount}`}>{match[4]}</strong>);
         matchCount++;
-      } else if (segment.type === 'italic') {
-        parts.push(<em key={`italic-${lineIndex}-${matchCount}`} className="text-muted-foreground">{segment.content}</em>);
+        lastIndex = match.index + match[0].length;
+      } else if (match[5] !== undefined && match[6] !== undefined) {
+        // Italic text: *text* (with boundary handling)
+        // Add any leading non-* char back
+        const fullMatch = match[0];
+        const italicStart = fullMatch.indexOf('*');
+        const italicEnd = fullMatch.lastIndexOf('*');
+        if (italicStart > 0) {
+          lineNodes.push(fullMatch.substring(0, italicStart));
+        }
+        lineNodes.push(<em key={`italic-${lineIndex}-${matchCount}`} className="text-muted-foreground">{match[6]}</em>);
+        if (italicEnd < fullMatch.length - 1) {
+          lineNodes.push(fullMatch.substring(italicEnd + 1));
+        }
         matchCount++;
-      } else if (segment.type === 'url') {
-        parts.push(
+        lastIndex = match.index + match[0].length;
+      } else if (match[7] !== undefined) {
+        // Raw URL
+        lineNodes.push(
           <a
             key={`url-${lineIndex}-${matchCount}`}
-            href={segment.content}
+            href={match[7]}
             target="_blank"
             rel="noopener noreferrer"
             className="text-primary hover:text-primary/80 underline break-all"
             data-testid={`link-url-${matchCount}`}
           >
-            {segment.content}
+            {match[7]}
           </a>
         );
         matchCount++;
+        lastIndex = match.index + match[0].length;
       }
-      
-      lastIndex = segment.end;
     }
     
+    // Add remaining text after last match
     if (lastIndex < line.length) {
-      const remaining = line.substring(lastIndex);
-      parts.push(remaining);
+      lineNodes.push(line.substring(lastIndex));
     }
+    
+    parts.push(...lineNodes);
   });
   
   return parts;
