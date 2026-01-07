@@ -13,6 +13,7 @@ This is a RAG-based wellness chatbot for Anna Kitney's wellness coaching busines
 
 ## Key Files
 - `chatbot_engine.py` - Core RAG logic and response generation
+- `intent_router.py` - Intent-first query classification (EVENT/KNOWLEDGE/HYBRID/CLARIFICATION)
 - `safety_guardrails.py` - Safety filters and system prompts
 - `webhook_server.py` - Flask API endpoints
 - `knowledge_base.py` - ChromaDB vector database management
@@ -142,7 +143,47 @@ Anna Kitney Coaching calendar: `cms370prol01ksuq304erj1gmdug1v4m@import.calendar
 - **Webhooks**: Real-time when Google Calendar changes
 - **Past Events**: Automatically marked as `isActive: false`
 
+## Intent Router Architecture
+
+The chatbot uses an "intent-first" routing system that classifies user queries BEFORE any database access, eliminating RAG pollution of event queries.
+
+### Key File
+- `intent_router.py` - IntentRouter class with pluggable handler system
+
+### Intent Types
+| Intent | Description | Data Sources |
+|--------|-------------|--------------|
+| EVENT | Specific date queries, event registration, booking | SQL only (PostgreSQL) |
+| KNOWLEDGE | Program pricing, features, enrollment process | RAG only (ChromaDB) |
+| HYBRID | General questions that may need both | SQL + RAG |
+| CLARIFICATION | Ambiguous queries (e.g., same name for program and event) | Asks user first |
+| GREETING | Hello, hi, etc. | No data query needed |
+| OTHER | Fallback for unclassified queries | RAG + general response |
+
+### Clarification Pathway
+When the same name exists for both a program and an event (e.g., "SoulAlign Heal"), the system asks:
+> "Are you asking about: 1. Program details or 2. Event dates?"
+
+### Dynamic Data Loading
+- Event titles loaded from PostgreSQL at Flask startup via `refresh_router_data()`
+- Program names currently use predefined list (future: DB-driven)
+- Called at startup in `webhook_server.py` via `initialize_intent_router()`
+
+### Intent Classification Logic
+1. Date-specific queries → EVENT (high confidence 0.8)
+2. Pricing/cost queries → KNOWLEDGE (high confidence 0.85)
+3. Event action words (register, book, attend) → EVENT
+4. Program match only → KNOWLEDGE
+5. Event match only → EVENT
+6. Both program AND event match → CLARIFICATION
+
+### Adding New Intent Types (Future Scalability)
+1. Add new `IntentType` enum value in `intent_router.py`
+2. Add detection logic in `classify()` method
+3. Add handler in `chatbot_engine.py` after intent classification block
+
 ## Recent Changes
+- **Intent-First Router Architecture (Jan 2026)**: Implemented IntentRouter that classifies queries BEFORE any database access. Created `intent_router.py` with pluggable handler system supporting EVENT (SQL only), KNOWLEDGE (RAG only), HYBRID (both), and CLARIFICATION (asks user) intents. This eliminates RAG pollution of event queries.
 - **Multi-day Event Support (Jan 2026)**: Added comprehensive support for multi-day/recurring events:
   - New `extract_specific_date()` function parses queries like "June 26", "1st of June", "26th July 2026"
   - New `filter_events_by_specific_date()` checks if a date falls within event's start-end range
