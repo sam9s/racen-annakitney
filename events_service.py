@@ -783,8 +783,26 @@ def is_followup_response(message: str) -> bool:
     """
     Detect if user message is a follow-up response to a previous question.
     This is DYNAMIC - works with any affirmative/selection phrase.
+    
+    IMPORTANT: If the message contains a specific date, it's NOT a follow-up,
+    it's a fresh date query that should be processed independently.
     """
     msg_lower = message.lower().strip()
+    
+    # ========== DATE EXCLUSION ==========
+    # If the message contains a specific date, it's a NEW query, not a follow-up
+    # This prevents "June 1st" from matching "1st" as an ordinal selection
+    date_patterns = [
+        r"(january|february|march|april|may|june|july|august|september|october|november|december)\s+\d{1,2}",  # "June 1", "June 15"
+        r"\d{1,2}(st|nd|rd|th)?\s+(of\s+)?(january|february|march|april|may|june|july|august|september|october|november|december)",  # "1st of June"
+        r"\d{1,2}[/-]\d{1,2}[/-]\d{2,4}",  # 01/15/2026
+        r"on\s+(january|february|march|april|may|june|july|august|september|october|november|december)",  # "on June"
+        r"any\s+event",  # "any event on..."
+        r"events?\s+(on|in|for|during)",  # "event on June 1st"
+    ]
+    for pattern in date_patterns:
+        if re.search(pattern, msg_lower):
+            return False  # NOT a follow-up, it's a fresh date query
     
     # Direct affirmatives
     affirmatives = ["yes", "yeah", "yep", "yup", "sure", "ok", "okay", "please", 
