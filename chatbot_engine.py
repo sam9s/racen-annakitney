@@ -309,9 +309,13 @@ ONLY say something like: "Great to see you back! How can I help you today?"
     
     # If we have direct event content, return it immediately without LLM
     if direct_event_content:
-        # Add a brief intro from LLM, then inject event data directly
-        intro = "Here are the details for this event:\n\n"
-        final_response = intro + direct_event_content
+        # Check if this is a "no events found" response (don't add misleading intro)
+        if "I don't have any events scheduled" in direct_event_content or "No events" in direct_event_content:
+            final_response = direct_event_content
+        else:
+            # Add a brief intro for actual event details
+            intro = "Here are the details for this event:\n\n"
+            final_response = intro + direct_event_content
         
         return {
             "response": final_response,

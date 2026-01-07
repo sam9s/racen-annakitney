@@ -1011,14 +1011,16 @@ Copy the event list EXACTLY as shown above.
 Ask which event they'd like to know more about.
 """
         else:
-            # No events on this specific date - show all events
+            # No events on this specific date - return with DIRECT marker to bypass LLM
+            # This prevents fuzzy matching or RAG from overriding the "no events" response
             return f"""
-No events are specifically scheduled for {date_str}. 
+{{{{DIRECT_EVENT}}}}
+I don't have any events scheduled for {date_str}.
 
-Here are all upcoming events:
+Here are all upcoming events you might be interested in:
+
 {format_events_list(events[:10])}
-
-Would you like details about any of these events?
+{{{{/DIRECT_EVENT}}}}
 """
     
     # Check if user is asking about upcoming events list
