@@ -817,18 +817,11 @@ def is_followup_response(message: str) -> bool:
     if any(phrase in msg_lower for phrase in more_info_phrases):
         return True
     
-    # Ordinal/number selections (for picking from a list)
-    # "the first one", "number 1", "1", "option 2", etc.
-    ordinal_patterns = [
-        r"^[1-9]$",  # Just a number
-        r"^#[1-9]$",  # #1, #2, etc.
-        r"(first|second|third|fourth|fifth|1st|2nd|3rd|4th|5th)",
-        r"(option|number|choice)\s*[1-9]",
-        r"the\s*(first|second|third|1st|2nd|3rd)\s*(one)?",
-    ]
-    for pattern in ordinal_patterns:
-        if re.search(pattern, msg_lower):
-            return True
+    # NOTE: Ordinal detection is now handled by IntentRouter
+    # Ordinals like "1", "first", "1st" are only treated as selections when:
+    # 1. The previous bot message contains a numbered list
+    # 2. The message does NOT contain a date pattern
+    # This logic is implemented in IntentRouter._check_followup_context()
     
     return False
 
@@ -857,6 +850,86 @@ def extract_selection_index(message: str) -> Optional[int]:
             return idx
     
     return None
+
+
+def _extract_events_from_history(conversation_history: List[Dict]) -> List[Dict]:
+    """
+    Extract events that were listed in the previous bot message.
+    Used when user selects from a numbered list (e.g., "1", "the first one").
+    
+    Parses numbered items from the last assistant message and matches them to events.
+    Uses multiple pattern strategies to handle various formatting styles.
+    """
+    if not conversation_history:
+        return []
+    
+    # Find the last assistant message
+    last_bot_msg = None
+    for msg in reversed(conversation_history):
+        if msg.get("role") == "assistant":
+            last_bot_msg = msg.get("content", "")
+            break
+    
+    if not last_bot_msg:
+        return []
+    
+    # Get all events to match against
+    all_events = get_upcoming_events(20)
+    if not all_events:
+        return []
+    
+    # Multiple patterns for numbered lists
+    patterns = [
+        # "1. Event Name" or "**1. Event Name**" or "1) Event Name"
+        r'(?:^|\n)\s*\**\s*([1-9])[.)\]]\s*\**\s*([^\n]+)',
+        # "**1.** Event Name" (bold number, text after)
+        r'(?:^|\n)\s*\*\*([1-9])\.\*\*\s*([^\n]+)',
+        # "1. **Event Name**" (bold event name)
+        r'(?:^|\n)\s*([1-9])\.\s*\*\*([^*]+)\*\*',
+    ]
+    
+    # Try each pattern and merge results
+    all_matches = {}  # dict to dedupe by number
+    for pattern in patterns:
+        matches = re.findall(pattern, last_bot_msg)
+        for num, item_text in matches:
+            num = int(num)
+            if num not in all_matches:
+                all_matches[num] = item_text.strip()
+    
+    if not all_matches:
+        return []
+    
+    # Sort by number and match to events
+    extracted_events = []
+    for num in sorted(all_matches.keys()):
+        item_text = all_matches[num]
+        
+        # Try exact title match first
+        matched = False
+        for event in all_events:
+            event_title = event.get('title', '')
+            # Check if event title is in the item text (or vice versa)
+            if event_title.lower() in item_text.lower() or item_text.lower().strip() in event_title.lower():
+                extracted_events.append(event)
+                matched = True
+                break
+        
+        if not matched:
+            # Fuzzy matching if exact match fails
+            event_matches = find_matching_events(item_text, all_events)
+            if event_matches and event_matches[0][1] >= 0.4:
+                extracted_events.append(event_matches[0][0])
+            else:
+                # Add None as placeholder to preserve index alignment
+                extracted_events.append(None)
+    
+    # Filter out None entries but log if there were gaps
+    result = [e for e in extracted_events if e is not None]
+    if len(result) != len(extracted_events):
+        print(f"[Events Service] Warning: Some numbered items couldn't be matched to events", flush=True)
+    
+    return result
 
 
 def _find_event_from_history(conversation_history: List[Dict]) -> Optional[Dict]:
@@ -901,14 +974,19 @@ def _find_event_from_history(conversation_history: List[Dict]) -> Optional[Dict]
     return None
 
 
-def get_event_context_for_llm(user_message: str, conversation_history: List[Dict] = None) -> str:
+def get_event_context_for_llm(user_message: str, conversation_history: List[Dict] = None, selection_index: int = None) -> str:
     """
     Get event context to inject into the LLM prompt.
     Returns formatted event information based on user's query.
     Handles calendar service errors gracefully.
+    
+    Args:
+        user_message: The user's message
+        conversation_history: Previous conversation messages
+        selection_index: If set, user is selecting from a numbered list (0-based index)
     """
     try:
-        return _get_event_context_internal(user_message, conversation_history)
+        return _get_event_context_internal(user_message, conversation_history, selection_index)
     except CalendarServiceError as e:
         print(f"[Events Service] Calendar service error: {e}")
         return """
@@ -922,13 +1000,13 @@ The live event calendar is temporarily unavailable. Please direct the user to:
         return ""
 
 
-def _get_event_context_internal(user_message: str, conversation_history: List[Dict] = None) -> str:
+def _get_event_context_internal(user_message: str, conversation_history: List[Dict] = None, selection_index: int = None) -> str:
     """
     Internal implementation of get_event_context_for_llm.
     
     DYNAMIC ARCHITECTURE:
-    1. Check if this is a follow-up response (yes, tell me more, ordinals)
-    2. If follow-up, use conversation history to find the last discussed event
+    1. If selection_index is provided, user is picking from a list shown in conversation
+    2. Check if this is a follow-up response (yes, tell me more) - NOTE: Router now handles ordinals
     3. Otherwise, use fuzzy matching
     4. If fuzzy matching fails, STILL fall back to conversation history
     
@@ -936,14 +1014,31 @@ def _get_event_context_internal(user_message: str, conversation_history: List[Di
     """
     message_lower = user_message.lower()
     
-    # ========== FOLLOW-UP DETECTION (DYNAMIC) ==========
-    # If user is responding to a previous question about events, use conversation history
-    # IMPORTANT: Only trigger for bare affirmatives when there's actually an event in history
-    # This prevents misclassifying generic "yes" responses unrelated to events
+    # ========== SELECTION FROM LIST (from IntentRouter) ==========
+    # If selection_index is provided, user is picking from a numbered list
+    # This is now the PRIMARY way to handle selections - router handles ordinal detection
+    if selection_index is not None:
+        # Find events that were listed in the previous bot message
+        events_from_list = _extract_events_from_history(conversation_history)
+        if events_from_list and 0 <= selection_index < len(events_from_list):
+            selected_event = events_from_list[selection_index]
+            print(f"[Events Service] Selected event #{selection_index + 1}: {selected_event.get('title')}", flush=True)
+            return _build_single_event_response(selected_event)
+        else:
+            # Fallback: get upcoming events and use the index
+            events = get_upcoming_events(10)
+            if events and 0 <= selection_index < len(events):
+                selected_event = events[selection_index]
+                print(f"[Events Service] Selected event #{selection_index + 1} from upcoming: {selected_event.get('title')}", flush=True)
+                return _build_single_event_response(selected_event)
+    
+    # ========== FOLLOW-UP DETECTION (for non-ordinal follow-ups) ==========
+    # NOTE: Ordinal detection is now handled by IntentRouter
+    # This only handles bare affirmatives like "yes", "tell me more"
     if is_followup_response(user_message):
         last_event = _find_event_from_history(conversation_history)
         if last_event:
-            print(f"[Events Service] Follow-up detected, using last event: {last_event.get('title')}")
+            print(f"[Events Service] Follow-up detected, using last event: {last_event.get('title')}", flush=True)
             return _build_single_event_response(last_event)
         # If no event in history, don't treat this as an event follow-up
         # Let the LLM handle it as a general response

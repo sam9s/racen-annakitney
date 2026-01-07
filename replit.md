@@ -158,7 +158,23 @@ The chatbot uses an "intent-first" routing system that classifies user queries B
 | HYBRID | General questions that may need both | SQL + RAG |
 | CLARIFICATION | Ambiguous queries (e.g., same name for program and event) | Asks user first |
 | GREETING | Hello, hi, etc. | No data query needed |
+| FOLLOWUP_SELECT | User selecting from a numbered list (e.g., "1", "the first one") | Uses conversation history |
+| FOLLOWUP_CONFIRM | User confirming interest (e.g., "yes", "tell me more") | Uses conversation history |
 | OTHER | Fallback for unclassified queries | RAG + general response |
+
+### Follow-up Detection (Single Decision Point)
+The IntentRouter is the SINGLE decision point for all follow-up detection. This runs BEFORE other intent checks (after greeting).
+
+**FOLLOWUP_SELECT**: When user types "1", "first", etc. AND the last bot message contains a numbered list:
+- Router extracts the selection index (0-based)
+- Passes `selection_index` to events_service
+- events_service uses `_extract_events_from_history()` to parse the list and return the selected event
+
+**FOLLOWUP_CONFIRM**: When user types "yes", "tell me more", etc.:
+- Router checks context from last bot message
+- Routes to EVENT or PROGRAM handler based on context
+
+**Date Protection**: Messages containing date patterns (e.g., "June 1st") are NEVER treated as ordinal selections, even if they contain "1st". Date queries always take priority.
 
 ### Clarification Pathway
 When the same name exists for both a program and an event (e.g., "SoulAlign Heal"), the system asks:
@@ -169,13 +185,15 @@ When the same name exists for both a program and an event (e.g., "SoulAlign Heal
 - Program names currently use predefined list (future: DB-driven)
 - Called at startup in `webhook_server.py` via `initialize_intent_router()`
 
-### Intent Classification Logic
-1. Date-specific queries → EVENT (high confidence 0.8)
-2. Pricing/cost queries → KNOWLEDGE (high confidence 0.85)
-3. Event action words (register, book, attend) → EVENT
-4. Program match only → KNOWLEDGE
-5. Event match only → EVENT
-6. Both program AND event match → CLARIFICATION
+### Intent Classification Logic (Priority Order)
+1. Greeting check → GREETING
+2. Follow-up detection (if no date in message) → FOLLOWUP_SELECT or FOLLOWUP_CONFIRM
+3. Date-specific queries → EVENT (high confidence 0.8)
+4. Pricing/cost queries → KNOWLEDGE (high confidence 0.85)
+5. Event action words (register, book, attend) → EVENT
+6. Program match only → KNOWLEDGE
+7. Event match only → EVENT
+8. Both program AND event match → CLARIFICATION
 
 ### Adding New Intent Types (Future Scalability)
 1. Add new `IntentType` enum value in `intent_router.py`
@@ -183,6 +201,11 @@ When the same name exists for both a program and an event (e.g., "SoulAlign Heal
 3. Add handler in `chatbot_engine.py` after intent classification block
 
 ## Recent Changes
+- **Single Decision Point Follow-up Architecture (Jan 2026)**: Implemented FOLLOWUP_SELECT and FOLLOWUP_CONFIRM intent types in IntentRouter. Router is now the SINGLE decision point for all follow-up detection, eliminating competing logic in events_service.py. Key features:
+  - Date patterns like "June 1st" are protected from ordinal matching (date queries always take priority)
+  - `_extract_events_from_history()` parses numbered lists from previous bot messages
+  - Defensive clarification when selection index is out of bounds
+  - Removed ordinal detection from events_service `is_followup_response()` to prevent conflicts
 - **Intent-First Router Architecture (Jan 2026)**: Implemented IntentRouter that classifies queries BEFORE any database access. Created `intent_router.py` with pluggable handler system supporting EVENT (SQL only), KNOWLEDGE (RAG only), HYBRID (both), and CLARIFICATION (asks user) intents. This eliminates RAG pollution of event queries.
 - **Multi-day Event Support (Jan 2026)**: Added comprehensive support for multi-day/recurring events:
   - New `extract_specific_date()` function parses queries like "June 26", "1st of June", "26th July 2026"

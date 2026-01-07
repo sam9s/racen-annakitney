@@ -36,7 +36,31 @@ class IntentType(Enum):
     CLARIFICATION = "clarification"  # Need to ask user for clarity
     GREETING = "greeting"        # Hi, hello, etc.
     BOOKING = "booking"          # Future: Book an event
+    FOLLOWUP_SELECT = "followup_select"  # User selecting from a numbered list
+    FOLLOWUP_CONFIRM = "followup_confirm"  # User confirming (yes/tell me more)
     OTHER = "other"              # Catch-all
+
+
+# Patterns for detecting numbered lists in bot messages
+NUMBERED_LIST_PATTERNS = [
+    r'\b1\.\s+\*?\*?\[?\*?\*?[A-Za-z]',  # "1. SoulAlign" or "1. **SoulAlign**" or "1. [**SoulAlign"
+    r'\b1\)\s+[A-Za-z]',  # "1) SoulAlign"
+    r'(?:here are|these are|following).*(?:options|programs|events|choices)',  # List introduction
+]
+
+# Patterns for bare ordinal selections (user picking from list)
+ORDINAL_SELECTION_PATTERNS = [
+    r'^[1-9]$',  # Just a number
+    r'^#[1-9]$',  # #1, #2, etc.
+    r'^(?:the\s+)?(?:first|second|third|fourth|fifth|1st|2nd|3rd|4th|5th)(?:\s+one)?$',  # "the first one"
+    r'^(?:option|number|choice)\s*[1-9]$',  # "option 1"
+]
+
+# Bare affirmatives for follow-up confirmation
+AFFIRMATIVE_PATTERNS = [
+    r'^(?:yes|yeah|yep|yup|sure|ok|okay|please|definitely|absolutely|of course|go ahead|sounds good)$',
+    r'^(?:tell me more|more details|more info|i\'m interested|that sounds good)$',
+]
 
 
 @dataclass
@@ -176,6 +200,16 @@ class IntentRouter:
                 slots={},
                 reasoning="Greeting pattern detected"
             )
+        
+        # ========== FOLLOW-UP DETECTION (PRIORITY CHECK) ==========
+        # Check for follow-up BEFORE other intent detection
+        # This is the SINGLE decision point - downstream handlers should NOT re-check
+        # IMPORTANT: Only applies if message does NOT contain a date (date queries are new queries)
+        has_date_early, _ = self._extract_date_signals(message_lower)
+        if not has_date_early:
+            followup_result = self._check_followup_context(message, conversation_history or [])
+            if followup_result:
+                return followup_result
         
         # Check for explicit date/time (strong EVENT signal)
         has_date, date_info = self._extract_date_signals(message_lower)
@@ -415,6 +449,119 @@ class IntentRouter:
             f"2. **Event dates** - When it's happening and how to register\n\n"
             f"Just let me know which one you'd like to explore!"
         )
+    
+    def _has_numbered_list(self, message: str) -> bool:
+        """Check if a message contains a numbered list."""
+        for pattern in NUMBERED_LIST_PATTERNS:
+            if re.search(pattern, message, re.IGNORECASE):
+                return True
+        return False
+    
+    def _is_bare_ordinal(self, message: str) -> Tuple[bool, Optional[int]]:
+        """
+        Check if message is a bare ordinal selection (NOT part of a date).
+        
+        Returns (is_ordinal, selection_index) where index is 0-based.
+        """
+        msg = message.strip()
+        
+        # First, check if message contains date patterns - if so, NOT a bare ordinal
+        has_date, _ = self._extract_date_signals(msg.lower())
+        if has_date:
+            return False, None
+        
+        # Check for ordinal patterns
+        for pattern in ORDINAL_SELECTION_PATTERNS:
+            if re.match(pattern, msg, re.IGNORECASE):
+                # Extract the index
+                return True, self._extract_ordinal_index(msg)
+        
+        return False, None
+    
+    def _extract_ordinal_index(self, message: str) -> int:
+        """Extract 0-based index from ordinal message."""
+        msg = message.lower().strip()
+        
+        # Direct numbers
+        if re.match(r'^[1-9]$', msg):
+            return int(msg) - 1
+        
+        # #1, #2, etc.
+        match = re.match(r'^#([1-9])$', msg)
+        if match:
+            return int(match.group(1)) - 1
+        
+        # Ordinals
+        ordinals = {"first": 0, "1st": 0, "second": 1, "2nd": 1, "third": 2, "3rd": 2,
+                    "fourth": 3, "4th": 3, "fifth": 4, "5th": 4}
+        for ordinal, idx in ordinals.items():
+            if ordinal in msg:
+                return idx
+        
+        return 0  # Default to first
+    
+    def _is_affirmative(self, message: str) -> bool:
+        """Check if message is a bare affirmative/confirmation."""
+        msg = message.strip().lower()
+        for pattern in AFFIRMATIVE_PATTERNS:
+            if re.match(pattern, msg, re.IGNORECASE):
+                return True
+        return False
+    
+    def _check_followup_context(self, message: str, conversation_history: List[Dict]) -> Optional[IntentResult]:
+        """
+        Check if user is responding to a previous bot message (selection or confirmation).
+        
+        This is the SINGLE decision point for follow-up detection.
+        Returns IntentResult if it's a follow-up, None otherwise.
+        """
+        if not conversation_history:
+            return None
+        
+        # Get last assistant message
+        last_bot_msg = None
+        for msg in reversed(conversation_history):
+            if msg.get("role") == "assistant":
+                last_bot_msg = msg.get("content", "")
+                break
+        
+        if not last_bot_msg:
+            return None
+        
+        # Check if user is selecting from a numbered list
+        is_ordinal, selection_idx = self._is_bare_ordinal(message)
+        if is_ordinal and self._has_numbered_list(last_bot_msg):
+            return IntentResult(
+                intent=IntentType.FOLLOWUP_SELECT,
+                confidence=HIGH_CONFIDENCE,
+                slots={"selection_index": selection_idx, "last_bot_message": last_bot_msg[:500]},
+                reasoning=f"User selected item {selection_idx + 1} from numbered list"
+            )
+        
+        # Check if user is confirming/asking for more info
+        if self._is_affirmative(message):
+            # Determine context from last bot message
+            last_msg_lower = last_bot_msg.lower()
+            
+            # Check if last message was about events
+            if any(word in last_msg_lower for word in ["event", "calendar", "schedule", "register", "attend", "when:"]):
+                return IntentResult(
+                    intent=IntentType.FOLLOWUP_CONFIRM,
+                    confidence=HIGH_CONFIDENCE,
+                    slots={"context": "event", "last_bot_message": last_bot_msg[:500]},
+                    reasoning="User confirming interest in previously discussed event"
+                )
+            
+            # Check if last message was about programs
+            if any(word in last_msg_lower for word in ["program", "course", "enroll", "investment", "pricing"]):
+                return IntentResult(
+                    intent=IntentType.FOLLOWUP_CONFIRM,
+                    confidence=HIGH_CONFIDENCE,
+                    slots={"context": "program", "last_bot_message": last_bot_msg[:500]},
+                    reasoning="User confirming interest in previously discussed program"
+                )
+        
+        return None
     
     def _check_conversation_context(self, history: List[Dict]) -> Optional[IntentType]:
         """

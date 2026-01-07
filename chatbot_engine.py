@@ -294,6 +294,63 @@ def generate_response(
             "intent": "greeting"
         }
     
+    # Handle FOLLOWUP_SELECT intent - user selected from a numbered list
+    if intent_result.intent == IntentType.FOLLOWUP_SELECT:
+        selection_idx = intent_result.slots.get("selection_index", 0)
+        last_bot_msg = intent_result.slots.get("last_bot_message", "")
+        print(f"[IntentRouter] User selected item {selection_idx + 1} from list", flush=True)
+        
+        # Extract the selected item from the last bot message
+        # Pass to events service with selection context
+        from events_service import get_event_context_for_llm
+        event_context = get_event_context_for_llm(
+            user_message, 
+            conversation_history,
+            selection_index=selection_idx
+        )
+        
+        if event_context and "{{DIRECT_EVENT}}" in event_context:
+            import re
+            direct_match = re.search(r'\{\{DIRECT_EVENT\}\}(.*?)\{\{/DIRECT_EVENT\}\}', event_context, re.DOTALL)
+            if direct_match:
+                return {
+                    "response": direct_match.group(1).strip(),
+                    "sources": [],
+                    "safety_triggered": False,
+                    "intent": "followup_select"
+                }
+        
+        # If we couldn't match the selection, ask for clarification
+        # This handles cases where the parsed list doesn't match what was shown
+        if not event_context or "{{DIRECT_EVENT}}" not in event_context:
+            print(f"[IntentRouter] Could not match selection {selection_idx + 1}, asking for clarification", flush=True)
+            return {
+                "response": f"I'm not sure which option #{selection_idx + 1} refers to. Could you please tell me the name of the event or program you're interested in?",
+                "sources": [],
+                "safety_triggered": False,
+                "intent": "clarification"
+            }
+    
+    # Handle FOLLOWUP_CONFIRM intent - user confirming interest
+    if intent_result.intent == IntentType.FOLLOWUP_CONFIRM:
+        context_type = intent_result.slots.get("context", "event")
+        print(f"[IntentRouter] User confirming interest in {context_type}", flush=True)
+        
+        # Get the relevant context based on what was discussed
+        if context_type == "event":
+            from events_service import get_event_context_for_llm
+            event_context = get_event_context_for_llm(user_message, conversation_history)
+            if event_context and "{{DIRECT_EVENT}}" in event_context:
+                import re
+                direct_match = re.search(r'\{\{DIRECT_EVENT\}\}(.*?)\{\{/DIRECT_EVENT\}\}', event_context, re.DOTALL)
+                if direct_match:
+                    return {
+                        "response": direct_match.group(1).strip(),
+                        "sources": [],
+                        "safety_triggered": False,
+                        "intent": "followup_confirm"
+                    }
+    
     # ═══════════════════════════════════════════════════════════════════════
     # INTENT-BASED DATABASE ROUTING
     # EVENT → SQL only (skip RAG to avoid pollution)
