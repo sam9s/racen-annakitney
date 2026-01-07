@@ -609,49 +609,69 @@ Ask them which event they'd like to add to their calendar.
     is_asking_for_details = any(kw in message_lower for kw in event_detail_keywords)
     
     # Try to match against actual event titles from database
+    # CRITICAL: Use specific multi-word phrases FIRST to avoid false positives
+    # Sort events to prioritize more specific matches
+    
+    best_match = None
+    best_match_score = 0
+    
     for event in all_events:
         title = event.get("title", "")
         title_lower = title.lower().replace("®", "")
         
-        # Extract key identifying words from the title
-        key_words = []
-        if "identity overflow" in title_lower:
-            key_words = ["identity", "overflow"]
-        elif "manifestation mastery" in title_lower:
-            key_words = ["manifestation", "mastery"]
-        elif "success redefined" in title_lower or "meditation" in title_lower:
-            key_words = ["meditation", "success", "dubai"]
-        elif "soulalign" in title_lower and "coach" in title_lower:
-            key_words = ["coach", "soulalign coach", "soul align coach"]
-        elif "soulalign" in title_lower and "heal" in title_lower:
-            key_words = ["heal", "soulalign heal", "soul align heal"]
-        elif "soulalign" in title_lower and "business" in title_lower:
-            key_words = ["business", "soulalign business", "soul align business"]
+        # Calculate match score - higher score = better match
+        match_score = 0
         
-        # Check if user message mentions this event
-        if key_words and any(kw in message_lower for kw in key_words):
-            formatted_event = format_event_for_chat(event)
-            event_page = event.get('eventPageUrl', '')
-            event_title = event.get('title', '')
-            
-            # Build follow-up instruction based on available URLs
-            if event_page:
-                follow_up = f"""
+        # Specific multi-word phrase matches (highest priority)
+        if "identity switch" in title_lower and "identity switch" in message_lower:
+            match_score = 100
+        elif "identity switch" in title_lower and "switch" in message_lower:
+            match_score = 90
+        elif "identity overflow" in title_lower and ("overflow" in message_lower or "identity overflow" in message_lower):
+            match_score = 100
+        elif "manifestation mastery" in title_lower and ("manifestation" in message_lower or "mastery" in message_lower):
+            match_score = 80
+        elif "success redefined" in title_lower and ("success redefined" in message_lower or ("success" in message_lower and "meditation" in message_lower)):
+            match_score = 100
+        elif ("meditation" in title_lower and "dubai" in title_lower) and ("meditation" in message_lower or "dubai" in message_lower):
+            match_score = 85
+        elif "soulalign" in title_lower and "coach" in title_lower and "coach" in message_lower:
+            match_score = 80
+        elif "soulalign" in title_lower and "heal" in title_lower and "heal" in message_lower:
+            match_score = 80
+        elif "soulalign" in title_lower and "business" in title_lower and "business" in message_lower:
+            match_score = 80
+        
+        # Track best match
+        if match_score > best_match_score:
+            best_match = event
+            best_match_score = match_score
+    
+    # Use best matching event if found
+    if best_match and best_match_score > 0:
+        event = best_match
+        formatted_event = format_event_for_chat(event)
+        event_page = event.get('eventPageUrl', '')
+        event_title = event.get('title', '')
+        
+        # Build follow-up instruction based on available URLs
+        if event_page:
+            follow_up = f"""
 MANDATORY FOLLOW-UP (add this at the very end of your response):
 "Would you like me to take you to the [event page]({event_page}) to learn more or enroll?"
 
 If user says yes/navigate: Use [NAVIGATE:{event_page}]
 If user wants calendar: Use [ADD_TO_CALENDAR:{event_title}]
 """
-            else:
-                follow_up = f"""
+        else:
+            follow_up = f"""
 FOLLOW-UP (add this at the very end of your response):
 "Would you like to add this event to your calendar, or do you have any questions about it?"
 
 If user wants calendar: Use [ADD_TO_CALENDAR:{event_title}]
 """
-            
-            return f"""
+        
+        return f"""
 === VERBATIM EVENT DATA (DO NOT PARAPHRASE) ===
 {formatted_event}
 === END VERBATIM DATA ===
