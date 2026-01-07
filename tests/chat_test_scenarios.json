@@ -1,0 +1,337 @@
+{
+  "test_scenarios": [
+    {
+      "id": "greeting_basic",
+      "name": "Basic Greeting",
+      "description": "Test that greetings are handled correctly",
+      "turns": [
+        {
+          "user": "Hello!",
+          "expected_intent": "greeting",
+          "keywords": ["hello", "wellness", "programs", "events"]
+        }
+      ]
+    },
+    {
+      "id": "greeting_hi",
+      "name": "Hi Greeting",
+      "description": "Test 'hi' as greeting",
+      "turns": [
+        {
+          "user": "Hi there",
+          "expected_intent": "greeting",
+          "keywords": ["hello", "wellness"]
+        }
+      ]
+    },
+    {
+      "id": "date_specific_june1",
+      "name": "Specific Date Query - June 1st",
+      "description": "CRITICAL: 'June 1st' should be a DATE query, NOT ordinal selection",
+      "turns": [
+        {
+          "user": "Are there any events on June 1st?",
+          "expected_intent": "event",
+          "keywords": ["event", "June"],
+          "must_not_contain": ["option", "which one"]
+        }
+      ]
+    },
+    {
+      "id": "date_specific_june26",
+      "name": "Specific Date Query - June 26",
+      "description": "Test specific date within multi-day event range",
+      "turns": [
+        {
+          "user": "Is there anything happening on June 26?",
+          "expected_intent": "event",
+          "keywords": ["SoulAlign", "Heal"]
+        }
+      ]
+    },
+    {
+      "id": "date_month_query_march",
+      "name": "Month Query - March",
+      "description": "Test month-based event filtering",
+      "turns": [
+        {
+          "user": "What events are happening in March?",
+          "expected_intent": "event",
+          "keywords": ["March", "SoulAlign", "Coach"]
+        }
+      ]
+    },
+    {
+      "id": "date_month_query_january",
+      "name": "Month Query - January",
+      "description": "Test January events",
+      "turns": [
+        {
+          "user": "Show me events in January",
+          "expected_intent": "event",
+          "keywords": ["January", "Identity Switch", "Success Redefined"]
+        }
+      ]
+    },
+    {
+      "id": "ordinal_selection_after_list",
+      "name": "Ordinal Selection from List",
+      "description": "User selects '1' after seeing a numbered list",
+      "turns": [
+        {
+          "user": "What events do you have?",
+          "expected_intent": "event",
+          "keywords": ["1.", "2."]
+        },
+        {
+          "user": "1",
+          "expected_intent": "followup_select",
+          "keywords": []
+        }
+      ]
+    },
+    {
+      "id": "ordinal_first_one",
+      "name": "Ordinal 'the first one'",
+      "description": "User says 'the first one' to select",
+      "turns": [
+        {
+          "user": "Tell me about upcoming events",
+          "expected_intent": "event",
+          "keywords": ["1.", "2."]
+        },
+        {
+          "user": "the first one",
+          "expected_intent": "followup_select",
+          "keywords": []
+        }
+      ]
+    },
+    {
+      "id": "ordinal_option_2",
+      "name": "Ordinal 'option 2'",
+      "description": "User says 'option 2' to select second item",
+      "turns": [
+        {
+          "user": "What events are coming up?",
+          "expected_intent": "event",
+          "keywords": ["1.", "2."]
+        },
+        {
+          "user": "option 2",
+          "expected_intent": "followup_select",
+          "keywords": []
+        }
+      ]
+    },
+    {
+      "id": "followup_yes_after_event",
+      "name": "Follow-up 'yes' After Event",
+      "description": "User confirms interest with 'yes'",
+      "turns": [
+        {
+          "user": "Tell me about The Identity Switch",
+          "expected_intent": "event",
+          "keywords": ["Identity Switch", "January"]
+        },
+        {
+          "user": "yes",
+          "expected_intent": "followup_confirm",
+          "keywords": []
+        }
+      ]
+    },
+    {
+      "id": "followup_tell_me_more",
+      "name": "Follow-up 'tell me more'",
+      "description": "User asks for more info",
+      "turns": [
+        {
+          "user": "What's the Success Redefined meditation?",
+          "expected_intent": "event",
+          "keywords": ["Success Redefined", "Dubai"]
+        },
+        {
+          "user": "tell me more",
+          "expected_intent": "followup_confirm",
+          "keywords": []
+        }
+      ]
+    },
+    {
+      "id": "multiday_event_range",
+      "name": "Multi-day Event Query",
+      "description": "Query about date within a multi-day event range",
+      "turns": [
+        {
+          "user": "Is there an event on July 15th?",
+          "expected_intent": "event",
+          "keywords": ["SoulAlign", "Heal"]
+        }
+      ]
+    },
+    {
+      "id": "program_pricing",
+      "name": "Program Pricing Query",
+      "description": "Test knowledge intent for pricing questions",
+      "turns": [
+        {
+          "user": "How much does SoulAlign Coach cost?",
+          "expected_intent": "knowledge",
+          "keywords": ["investment", "price", "$"]
+        }
+      ]
+    },
+    {
+      "id": "program_features",
+      "name": "Program Features Query",
+      "description": "Test knowledge intent for program details",
+      "turns": [
+        {
+          "user": "What's included in the SoulAlign Business program?",
+          "expected_intent": "knowledge",
+          "keywords": ["business", "coaching", "program"]
+        }
+      ]
+    },
+    {
+      "id": "event_register",
+      "name": "Event Registration Intent",
+      "description": "Test event action word 'register'",
+      "turns": [
+        {
+          "user": "How do I register for The Identity Switch?",
+          "expected_intent": "event",
+          "keywords": ["Identity Switch", "register", "ticket"]
+        }
+      ]
+    },
+    {
+      "id": "event_book",
+      "name": "Event Booking Intent",
+      "description": "Test event action word 'book'",
+      "turns": [
+        {
+          "user": "I want to book a spot at the Dubai meditation event",
+          "expected_intent": "event",
+          "keywords": ["Dubai", "meditation", "Success Redefined"]
+        }
+      ]
+    },
+    {
+      "id": "disambiguation_soualign_heal",
+      "name": "Program vs Event Disambiguation",
+      "description": "Test when name exists as both program and event",
+      "turns": [
+        {
+          "user": "Tell me about SoulAlign Heal",
+          "expected_intent": ["clarification", "event", "knowledge"],
+          "keywords": ["SoulAlign", "Heal"]
+        }
+      ]
+    },
+    {
+      "id": "date_1st_not_ordinal",
+      "name": "Date '1st of June' Not Ordinal",
+      "description": "CRITICAL: '1st of June' should be date, not ordinal",
+      "turns": [
+        {
+          "user": "Any events on the 1st of June?",
+          "expected_intent": "event",
+          "keywords": ["June"],
+          "must_not_contain": ["option", "which"]
+        }
+      ]
+    },
+    {
+      "id": "date_3rd_july",
+      "name": "Date '3rd July' Not Ordinal",
+      "description": "CRITICAL: '3rd July' should be date, not ordinal selection",
+      "turns": [
+        {
+          "user": "What's happening on 3rd July?",
+          "expected_intent": "event",
+          "keywords": ["July", "event"],
+          "must_not_contain": ["third option"]
+        }
+      ]
+    },
+    {
+      "id": "upcoming_events_general",
+      "name": "General Upcoming Events",
+      "description": "Test general event listing",
+      "turns": [
+        {
+          "user": "What events are coming up?",
+          "expected_intent": "event",
+          "keywords": ["event", "1.", "2."]
+        }
+      ]
+    },
+    {
+      "id": "event_location",
+      "name": "Event Location Query",
+      "description": "Test event with location focus",
+      "turns": [
+        {
+          "user": "Are there any events in Dubai?",
+          "expected_intent": "event",
+          "keywords": ["Dubai", "Success Redefined", "meditation"]
+        }
+      ]
+    },
+    {
+      "id": "enrollment_query",
+      "name": "Enrollment Intent",
+      "description": "Test enrollment question for programs",
+      "turns": [
+        {
+          "user": "How do I enroll in SoulAlign Coach?",
+          "expected_intent": ["knowledge", "event"],
+          "keywords": ["enroll", "SoulAlign Coach"]
+        }
+      ]
+    },
+    {
+      "id": "bare_yes_no_context",
+      "name": "Bare 'yes' Without Context",
+      "description": "Test that bare 'yes' without event context doesn't misfire",
+      "turns": [
+        {
+          "user": "Hello",
+          "expected_intent": "greeting",
+          "keywords": []
+        },
+        {
+          "user": "yes",
+          "expected_intent": ["other", "greeting", "followup_confirm"],
+          "keywords": []
+        }
+      ]
+    },
+    {
+      "id": "calendar_add",
+      "name": "Add to Calendar Request",
+      "description": "Test calendar add functionality",
+      "turns": [
+        {
+          "user": "Can I add The Identity Switch to my calendar?",
+          "expected_intent": "event",
+          "keywords": ["calendar", "Identity Switch"]
+        }
+      ]
+    },
+    {
+      "id": "september_events",
+      "name": "September Events Query",
+      "description": "Test month with multi-day events overlapping",
+      "turns": [
+        {
+          "user": "What's happening in September 2026?",
+          "expected_intent": "event",
+          "keywords": ["September", "SoulAlign"]
+        }
+      ]
+    }
+  ]
+}

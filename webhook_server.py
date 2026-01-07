@@ -308,7 +308,8 @@ def api_chat():
         "safety_triggered": result.get("safety_triggered", False),
         "session_id": session_id,
         "user_id": user_id,
-        "is_returning_user": is_returning_user
+        "is_returning_user": is_returning_user,
+        "intent": result.get("intent", "unknown")
     })
 
 

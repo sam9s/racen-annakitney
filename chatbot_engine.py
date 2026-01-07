@@ -301,17 +301,15 @@ def generate_response(
         print(f"[IntentRouter] User selected item {selection_idx + 1} from list", flush=True)
         
         # Extract the selected item from the last bot message
-        # Pass to events service with selection context
-        from events_service import get_event_context_for_llm
-        event_context = get_event_context_for_llm(
+        # Pass to events service with selection context (get_event_context_for_llm imported at top)
+        followup_event_context = get_event_context_for_llm(
             user_message, 
             conversation_history,
             selection_index=selection_idx
         )
         
-        if event_context and "{{DIRECT_EVENT}}" in event_context:
-            import re
-            direct_match = re.search(r'\{\{DIRECT_EVENT\}\}(.*?)\{\{/DIRECT_EVENT\}\}', event_context, re.DOTALL)
+        if followup_event_context and "{{DIRECT_EVENT}}" in followup_event_context:
+            direct_match = re.search(r'\{\{DIRECT_EVENT\}\}(.*?)\{\{/DIRECT_EVENT\}\}', followup_event_context, re.DOTALL)
             if direct_match:
                 return {
                     "response": direct_match.group(1).strip(),
@@ -322,7 +320,7 @@ def generate_response(
         
         # If we couldn't match the selection, ask for clarification
         # This handles cases where the parsed list doesn't match what was shown
-        if not event_context or "{{DIRECT_EVENT}}" not in event_context:
+        if not followup_event_context or "{{DIRECT_EVENT}}" not in followup_event_context:
             print(f"[IntentRouter] Could not match selection {selection_idx + 1}, asking for clarification", flush=True)
             return {
                 "response": f"I'm not sure which option #{selection_idx + 1} refers to. Could you please tell me the name of the event or program you're interested in?",
@@ -336,13 +334,11 @@ def generate_response(
         context_type = intent_result.slots.get("context", "event")
         print(f"[IntentRouter] User confirming interest in {context_type}", flush=True)
         
-        # Get the relevant context based on what was discussed
+        # Get the relevant context based on what was discussed (get_event_context_for_llm imported at top)
         if context_type == "event":
-            from events_service import get_event_context_for_llm
-            event_context = get_event_context_for_llm(user_message, conversation_history)
-            if event_context and "{{DIRECT_EVENT}}" in event_context:
-                import re
-                direct_match = re.search(r'\{\{DIRECT_EVENT\}\}(.*?)\{\{/DIRECT_EVENT\}\}', event_context, re.DOTALL)
+            confirm_event_context = get_event_context_for_llm(user_message, conversation_history)
+            if confirm_event_context and "{{DIRECT_EVENT}}" in confirm_event_context:
+                direct_match = re.search(r'\{\{DIRECT_EVENT\}\}(.*?)\{\{/DIRECT_EVENT\}\}', confirm_event_context, re.DOTALL)
                 if direct_match:
                     return {
                         "response": direct_match.group(1).strip(),
@@ -509,7 +505,8 @@ FOLLOW-UP QUESTIONS (choose ONE that's most relevant):
             "sources": sources[:3],
             "safety_triggered": was_filtered,
             "safety_category": "output_filtered" if was_filtered else None,
-            "calendar_action": calendar_action_taken
+            "calendar_action": calendar_action_taken,
+            "intent": intent_result.intent.value
         }
         
     except Exception as e:
@@ -521,14 +518,16 @@ FOLLOW-UP QUESTIONS (choose ONE that's most relevant):
                 "response": "I'm experiencing high demand right now. Please try again in a moment.",
                 "sources": [],
                 "safety_triggered": False,
-                "error": "rate_limit"
+                "error": "rate_limit",
+                "intent": "error"
             }
         
         return {
             "response": "I apologize, but I'm having trouble processing your question right now. Please try again, or contact us at https://www.annakitney.com/contact for assistance.",
             "sources": [],
             "safety_triggered": False,
-            "error": str(e)
+            "error": str(e),
+            "intent": "error"
         }
 
 
