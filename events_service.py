@@ -1274,7 +1274,8 @@ Here are all upcoming events you might be interested in:
 """
     
     # Check if user is asking about upcoming events list
-    if any(kw in message_lower for kw in ["events", "upcoming", "what's happening", "schedule", "calendar"]):
+    # Include both singular "event" and plural "events", plus common phrasings
+    if any(kw in message_lower for kw in ["event", "events", "upcoming", "what's happening", "happening in", "schedule", "calendar"]):
         events = get_upcoming_events(20)  # Get more events to allow for filtering
         
         # Check if user is asking about a specific program's events
