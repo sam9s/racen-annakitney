@@ -26,6 +26,7 @@ This is a RAG-based wellness chatbot for Anna Kitney's wellness coaching busines
 - `server/calendar-sync-service.ts` - Calendar to PostgreSQL sync
 
 ## Documentation (in /docs folder)
+- `docs/ARCHITECTURE_DECISIONS.md` - **Why code vs LLM prompting** (read this first!)
 - `docs/CALENDAR_EVENTS_GUIDE.md` - Guide for Anna's team on adding event URLs
 - `docs/DEPLOYMENT_BLUEPRINT.md` - Deployment instructions
 - `docs/design_guidelines.md` - Frontend design guidelines
