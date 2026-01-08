@@ -114,6 +114,10 @@ TIME_PATTERNS = [
     r'\bwhere\s+is\s+(?:the\s+)?(?:\w+\s+)+(?:held|happening|taking\s+place|located)\b',
     r'\blocation\s+(?:of|for)\b',
     r'\bwhere\s+(?:does|will)\s+(?:the\s+)?\w+\s+(?:take\s+place|happen|be\s+held)\b',
+    # "Is there an event in [location]?" patterns
+    r'\b(?:is\s+there|are\s+there)\s+(?:an?\s+)?(?:events?|workshops?|sessions?)\s+(?:in|at)\s+\w+',
+    r'\bevents?\s+(?:in|at)\s+(?:dubai|london|zoom|online)\b',
+    r'\b(?:dubai|london)\s+events?\b',
 ]
 
 # Event action patterns (indicates EVENT intent)

@@ -1191,6 +1191,40 @@ CRITICAL INSTRUCTIONS FOR THIS RESPONSE:
 Events Page: https://www.annakitney.com/events/
 """
     
+    # ========== LOCATION QUERY HANDLING ==========
+    # Handle queries like "Where is the Dubai event held?" or "Is there an event in Dubai?"
+    # Search for location keywords in both event titles AND location fields
+    location_patterns = [
+        r'\bwhere\s+(?:is|are)\s+(?:the\s+)?(\w+)\s+event',
+        r'\b(\w+)\s+event\s+location',
+        r'\blocation\s+(?:of|for)\s+(?:the\s+)?(\w+)',
+        r'\bwhere\s+(?:does|will)\s+(?:the\s+)?(\w+)\s+(?:take\s+place|happen|be\s+held)',
+        r'\b(?:is\s+there|are\s+there)\s+(?:an?\s+)?(?:events?|workshops?|sessions?)\s+(?:in|at)\s+(\w+)',
+        r'\bevents?\s+(?:in|at)\s+(dubai|london|zoom|online)\b',
+        r'\b(dubai|london)\s+events?\b',
+    ]
+    
+    for pattern in location_patterns:
+        match = re.search(pattern, message_lower)
+        if match:
+            location_keyword = match.group(1).lower()
+            all_events = get_upcoming_events(20)
+            
+            # Search for events with this keyword in title OR location
+            matching_events = []
+            for event in all_events:
+                title = event.get("title", "").lower()
+                location = event.get("location", "").lower()
+                if location_keyword in title or location_keyword in location:
+                    matching_events.append(event)
+            
+            if matching_events:
+                if len(matching_events) == 1:
+                    return _build_single_event_response(matching_events[0])
+                else:
+                    return _build_disambiguation_response([(e, 1.0) for e in matching_events[:5]])
+            break  # Only try first matching pattern
+    
     # ========== FUZZY MATCHING (DYNAMIC) ==========
     # This works with ANY event name - no hardcoding required
     all_events = get_upcoming_events(20)
