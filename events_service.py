@@ -940,12 +940,16 @@ def _find_event_from_history(conversation_history: List[Dict]) -> Optional[Dict]
     Searches conversation in reverse order to find the most recently discussed event.
     """
     if not conversation_history:
+        print("[_find_event_from_history] No conversation history", flush=True)
         return None
     
     # Get all events from the database to match against
     all_events = get_upcoming_events(20)
     if not all_events:
+        print("[_find_event_from_history] No events in database", flush=True)
         return None
+    
+    print(f"[_find_event_from_history] Searching {len(conversation_history)} messages for events", flush=True)
     
     # Search in reverse order (most recent first)
     for msg in reversed(conversation_history[-10:]):
@@ -957,6 +961,7 @@ def _find_event_from_history(conversation_history: List[Dict]) -> Optional[Dict]
             # Use the same fuzzy matching function
             matches = find_matching_events(content, all_events)
             if matches and matches[0][1] >= FUZZY_MATCH_THRESHOLD:
+                print(f"[_find_event_from_history] Found via user message: {matches[0][0].get('title')}", flush=True)
                 return matches[0][0]
     
     # Fallback: check assistant messages for the last detailed event response
@@ -969,9 +974,87 @@ def _find_event_from_history(conversation_history: List[Dict]) -> Optional[Dict]
                 title = event.get("title", "")
                 # Check if this event was discussed in detail (full title mentioned)
                 if title.lower() in content:
+                    print(f"[_find_event_from_history] Found via assistant message: {title}", flush=True)
                     return event
     
+    print("[_find_event_from_history] No event found in history", flush=True)
     return None
+
+
+def get_event_summary_for_llm(event_name: str, conversation_history: List[Dict] = None) -> str:
+    """
+    Get event summary context for LLM to generate a friendly summary.
+    
+    This is STAGE 1 of the progressive event detail flow:
+    - Returns basic event info (title, dates, location) 
+    - LLM generates a nice summary with "Would you like more details?" CTA
+    - NOT the full VERBATIM details - those come in STAGE 2
+    
+    Args:
+        event_name: The event name/title to look up
+        conversation_history: Previous conversation messages
+    
+    Returns:
+        Context string for LLM to generate summary, or empty string if not found
+    """
+    try:
+        # Try to find the event by name
+        events = get_upcoming_events(20)
+        if not events:
+            return ""
+        
+        # Use fuzzy matching to find the event
+        matches = find_matching_events(event_name, events)
+        
+        if not matches:
+            # Try conversation history fallback
+            last_event = _find_event_from_history(conversation_history)
+            if last_event:
+                matches = [(last_event, 1.0)]
+        
+        if not matches:
+            return ""
+        
+        event = matches[0][0]
+        title = event.get("title", "")
+        start = event.get("start", "")
+        end = event.get("end", "")
+        location = event.get("location", "Online")
+        event_page = event.get("eventPageUrl", "")
+        
+        # Format dates
+        try:
+            start_dt = datetime.fromisoformat(start.replace('Z', '+00:00'))
+            end_dt = datetime.fromisoformat(end.replace('Z', '+00:00'))
+            date_str = f"{start_dt.strftime('%B %d')} - {end_dt.strftime('%B %d, %Y')}"
+        except:
+            date_str = "Dates TBD"
+        
+        # Return context for LLM to generate a summary
+        # Note: This does NOT use DIRECT_EVENT marker - LLM will summarize
+        # IMPORTANT: Include exact title so _find_event_from_history can find it later
+        return f"""
+EVENT SUMMARY CONTEXT (for generating a friendly summary):
+The user is asking about this event:
+
+Event Title (use EXACTLY as written): {title}
+Dates: {date_str}
+Location: {location}
+
+CRITICAL INSTRUCTIONS:
+1. You MUST include the EXACT event title "{title}" in your response (verbatim, no abbreviations)
+2. Provide a brief, friendly summary of this event (2-3 sentences max)
+3. Mention when and where it's happening
+4. End with EXACTLY this phrase: "Would you like more details about this event?"
+5. Do NOT include the full event description yet - that comes if they say yes
+6. Do NOT offer to take them to the event page yet - that comes after they see full details
+
+REQUIRED response format (must start with exact title):
+"{title} is happening from {date_str} at {location}. [Brief 1-2 sentence description]. Would you like more details about this event?"
+"""
+    except Exception as e:
+        print(f"[Events Service] Error getting event summary: {e}")
+        return ""
 
 
 def get_event_context_for_llm(user_message: str, conversation_history: List[Dict] = None, selection_index: int = None) -> str:

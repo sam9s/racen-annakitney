@@ -38,7 +38,18 @@ class IntentType(Enum):
     BOOKING = "booking"          # Future: Book an event
     FOLLOWUP_SELECT = "followup_select"  # User selecting from a numbered list
     FOLLOWUP_CONFIRM = "followup_confirm"  # User confirming (yes/tell me more)
+    EVENT_DETAIL_REQUEST = "event_detail_request"  # User asking about specific event after listing
+    EVENT_NAVIGATE = "event_navigate"  # User confirming navigation to event page
     OTHER = "other"              # Catch-all
+
+
+# Event follow-up stages (tracked in conversation)
+class EventFollowupStage:
+    """Stages for progressive event detail disclosure."""
+    NONE = "none"                    # No event follow-up in progress
+    LISTING_SHOWN = "listing_shown"  # Bot showed event listing
+    SUMMARY_SHOWN = "summary_shown"  # Bot showed event summary, offered "more details?"
+    DETAILS_SHOWN = "details_shown"  # Bot showed full details, offered "event page?"
 
 
 # Patterns for detecting numbered lists in bot messages
@@ -534,6 +545,11 @@ class IntentRouter:
         
         This is the SINGLE decision point for follow-up detection.
         Returns IntentResult if it's a follow-up, None otherwise.
+        
+        EVENT FOLLOW-UP STAGES:
+        1. After event listing + user mentions event name → EVENT_DETAIL_REQUEST (show summary)
+        2. After "more details?" + user confirms → FOLLOWUP_CONFIRM with stage=summary_shown (show full details)
+        3. After "event page?" + user confirms → EVENT_NAVIGATE (emit navigation)
         """
         if not conversation_history:
             return None
@@ -548,6 +564,8 @@ class IntentRouter:
         if not last_bot_msg:
             return None
         
+        last_msg_lower = last_bot_msg.lower()
+        
         # Check if user is selecting from a numbered list
         is_ordinal, selection_idx = self._is_bare_ordinal(message)
         if is_ordinal and self._has_numbered_list(last_bot_msg):
@@ -558,21 +576,55 @@ class IntentRouter:
                 reasoning=f"User selected item {selection_idx + 1} from numbered list"
             )
         
+        # ========== EVENT FOLLOW-UP STAGE DETECTION ==========
+        # Detect current stage based on last bot message CTAs
+        current_stage = self._detect_event_followup_stage(last_msg_lower)
+        
         # Check if user is confirming/asking for more info
         if self._is_affirmative(message):
-            # Determine context from last bot message
-            last_msg_lower = last_bot_msg.lower()
+            # STAGE 3: User confirming navigation to event page
+            if current_stage == EventFollowupStage.DETAILS_SHOWN:
+                # Extract event URL from last message if available
+                event_url = self._extract_event_url_from_message(last_bot_msg)
+                return IntentResult(
+                    intent=IntentType.EVENT_NAVIGATE,
+                    confidence=HIGH_CONFIDENCE,
+                    slots={
+                        "context": "event", 
+                        "stage": EventFollowupStage.DETAILS_SHOWN,
+                        "event_url": event_url,
+                        "last_bot_message": last_bot_msg[:500]
+                    },
+                    reasoning="User confirming navigation to event page"
+                )
             
-            # Check if last message was about events
-            if any(word in last_msg_lower for word in ["event", "calendar", "schedule", "register", "attend", "when:"]):
+            # STAGE 2: User confirming they want more details (after summary)
+            if current_stage == EventFollowupStage.SUMMARY_SHOWN:
                 return IntentResult(
                     intent=IntentType.FOLLOWUP_CONFIRM,
                     confidence=HIGH_CONFIDENCE,
-                    slots={"context": "event", "last_bot_message": last_bot_msg[:500]},
-                    reasoning="User confirming interest in previously discussed event"
+                    slots={
+                        "context": "event", 
+                        "stage": EventFollowupStage.SUMMARY_SHOWN,
+                        "last_bot_message": last_bot_msg[:500]
+                    },
+                    reasoning="User confirming interest in full event details"
                 )
             
-            # Check if last message was about programs
+            # STAGE 1: User confirming after event listing (wants to hear about specific event)
+            if current_stage == EventFollowupStage.LISTING_SHOWN:
+                return IntentResult(
+                    intent=IntentType.FOLLOWUP_CONFIRM,
+                    confidence=HIGH_CONFIDENCE,
+                    slots={
+                        "context": "event", 
+                        "stage": EventFollowupStage.LISTING_SHOWN,
+                        "last_bot_message": last_bot_msg[:500]
+                    },
+                    reasoning="User confirming interest after event listing"
+                )
+            
+            # Check if last message was about programs (non-event)
             if any(word in last_msg_lower for word in ["program", "course", "enroll", "investment", "pricing"]):
                 return IntentResult(
                     intent=IntentType.FOLLOWUP_CONFIRM,
@@ -581,6 +633,107 @@ class IntentRouter:
                     reasoning="User confirming interest in previously discussed program"
                 )
         
+        # ========== EVENT NAME AFTER LISTING ==========
+        # If last message was an event listing and user mentions an event name, route to EVENT_DETAIL_REQUEST
+        if current_stage == EventFollowupStage.LISTING_SHOWN:
+            # Check if user's message contains an event title
+            event_match, event_score = self._match_event_title(message)
+            if event_match and event_score >= 0.4:
+                return IntentResult(
+                    intent=IntentType.EVENT_DETAIL_REQUEST,
+                    confidence=HIGH_CONFIDENCE,
+                    slots={
+                        "matched_event": event_match,
+                        "stage": EventFollowupStage.LISTING_SHOWN,
+                        "last_bot_message": last_bot_msg[:500]
+                    },
+                    reasoning=f"User asking about '{event_match}' after event listing"
+                )
+        
+        return None
+    
+    def _detect_event_followup_stage(self, last_msg_lower: str) -> str:
+        """
+        Detect the current event follow-up stage based on the last bot message.
+        Returns one of EventFollowupStage values.
+        
+        IMPORTANT: These patterns must match the exact CTAs from _build_single_event_response()
+        and get_event_summary_for_llm() to ensure proper stage transitions.
+        """
+        # DETAILS_SHOWN: Bot showed full details and offered event page navigation
+        # Pattern from _build_single_event_response():
+        #   "Would you like me to take you to the [event page](url) to learn more or enroll?"
+        details_shown_patterns = [
+            "take you to the [event page]",  # Matches markdown link format
+            "take you to the event page",    # Matches plain text format
+            "to learn more or enroll",       # End of the CTA phrase
+            "would you like me to take you", # Start of navigation CTA
+            "view event page",
+            "[navigate:",                     # Navigation marker
+        ]
+        if any(phrase in last_msg_lower for phrase in details_shown_patterns):
+            print(f"[_detect_event_followup_stage] Matched DETAILS_SHOWN", flush=True)
+            return EventFollowupStage.DETAILS_SHOWN
+        
+        # SUMMARY_SHOWN: Bot showed summary and offered more details  
+        # Pattern from get_event_summary_for_llm():
+        #   "Would you like more details about this event?"
+        summary_shown_patterns = [
+            "would you like more details about this event",  # Exact CTA
+            "would you like more details",                    # Shorter variant
+            "would you like me to provide more",
+            "want more details",
+            "more information about this event",
+        ]
+        if any(phrase in last_msg_lower for phrase in summary_shown_patterns):
+            print(f"[_detect_event_followup_stage] Matched SUMMARY_SHOWN", flush=True)
+            return EventFollowupStage.SUMMARY_SHOWN
+        
+        # LISTING_SHOWN: Bot showed event listing with numbered items
+        # Look for numbered lists with event-related content
+        if self._has_numbered_list(last_msg_lower) and any(word in last_msg_lower for word in [
+            "event", "upcoming", "here are", "schedule", "workshop", "session"
+        ]):
+            return EventFollowupStage.LISTING_SHOWN
+        
+        return EventFollowupStage.NONE
+    
+    def _extract_event_url_from_message(self, message: str) -> Optional[str]:
+        """
+        Extract event page URL from bot message if present.
+        Handles Markdown links [text](url) and raw URLs.
+        """
+        import re
+        
+        # Pattern 1: [event page](url) - case insensitive
+        match = re.search(r'\[event page\]\((https?://[^)\s]+)\)', message, re.IGNORECASE)
+        if match:
+            url = match.group(1).rstrip('.,')  # Clean trailing punctuation
+            print(f"[_extract_event_url] Found via [event page]: {url}", flush=True)
+            return url
+        
+        # Pattern 2: [View Event Page](url) - case insensitive
+        match = re.search(r'\[View Event Page\]\((https?://[^)\s]+)\)', message, re.IGNORECASE)
+        if match:
+            url = match.group(1).rstrip('.,')
+            print(f"[_extract_event_url] Found via [View Event Page]: {url}", flush=True)
+            return url
+        
+        # Pattern 3: Any Markdown link with annakitney.com/event/
+        match = re.search(r'\[[^\]]+\]\((https?://[^)\s]*annakitney\.com/event[^)\s]*)\)', message)
+        if match:
+            url = match.group(1).rstrip('.,')
+            print(f"[_extract_event_url] Found via Markdown link: {url}", flush=True)
+            return url
+        
+        # Pattern 4: Raw annakitney.com/event/ URL (not in Markdown)
+        match = re.search(r'(https?://(?:www\.)?annakitney\.com/event/[^\s\)\]]+)', message)
+        if match:
+            url = match.group(1).rstrip('.,')
+            print(f"[_extract_event_url] Found via raw URL: {url}", flush=True)
+            return url
+        
+        print(f"[_extract_event_url] No URL found in message (length: {len(message)})", flush=True)
         return None
     
     def _check_conversation_context(self, history: List[Dict]) -> Optional[IntentType]:

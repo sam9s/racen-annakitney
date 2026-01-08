@@ -25,7 +25,7 @@ from tenacity import retry, stop_after_attempt, wait_exponential, retry_if_excep
 from knowledge_base import search_knowledge_base, get_knowledge_base_stats
 from safety_guardrails import apply_safety_filters, get_system_prompt, filter_response_for_safety, inject_program_links, inject_checkout_urls, append_contextual_links, format_numbered_lists, inject_dynamic_enrollment, fix_compound_trailing_questions
 from events_service import is_event_query, get_event_context_for_llm, process_calendar_action, fix_navigation_urls
-from intent_router import get_intent_router, IntentType, refresh_router_data
+from intent_router import get_intent_router, IntentType, EventFollowupStage, refresh_router_data
 
 _openai_client = None
 
@@ -329,12 +329,129 @@ def generate_response(
                 "intent": "clarification"
             }
     
+    # Handle EVENT_NAVIGATE intent - user confirming they want to go to event page
+    if intent_result.intent == IntentType.EVENT_NAVIGATE:
+        event_url = intent_result.slots.get("event_url", "")
+        print(f"[IntentRouter] User wants to navigate to event page: {event_url}", flush=True)
+        
+        if event_url:
+            # Emit navigation directive - frontend will handle this
+            response = f"Taking you to the event page now!\n\n[NAVIGATE:{event_url}]"
+            return {
+                "response": response,
+                "sources": [],
+                "safety_triggered": False,
+                "intent": "event_navigate"
+            }
+        else:
+            # Try to find URL from conversation history
+            from events_service import _find_event_from_history
+            last_event = _find_event_from_history(conversation_history)
+            if last_event and last_event.get("eventPageUrl"):
+                event_url = last_event.get("eventPageUrl")
+                response = f"Taking you to the event page now!\n\n[NAVIGATE:{event_url}]"
+                return {
+                    "response": response,
+                    "sources": [],
+                    "safety_triggered": False,
+                    "intent": "event_navigate"
+                }
+            else:
+                return {
+                    "response": "I'm sorry, I couldn't find the event page URL. Could you tell me which event you'd like to learn more about?",
+                    "sources": [],
+                    "safety_triggered": False,
+                    "intent": "clarification"
+                }
+    
+    # Handle EVENT_DETAIL_REQUEST intent - user asking about specific event after listing
+    if intent_result.intent == IntentType.EVENT_DETAIL_REQUEST:
+        matched_event = intent_result.slots.get("matched_event", "")
+        print(f"[IntentRouter] User asking for event details: {matched_event}", flush=True)
+        
+        # Get event summary (not full details) for DETERMINISTIC response
+        # This bypasses the LLM to guarantee the exact CTA for stage transitions
+        from events_service import get_upcoming_events, find_matching_events, _find_event_from_history
+        from datetime import datetime
+        
+        try:
+            events = get_upcoming_events(20)
+            matches = find_matching_events(matched_event, events) if events else []
+            
+            if not matches:
+                # Fallback to conversation history
+                last_event = _find_event_from_history(conversation_history)
+                if last_event:
+                    matches = [(last_event, 1.0)]
+            
+            if matches:
+                event = matches[0][0]
+                title = event.get("title", "")
+                start = event.get("start", "")
+                end = event.get("end", "")
+                location = event.get("location", "Online")
+                
+                # Format dates
+                try:
+                    start_dt = datetime.fromisoformat(start.replace('Z', '+00:00'))
+                    end_dt = datetime.fromisoformat(end.replace('Z', '+00:00'))
+                    date_str = f"{start_dt.strftime('%B %d')} - {end_dt.strftime('%B %d, %Y')}"
+                except:
+                    date_str = "Dates TBD"
+                
+                # DETERMINISTIC SUMMARY with exact CTA for stage detection
+                summary_response = f"""**{title}** is happening from {date_str} at {location}.
+
+This looks like an exciting event that covers transformative topics and provides powerful experiences.
+
+Would you like more details about this event?"""
+                
+                print(f"[EVENT_DETAIL_REQUEST] Returning deterministic summary for: {title}", flush=True)
+                return {
+                    "response": summary_response,
+                    "sources": [],
+                    "safety_triggered": False,
+                    "intent": "event_detail_request"
+                }
+        except Exception as e:
+            print(f"[EVENT_DETAIL_REQUEST] Error getting event summary: {e}", flush=True)
+        
+        # Couldn't find the event
+        return {
+            "response": f"I couldn't find details for '{matched_event}'. Could you please specify which event you're interested in?",
+            "sources": [],
+            "safety_triggered": False,
+            "intent": "clarification"
+        }
+    
     # Handle FOLLOWUP_CONFIRM intent - user confirming interest
     if intent_result.intent == IntentType.FOLLOWUP_CONFIRM:
         context_type = intent_result.slots.get("context", "event")
-        print(f"[IntentRouter] User confirming interest in {context_type}", flush=True)
+        stage = intent_result.slots.get("stage", "")
+        print(f"[IntentRouter] User confirming interest in {context_type}, stage: {stage}", flush=True)
         
-        # Get the relevant context based on what was discussed (get_event_context_for_llm imported at top)
+        # STAGE 2: After summary, user wants full details
+        if context_type == "event" and stage == EventFollowupStage.SUMMARY_SHOWN:
+            print(f"[FOLLOWUP_CONFIRM] Stage 2 triggered - getting full event details", flush=True)
+            # Get full VERBATIM details from calendar
+            confirm_event_context = get_event_context_for_llm(user_message, conversation_history)
+            print(f"[FOLLOWUP_CONFIRM] Got event context: {len(confirm_event_context) if confirm_event_context else 0} chars", flush=True)
+            
+            if confirm_event_context and "{{DIRECT_EVENT}}" in confirm_event_context:
+                direct_match = re.search(r'\{\{DIRECT_EVENT\}\}(.*?)\{\{/DIRECT_EVENT\}\}', confirm_event_context, re.DOTALL)
+                if direct_match:
+                    response_text = direct_match.group(1).strip()
+                    print(f"[FOLLOWUP_CONFIRM] Returning VERBATIM details, includes CTA: {'take you to' in response_text.lower()}", flush=True)
+                    return {
+                        "response": response_text,
+                        "sources": [],
+                        "safety_triggered": False,
+                        "intent": "followup_confirm_details"
+                    }
+            else:
+                print(f"[FOLLOWUP_CONFIRM] No DIRECT_EVENT marker found in context", flush=True)
+        
+        # Get the relevant context based on what was discussed
         if context_type == "event":
             confirm_event_context = get_event_context_for_llm(user_message, conversation_history)
             if confirm_event_context and "{{DIRECT_EVENT}}" in confirm_event_context:
@@ -352,6 +469,7 @@ def generate_response(
     # EVENT → SQL only (skip RAG to avoid pollution)
     # KNOWLEDGE → RAG only (skip events)
     # HYBRID/OTHER → Both sources
+    # EVENT_DETAIL_REQUEST → Event summary for LLM to generate friendly summary
     # ═══════════════════════════════════════════════════════════════════════
     
     context = ""
@@ -366,8 +484,9 @@ def generate_response(
         context = format_context_from_docs(relevant_docs)
         print(f"[IntentRouter] Queried RAG (knowledge base)", flush=True)
     
+    # Note: EVENT_DETAIL_REQUEST returns early with deterministic summary above
     # Only query SQL events for EVENT or HYBRID intents
-    if intent_result.intent in [IntentType.EVENT, IntentType.HYBRID]:
+    elif intent_result.intent in [IntentType.EVENT, IntentType.HYBRID]:
         event_context = get_event_context_for_llm(user_message, conversation_history)
         print(f"[IntentRouter] Queried SQL (events database)", flush=True)
         
