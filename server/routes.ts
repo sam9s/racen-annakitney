@@ -53,6 +53,18 @@ export async function registerRoutes(
     }
   });
   
+  // Serve test scenarios JSON for the GUI test runner
+  app.get("/tests/comprehensive_test_scenarios.json", (req: Request, res: Response) => {
+    const testPath = path.resolve(process.cwd(), "tests", "comprehensive_test_scenarios.json");
+    if (fs.existsSync(testPath)) {
+      res.setHeader("Content-Type", "application/json");
+      res.setHeader("Cache-Control", "no-cache");
+      res.sendFile(testPath);
+    } else {
+      res.status(404).json({ error: "Test scenarios not found" });
+    }
+  });
+  
   app.post("/api/chat", async (req: Request, res: Response) => {
     try {
       const { message, session_id, conversation_history } = req.body;
