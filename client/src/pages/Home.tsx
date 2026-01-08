@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect, ReactNode } from "react";
+import { useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { ThemeToggle } from "@/components/theme-toggle";
@@ -226,12 +227,18 @@ interface Message {
 }
 
 export default function Home() {
+  const [, setLocation] = useLocation();
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [sessionId] = useState(() => `anna_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+
+  const goToTestRunner = () => {
+    sessionStorage.setItem("testRunnerAccess", "true");
+    setLocation("/test-runner");
+  };
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -455,6 +462,15 @@ export default function Home() {
           >
             <Send className="w-4 h-4" />
           </Button>
+        </div>
+        <div className="max-w-2xl mx-auto mt-2 text-center">
+          <button
+            onClick={goToTestRunner}
+            className="text-xs text-muted-foreground/50 hover:text-muted-foreground"
+            data-testid="link-test-runner"
+          >
+            Dev: Test Runner
+          </button>
         </div>
       </div>
     </div>

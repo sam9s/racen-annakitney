@@ -1,4 +1,5 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
+import { useLocation } from "wouter";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -47,12 +48,20 @@ interface TestResult {
 }
 
 export default function TestRunner() {
+  const [, setLocation] = useLocation();
   const [scenarios, setScenarios] = useState<TestScenario[]>([]);
   const [results, setResults] = useState<TestResult[]>([]);
   const [isRunning, setIsRunning] = useState(false);
   const [progress, setProgress] = useState(0);
   const [selectedResult, setSelectedResult] = useState<TestResult | null>(null);
   const [filterCategory, setFilterCategory] = useState<string>("all");
+
+  useEffect(() => {
+    const accessGranted = sessionStorage.getItem("testRunnerAccess");
+    if (!accessGranted) {
+      setLocation("/");
+    }
+  }, [setLocation]);
 
   const loadScenarios = useCallback(async (): Promise<TestScenario[]> => {
     try {
