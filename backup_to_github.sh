@@ -4,23 +4,29 @@
 #
 # Usage: ./backup_to_github.sh "Your commit message"
 # Or just: ./backup_to_github.sh (uses auto-generated message with timestamp)
+#
+# Requires: GITHUB_PERSONAL_ACCESS_TOKEN environment variable
 
 set -e
 
-REPO_URL="https://github.com/sam9s/racen-annakitney.git"
+REPO_NAME="sam9s/racen-annakitney.git"
 BRANCH="main"
 
-# Check if origin remote exists, if not add it
-if ! git remote | grep -q "^origin$"; then
-    echo "Adding origin remote..."
-    git remote add origin "$REPO_URL"
+# Check for token
+if [ -z "$GITHUB_PERSONAL_ACCESS_TOKEN" ]; then
+    echo "ERROR: GITHUB_PERSONAL_ACCESS_TOKEN environment variable is not set."
+    echo "Please ensure the token is configured in Replit Secrets."
+    exit 1
 fi
 
-# Verify origin URL is correct
-CURRENT_URL=$(git remote get-url origin 2>/dev/null || echo "")
-if [ "$CURRENT_URL" != "$REPO_URL" ]; then
-    echo "Updating origin URL to $REPO_URL..."
-    git remote set-url origin "$REPO_URL"
+# Build authenticated URL (token is read from env, never displayed)
+AUTH_URL="https://${GITHUB_PERSONAL_ACCESS_TOKEN}@github.com/${REPO_NAME}"
+
+# Configure remote with authenticated URL
+if git remote | grep -q "^origin$"; then
+    git remote set-url origin "$AUTH_URL"
+else
+    git remote add origin "$AUTH_URL"
 fi
 
 # Stage all changes
@@ -44,12 +50,10 @@ fi
 
 # Push to GitHub
 echo "Pushing to GitHub..."
-echo "Note: You may be prompted for credentials."
-echo "  Username: sam9s"
-echo "  Password: Use your GITHUB_PERSONAL_ACCESS_TOKEN value"
-echo ""
-
 git push -u origin "$BRANCH"
 
+# Reset remote URL to non-authenticated version (security: don't leave token in git config)
+git remote set-url origin "https://github.com/${REPO_NAME}"
+
 echo ""
-echo "Backup complete! Changes pushed to: $REPO_URL"
+echo "Backup complete! Changes pushed to: https://github.com/${REPO_NAME}"
