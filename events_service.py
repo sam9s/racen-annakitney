@@ -981,14 +981,92 @@ def _find_event_from_history(conversation_history: List[Dict]) -> Optional[Dict]
     return None
 
 
+# Canonical CTAs for progressive event flow - MUST match router detection patterns
+STAGE1_CTA = "Would you like more details about this event?"
+# Note: Stage-2 CTA includes markdown link, router pattern checks for "take you to the event page"
+STAGE2_CTA_TEMPLATE = "Would you like me to take you to the [event page]({url}) to learn more or enroll?"
+STAGE2_CTA_NO_URL = "Would you like to add this event to your calendar, or do you have any questions about it?"
+
+
+def _find_event_for_stage1(event_name: str, conversation_history: List[Dict] = None) -> Optional[Dict]:
+    """
+    Shared helper to find an event for Stage-1 summary.
+    Used by both deterministic and LLM summary functions to ensure consistent lookup.
+    
+    Returns:
+        Event dict if found, None otherwise
+    """
+    try:
+        events = get_upcoming_events(20)
+        if not events:
+            return None
+        
+        matches = find_matching_events(event_name, events) if event_name else []
+        
+        if not matches:
+            last_event = _find_event_from_history(conversation_history)
+            if last_event:
+                return last_event
+            return None
+        
+        return matches[0][0]
+    except Exception as e:
+        print(f"[Events Service] Error finding event: {e}")
+        return None
+
+
+def _format_event_date_range(event: Dict) -> str:
+    """
+    Shared helper to format event date range consistently.
+    """
+    start = event.get("start", "")
+    end = event.get("end", "")
+    
+    try:
+        start_dt = datetime.fromisoformat(start.replace('Z', '+00:00'))
+        end_dt = datetime.fromisoformat(end.replace('Z', '+00:00'))
+        return f"{start_dt.strftime('%B %d')} - {end_dt.strftime('%B %d, %Y')}"
+    except:
+        return "Dates TBD"
+
+
+def get_deterministic_event_summary(event_name: str, conversation_history: List[Dict] = None) -> Optional[str]:
+    """
+    Get a DETERMINISTIC Stage-1 summary for an event (bypasses LLM).
+    
+    This is STAGE 1 of the progressive event detail flow:
+    - Returns formatted summary with exact CTA for reliable stage detection
+    - Uses STAGE1_CTA constant to ensure router patterns stay in sync
+    - Uses shared helpers for event lookup and formatting
+    
+    Args:
+        event_name: The event name/title to look up
+        conversation_history: Previous conversation messages
+    
+    Returns:
+        Formatted summary string with CTA, or None if not found
+    """
+    event = _find_event_for_stage1(event_name, conversation_history)
+    if not event:
+        return None
+    
+    title = event.get("title", "")
+    location = event.get("location", "Online")
+    date_str = _format_event_date_range(event)
+    
+    # Return deterministic summary with exact CTA
+    return f"**{title}** is scheduled from {date_str} at {location}.\n\nThis transformative program covers powerful topics designed to create lasting change and help you align with your highest potential.\n\n{STAGE1_CTA}"
+
+
 def get_event_summary_for_llm(event_name: str, conversation_history: List[Dict] = None) -> str:
     """
     Get event summary context for LLM to generate a friendly summary.
     
     This is STAGE 1 of the progressive event detail flow:
     - Returns basic event info (title, dates, location) 
-    - LLM generates a nice summary with "Would you like more details?" CTA
+    - LLM generates a nice summary with STAGE1_CTA
     - NOT the full VERBATIM details - those come in STAGE 2
+    - Uses shared helpers for consistent event lookup and formatting
     
     Args:
         event_name: The event name/title to look up
@@ -997,43 +1075,17 @@ def get_event_summary_for_llm(event_name: str, conversation_history: List[Dict] 
     Returns:
         Context string for LLM to generate summary, or empty string if not found
     """
-    try:
-        # Try to find the event by name
-        events = get_upcoming_events(20)
-        if not events:
-            return ""
-        
-        # Use fuzzy matching to find the event
-        matches = find_matching_events(event_name, events)
-        
-        if not matches:
-            # Try conversation history fallback
-            last_event = _find_event_from_history(conversation_history)
-            if last_event:
-                matches = [(last_event, 1.0)]
-        
-        if not matches:
-            return ""
-        
-        event = matches[0][0]
-        title = event.get("title", "")
-        start = event.get("start", "")
-        end = event.get("end", "")
-        location = event.get("location", "Online")
-        event_page = event.get("eventPageUrl", "")
-        
-        # Format dates
-        try:
-            start_dt = datetime.fromisoformat(start.replace('Z', '+00:00'))
-            end_dt = datetime.fromisoformat(end.replace('Z', '+00:00'))
-            date_str = f"{start_dt.strftime('%B %d')} - {end_dt.strftime('%B %d, %Y')}"
-        except:
-            date_str = "Dates TBD"
-        
-        # Return context for LLM to generate a summary
-        # Note: This does NOT use DIRECT_EVENT marker - LLM will summarize
-        # IMPORTANT: Include exact title so _find_event_from_history can find it later
-        return f"""
+    event = _find_event_for_stage1(event_name, conversation_history)
+    if not event:
+        return ""
+    
+    title = event.get("title", "")
+    location = event.get("location", "Online")
+    date_str = _format_event_date_range(event)
+    
+    # Return context for LLM to generate a summary
+    # Uses STAGE1_CTA constant to ensure exact CTA matching in router
+    return f"""
 EVENT SUMMARY CONTEXT (for generating a friendly summary):
 The user is asking about this event:
 
@@ -1045,16 +1097,13 @@ CRITICAL INSTRUCTIONS:
 1. You MUST include the EXACT event title "{title}" in your response (verbatim, no abbreviations)
 2. Provide a brief, friendly summary of this event (2-3 sentences max)
 3. Mention when and where it's happening
-4. End with EXACTLY this phrase: "Would you like more details about this event?"
+4. End with EXACTLY this phrase: "{STAGE1_CTA}"
 5. Do NOT include the full event description yet - that comes if they say yes
 6. Do NOT offer to take them to the event page yet - that comes after they see full details
 
 REQUIRED response format (must start with exact title):
-"{title} is happening from {date_str} at {location}. [Brief 1-2 sentence description]. Would you like more details about this event?"
+"{title} is happening from {date_str} at {location}. [Brief 1-2 sentence description]. {STAGE1_CTA}"
 """
-    except Exception as e:
-        print(f"[Events Service] Error getting event summary: {e}")
-        return ""
 
 
 def get_event_context_for_llm(user_message: str, conversation_history: List[Dict] = None, selection_index: int = None) -> str:
@@ -1223,6 +1272,47 @@ Here are all upcoming events you might be interested in:
     if any(kw in message_lower for kw in ["events", "upcoming", "what's happening", "schedule", "calendar"]):
         events = get_upcoming_events(20)  # Get more events to allow for filtering
         
+        # Check if user is asking about a specific program's events
+        # E.g., "Are there any events happening for SoulAlign Business Course?"
+        # Use fuzzy matching against full titles, not keyword buckets
+        program_keywords = [
+            "soulalign business", "soul align business", "business course",
+            "soulalign heal", "soul align heal",
+            "soulalign coach", "soul align coach", 
+            "soulalign manifestation", "soul align manifestation", "manifestation mastery",
+            "identity overflow", "identity switch",
+            "ascend collective", "elite private", "vip day",
+        ]
+        
+        for keyword in program_keywords:
+            if keyword in message_lower:
+                # Use fuzzy matching to find the BEST matching event
+                # Be strict: require confidence OR clear gap, else disambiguate
+                matches = find_matching_events(keyword, events)
+                
+                if matches:
+                    top_match, top_score = matches[0]
+                    
+                    # CONFIDENT: High score means we're sure this is the right event
+                    if top_score >= CONFIDENT_MATCH_THRESHOLD:
+                        return _build_single_event_response(top_match)
+                    
+                    # SINGLE MATCH: Only one result, but require minimum confidence
+                    if len(matches) == 1:
+                        if top_score >= FUZZY_MATCH_THRESHOLD:
+                            return _build_single_event_response(top_match)
+                        # Too low confidence even for single match - fall through
+                    
+                    # MULTIPLE MATCHES: Check if top is clearly better with significant gap
+                    if len(matches) > 1:
+                        second_score = matches[1][1]
+                        if top_score >= FUZZY_MATCH_THRESHOLD and top_score - second_score > 0.2:
+                            return _build_single_event_response(top_match)
+                    
+                    # INSUFFICIENT CONFIDENCE: Ask for clarification
+                    return _build_disambiguation_response(matches[:3])
+                break  # Only use first matching keyword
+        
         # Check if user is asking about a specific month
         month_filter = extract_month_filter(user_message)
         if month_filter:
@@ -1354,20 +1444,18 @@ def _build_single_event_response(event: Dict) -> str:
     """
     Build response for a single matched event.
     Returns formatted event data with DIRECT_EVENT marker for bypassing LLM paraphrasing.
+    
+    Uses canonical STAGE2_CTA_TEMPLATE/STAGE2_CTA_NO_URL to ensure router pattern matching.
     """
     formatted_event = format_event_for_chat(event)
     event_page = event.get('eventPageUrl', '')
     event_title = event.get('title', '')
     
-    # Build follow-up instruction based on available URLs
+    # Build follow-up using canonical CTA templates for router pattern matching
     if event_page:
-        follow_up = f"""
-
-Would you like me to take you to the [event page]({event_page}) to learn more or enroll?"""
+        follow_up = "\n\n" + STAGE2_CTA_TEMPLATE.format(url=event_page)
     else:
-        follow_up = """
-
-Would you like to add this event to your calendar, or do you have any questions about it?"""
+        follow_up = "\n\n" + STAGE2_CTA_NO_URL
     
     # DIRECT_EVENT marker tells chatbot_engine to inject this directly
     return f"""{{{{DIRECT_EVENT}}}}

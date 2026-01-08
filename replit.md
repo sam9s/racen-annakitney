@@ -66,6 +66,17 @@ The webhook endpoint exists (`POST /api/calendar/webhook`) but requires Google C
    - New intent types: EVENT_DETAIL_REQUEST, EVENT_NAVIGATE
    - Stage-1 bypasses LLM to guarantee exact CTA for reliable stage detection
 
+8. **Single Source of Truth for CTAs** (Jan 2026):
+   - Canonical CTA constants defined in `events_service.py`: `STAGE1_CTA`, `STAGE2_CTA_TEMPLATE`, `STAGE2_CTA_NO_URL`
+   - Router uses `_cta_to_regex()` function to derive detection patterns PROGRAMMATICALLY from CTAs
+   - Any CTA wording change automatically updates stage detection - no manual pattern updates needed
+   - Shared helpers: `_find_event_for_stage1()`, `_format_event_date_range()` for consistent event lookup
+
+9. **Stricter Program Filtering**:
+   - Requires confidence thresholds for all matches (`CONFIDENT_MATCH_THRESHOLD`, `FUZZY_MATCH_THRESHOLD`)
+   - Falls back to `_build_disambiguation_response()` when multiple matches have close scores
+   - Prevents low-confidence matches from surfacing wrong events
+
 ## Important Technical Notes
 - **Markdown Parsing Order**: Bold-wrapped links `**[text](url)**` must be matched FIRST, then plain links, then bold text.
 - **Two Websites**: annakitney.com (marketing) and annakitneyportal.com (checkout, requires www. prefix)

@@ -27,6 +27,81 @@ from typing import Optional, Tuple, List, Dict
 from dataclasses import dataclass
 from datetime import datetime
 
+# Import canonical CTA patterns from events_service to ensure router detection stays in sync
+# This is the single source of truth - if CTAs change in events_service, router automatically adapts
+def _cta_to_regex(cta_text: str) -> str:
+    """
+    Convert a CTA string to a flexible regex pattern.
+    Handles markdown links, whitespace variations, and punctuation.
+    
+    Strategy: 
+    1. Find markdown link, split text into before/after/link_text segments
+    2. Escape each literal segment separately
+    3. Build regex by concatenating escaped literals with regex patterns
+    
+    Args:
+        cta_text: The CTA string to convert
+    
+    Returns:
+        Regex pattern string derived from the CTA
+    """
+    text = cta_text.lower().rstrip("?!.")
+    
+    # Check for markdown link: [text](url)
+    markdown_match = re.search(r'\[([^\]]+)\]\([^)]*\)', text)
+    
+    if markdown_match:
+        # Split into parts: before, link_text, after
+        before = text[:markdown_match.start()]
+        link_text = markdown_match.group(1)
+        after = text[markdown_match.end():]
+        
+        # Escape and make whitespace flexible for each literal part
+        def escape_and_flex(s):
+            escaped = re.escape(s)
+            return escaped.replace(r'\ ', r'\s+')
+        
+        before_regex = escape_and_flex(before)
+        after_regex = escape_and_flex(after)
+        link_text_regex = escape_and_flex(link_text)
+        
+        # Build markdown pattern: optional [, link text, optional ], optional (url)
+        markdown_pattern = r'\[?' + link_text_regex + r'\]?\s*(?:\([^)]*\))?'
+        
+        # Combine: before + markdown + after + optional punctuation
+        result = before_regex + markdown_pattern + after_regex + r'[\?\!\.]?'
+    else:
+        # No markdown - just escape and make whitespace flexible
+        escaped = re.escape(text)
+        result = escaped.replace(r'\ ', r'\s+') + r'[\?\!\.]?'
+    
+    return result
+
+
+def _get_cta_regex_patterns():
+    """
+    Get REGEX patterns derived directly from canonical CTAs in events_service.
+    Lazy import to avoid circular dependency issues.
+    
+    ALL patterns are programmatically generated from the source CTAs using _cta_to_regex().
+    This ensures any changes to CTA constants automatically update detection patterns.
+    """
+    try:
+        from events_service import STAGE1_CTA, STAGE2_CTA_TEMPLATE, STAGE2_CTA_NO_URL
+        
+        return {
+            "stage1_regex": _cta_to_regex(STAGE1_CTA),
+            "stage2_url_regex": _cta_to_regex(STAGE2_CTA_TEMPLATE),
+            "stage2_no_url_regex": _cta_to_regex(STAGE2_CTA_NO_URL),
+        }
+    except ImportError:
+        # Fallback only if events_service import fails
+        return {
+            "stage1_regex": r"would\s+you\s+like\s+more\s+details\s+about\s+this\s+event[\?\!\.]?",
+            "stage2_url_regex": r"would\s+you\s+like\s+me\s+to\s+take\s+you\s+to\s+the\s+\[?event\s+page\]?\s*(?:\([^)]*\))?\s+to\s+learn\s+more\s+or\s+enroll[\?\!\.]?",
+            "stage2_no_url_regex": r"would\s+you\s+like\s+to\s+add\s+this\s+event\s+to\s+your\s+calendar[\?\!\.]?",
+        }
+
 
 class IntentType(Enum):
     """Types of user intents. Extensible for future features."""
@@ -613,12 +688,15 @@ class IntentRouter:
             
             # STAGE 1: User confirming after event listing (wants to hear about specific event)
             if current_stage == EventFollowupStage.LISTING_SHOWN:
+                # Extract event name from user's message if present (e.g., "yes, the SoulAlign Business")
+                event_match, event_score = self._match_event_title(message)
                 return IntentResult(
                     intent=IntentType.FOLLOWUP_CONFIRM,
                     confidence=HIGH_CONFIDENCE,
                     slots={
                         "context": "event", 
                         "stage": EventFollowupStage.LISTING_SHOWN,
+                        "matched_event": event_match if event_score >= 0.3 else "",
                         "last_bot_message": last_bot_msg[:500]
                     },
                     reasoning="User confirming interest after event listing"
@@ -657,37 +735,33 @@ class IntentRouter:
         Detect the current event follow-up stage based on the last bot message.
         Returns one of EventFollowupStage values.
         
-        IMPORTANT: These patterns must match the exact CTAs from _build_single_event_response()
-        and get_event_summary_for_llm() to ensure proper stage transitions.
+        Uses REGEX patterns derived from canonical CTAs in events_service.py.
+        Patterns are generated dynamically to stay in sync with CTA constants.
         """
-        # DETAILS_SHOWN: Bot showed full details and offered event page navigation
-        # Pattern from _build_single_event_response():
-        #   "Would you like me to take you to the [event page](url) to learn more or enroll?"
+        cta_patterns = _get_cta_regex_patterns()
+        
+        # DETAILS_SHOWN: Bot showed full details and offered next action
+        # Use patterns derived from STAGE2_CTA_TEMPLATE and STAGE2_CTA_NO_URL
         details_shown_patterns = [
-            "take you to the [event page]",  # Matches markdown link format
-            "take you to the event page",    # Matches plain text format
-            "to learn more or enroll",       # End of the CTA phrase
-            "would you like me to take you", # Start of navigation CTA
-            "view event page",
-            "[navigate:",                     # Navigation marker
+            cta_patterns["stage2_url_regex"],     # Derived from STAGE2_CTA_TEMPLATE
+            cta_patterns["stage2_no_url_regex"],  # Derived from STAGE2_CTA_NO_URL
+            r"\[navigate:",                        # Navigation marker already emitted
         ]
-        if any(phrase in last_msg_lower for phrase in details_shown_patterns):
-            print(f"[_detect_event_followup_stage] Matched DETAILS_SHOWN", flush=True)
-            return EventFollowupStage.DETAILS_SHOWN
+        for pattern in details_shown_patterns:
+            if re.search(pattern, last_msg_lower):
+                print(f"[_detect_event_followup_stage] Matched DETAILS_SHOWN via pattern derived from canonical CTA", flush=True)
+                return EventFollowupStage.DETAILS_SHOWN
         
         # SUMMARY_SHOWN: Bot showed summary and offered more details  
-        # Pattern from get_event_summary_for_llm():
-        #   "Would you like more details about this event?"
+        # Use pattern derived from STAGE1_CTA
         summary_shown_patterns = [
-            "would you like more details about this event",  # Exact CTA
-            "would you like more details",                    # Shorter variant
-            "would you like me to provide more",
-            "want more details",
-            "more information about this event",
+            cta_patterns["stage1_regex"],          # Derived from STAGE1_CTA
+            r"would you like more details\??",     # Short fallback
         ]
-        if any(phrase in last_msg_lower for phrase in summary_shown_patterns):
-            print(f"[_detect_event_followup_stage] Matched SUMMARY_SHOWN", flush=True)
-            return EventFollowupStage.SUMMARY_SHOWN
+        for pattern in summary_shown_patterns:
+            if re.search(pattern, last_msg_lower):
+                print(f"[_detect_event_followup_stage] Matched SUMMARY_SHOWN via pattern derived from canonical CTA", flush=True)
+                return EventFollowupStage.SUMMARY_SHOWN
         
         # LISTING_SHOWN: Bot showed event listing with numbered items
         # Look for numbered lists with event-related content

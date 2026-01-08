@@ -312,7 +312,7 @@ def generate_response(
             direct_match = re.search(r'\{\{DIRECT_EVENT\}\}(.*?)\{\{/DIRECT_EVENT\}\}', followup_event_context, re.DOTALL)
             if direct_match:
                 return {
-                    "response": direct_match.group(1).strip(),
+                    "response": format_numbered_lists(direct_match.group(1).strip()),
                     "sources": [],
                     "safety_triggered": False,
                     "intent": "followup_select"
@@ -369,52 +369,19 @@ def generate_response(
         matched_event = intent_result.slots.get("matched_event", "")
         print(f"[IntentRouter] User asking for event details: {matched_event}", flush=True)
         
-        # Get event summary (not full details) for DETERMINISTIC response
-        # This bypasses the LLM to guarantee the exact CTA for stage transitions
-        from events_service import get_upcoming_events, find_matching_events, _find_event_from_history
-        from datetime import datetime
+        # Use centralized deterministic summary generator
+        from events_service import get_deterministic_event_summary
         
-        try:
-            events = get_upcoming_events(20)
-            matches = find_matching_events(matched_event, events) if events else []
-            
-            if not matches:
-                # Fallback to conversation history
-                last_event = _find_event_from_history(conversation_history)
-                if last_event:
-                    matches = [(last_event, 1.0)]
-            
-            if matches:
-                event = matches[0][0]
-                title = event.get("title", "")
-                start = event.get("start", "")
-                end = event.get("end", "")
-                location = event.get("location", "Online")
-                
-                # Format dates
-                try:
-                    start_dt = datetime.fromisoformat(start.replace('Z', '+00:00'))
-                    end_dt = datetime.fromisoformat(end.replace('Z', '+00:00'))
-                    date_str = f"{start_dt.strftime('%B %d')} - {end_dt.strftime('%B %d, %Y')}"
-                except:
-                    date_str = "Dates TBD"
-                
-                # DETERMINISTIC SUMMARY with exact CTA for stage detection
-                summary_response = f"""**{title}** is happening from {date_str} at {location}.
-
-This looks like an exciting event that covers transformative topics and provides powerful experiences.
-
-Would you like more details about this event?"""
-                
-                print(f"[EVENT_DETAIL_REQUEST] Returning deterministic summary for: {title}", flush=True)
-                return {
-                    "response": summary_response,
-                    "sources": [],
-                    "safety_triggered": False,
-                    "intent": "event_detail_request"
-                }
-        except Exception as e:
-            print(f"[EVENT_DETAIL_REQUEST] Error getting event summary: {e}", flush=True)
+        summary_response = get_deterministic_event_summary(matched_event, conversation_history)
+        
+        if summary_response:
+            print(f"[EVENT_DETAIL_REQUEST] Returning deterministic summary", flush=True)
+            return {
+                "response": format_numbered_lists(summary_response),
+                "sources": [],
+                "safety_triggered": False,
+                "intent": "event_detail_request"
+            }
         
         # Couldn't find the event
         return {
@@ -428,11 +395,30 @@ Would you like more details about this event?"""
     if intent_result.intent == IntentType.FOLLOWUP_CONFIRM:
         context_type = intent_result.slots.get("context", "event")
         stage = intent_result.slots.get("stage", "")
-        print(f"[IntentRouter] User confirming interest in {context_type}, stage: {stage}", flush=True)
+        matched_event = intent_result.slots.get("matched_event", "")
+        print(f"[IntentRouter] User confirming interest in {context_type}, stage: {stage}, matched: {matched_event}", flush=True)
         
-        # STAGE 2: After summary, user wants full details
+        # STAGE 1: After listing, user selected an event → Show deterministic summary
+        if context_type == "event" and stage == EventFollowupStage.LISTING_SHOWN:
+            print(f"[FOLLOWUP_CONFIRM] Stage 1 triggered - showing summary for: {matched_event}", flush=True)
+            
+            from events_service import get_deterministic_event_summary
+            
+            summary_response = get_deterministic_event_summary(matched_event, conversation_history)
+            
+            if summary_response:
+                print(f"[FOLLOWUP_CONFIRM] Returning Stage-1 summary", flush=True)
+                return {
+                    "response": format_numbered_lists(summary_response),
+                    "sources": [],
+                    "safety_triggered": False,
+                    "intent": "followup_confirm_summary"
+                }
+        
+        # STAGE 2: After summary, user wants full details → Show VERBATIM from database
         if context_type == "event" and stage == EventFollowupStage.SUMMARY_SHOWN:
-            print(f"[FOLLOWUP_CONFIRM] Stage 2 triggered - getting full event details", flush=True)
+            print(f"[FOLLOWUP_CONFIRM] Stage 2 triggered - getting full VERBATIM event details", flush=True)
+            
             # Get full VERBATIM details from calendar
             confirm_event_context = get_event_context_for_llm(user_message, conversation_history)
             print(f"[FOLLOWUP_CONFIRM] Got event context: {len(confirm_event_context) if confirm_event_context else 0} chars", flush=True)
@@ -441,7 +427,9 @@ Would you like more details about this event?"""
                 direct_match = re.search(r'\{\{DIRECT_EVENT\}\}(.*?)\{\{/DIRECT_EVENT\}\}', confirm_event_context, re.DOTALL)
                 if direct_match:
                     response_text = direct_match.group(1).strip()
-                    print(f"[FOLLOWUP_CONFIRM] Returning VERBATIM details, includes CTA: {'take you to' in response_text.lower()}", flush=True)
+                    # Format the response properly
+                    response_text = format_numbered_lists(response_text)
+                    print(f"[FOLLOWUP_CONFIRM] Returning Stage-2 VERBATIM details", flush=True)
                     return {
                         "response": response_text,
                         "sources": [],
@@ -451,14 +439,15 @@ Would you like more details about this event?"""
             else:
                 print(f"[FOLLOWUP_CONFIRM] No DIRECT_EVENT marker found in context", flush=True)
         
-        # Get the relevant context based on what was discussed
+        # Fallback: Get event context and return
         if context_type == "event":
             confirm_event_context = get_event_context_for_llm(user_message, conversation_history)
             if confirm_event_context and "{{DIRECT_EVENT}}" in confirm_event_context:
                 direct_match = re.search(r'\{\{DIRECT_EVENT\}\}(.*?)\{\{/DIRECT_EVENT\}\}', confirm_event_context, re.DOTALL)
                 if direct_match:
+                    response_text = format_numbered_lists(direct_match.group(1).strip())
                     return {
-                        "response": direct_match.group(1).strip(),
+                        "response": response_text,
                         "sources": [],
                         "safety_triggered": False,
                         "intent": "followup_confirm"
@@ -500,10 +489,10 @@ Would you like more details about this event?"""
     # If we have direct event content for EVENT intent, return immediately without LLM
     if direct_event_content and intent_result.intent == IntentType.EVENT:
         if "I don't have any events scheduled" in direct_event_content or "No events" in direct_event_content:
-            final_response = direct_event_content
+            final_response = format_numbered_lists(direct_event_content)
         else:
             intro = "Here are the details for this event:\n\n"
-            final_response = intro + direct_event_content
+            final_response = format_numbered_lists(intro + direct_event_content)
         
         return {
             "response": final_response,
@@ -728,7 +717,7 @@ ONLY say something like: "Great to see you back! How can I help you today?"
     # If we have direct event content, yield it immediately without LLM
     if direct_event_content_stream:
         intro = "Here are the details for this event:\n\n"
-        final_response = intro + direct_event_content_stream
+        final_response = format_numbered_lists(intro + direct_event_content_stream)
         
         # Yield as single chunk for direct event responses
         yield {"type": "content", "content": final_response}

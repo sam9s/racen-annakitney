@@ -1,0 +1,1 @@
+{"timestamp": "2026-01-08T06:50:39.286059Z", "guardrail_type": "compound_question_fix", "trigger_pattern": "or_compound", "user_message_preview": "", "action_taken": "simplified_to_single_question", "original_text": "Would you like to know more about this course or any other related offerings?", "corrected_text": "Would you like to know more about this course?"}
