@@ -58,6 +58,14 @@ The webhook endpoint exists (`POST /api/calendar/webhook`) but requires Google C
 
 6. **Calendar PostgreSQL Sync**: Events sync from Google Calendar to PostgreSQL with full descriptions and URL parsing.
 
+7. **Progressive Event Detail Flow**: Three-stage event information delivery:
+   - **Stage 1 (Summary)**: User asks about an event → Deterministic summary with "Would you like more details about this event?" CTA
+   - **Stage 2 (Details)**: User confirms → VERBATIM event details from database with "[event page](url)" link
+   - **Stage 3 (Navigate)**: User confirms again → `[NAVIGATE:url]` emitted for navigation
+   - Uses `EventFollowupStage` enum (NONE, LISTING_SHOWN, SUMMARY_SHOWN, DETAILS_SHOWN)
+   - New intent types: EVENT_DETAIL_REQUEST, EVENT_NAVIGATE
+   - Stage-1 bypasses LLM to guarantee exact CTA for reliable stage detection
+
 ## Important Technical Notes
 - **Markdown Parsing Order**: Bold-wrapped links `**[text](url)**` must be matched FIRST, then plain links, then bold text.
 - **Two Websites**: annakitney.com (marketing) and annakitneyportal.com (checkout, requires www. prefix)
