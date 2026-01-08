@@ -553,10 +553,12 @@ IMPORTANT GUIDELINES:
 4. For EVENTS: If event information is provided above, use that LIVE data from the calendar. Always offer to navigate to the event page or add to calendar.
 
 FOLLOW-UP QUESTIONS (choose ONE that's most relevant):
-- "Would you like to know more about the bonuses included, or how to enroll?"
+- "Would you like me to take you to the program page to learn more?"
 - "Shall I share what past participants have experienced?"
-- "Would you like details about investment and enrollment?"
 - "Is there a specific aspect you'd like to explore deeper?"
+- "Would you like more details about this program?"
+
+IMPORTANT: Only ask about enrollment if the user EXPLICITLY asks about enrolling, signing up, pricing, or payment options. Do NOT proactively offer enrollment information - let them navigate to the page first.
 """
 
     messages = [{"role": "system", "content": augmented_system_prompt}]
@@ -741,10 +743,12 @@ IMPORTANT GUIDELINES:
 4. For EVENTS: If event information is provided above, use that LIVE data from the calendar. Always offer to navigate to the event page or add to calendar.
 
 FOLLOW-UP QUESTIONS (choose ONE that's most relevant):
-- "Would you like to know more about the bonuses included, or how to enroll?"
+- "Would you like me to take you to the program page to learn more?"
 - "Shall I share what past participants have experienced?"
-- "Would you like details about investment and enrollment?"
 - "Is there a specific aspect you'd like to explore deeper?"
+- "Would you like more details about this program?"
+
+IMPORTANT: Only ask about enrollment if the user EXPLICITLY asks about enrolling, signing up, pricing, or payment options. Do NOT proactively offer enrollment information - let them navigate to the page first.
 """
 
     messages = [{"role": "system", "content": augmented_system_prompt}]
