@@ -48,9 +48,9 @@ else
     git commit -m "$COMMIT_MSG"
 fi
 
-# Push to GitHub
+# Push to GitHub (force to ensure Replit is source of truth)
 echo "Pushing to GitHub..."
-git push -u origin "$BRANCH"
+git push -u origin "$BRANCH" --force
 
 # Reset remote URL to non-authenticated version (security: don't leave token in git config)
 git remote set-url origin "https://github.com/${REPO_NAME}"
