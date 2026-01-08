@@ -54,20 +54,23 @@ export default function TestRunner() {
   const [selectedResult, setSelectedResult] = useState<TestResult | null>(null);
   const [filterCategory, setFilterCategory] = useState<string>("all");
 
-  const loadScenarios = useCallback(async () => {
+  const loadScenarios = useCallback(async (): Promise<TestScenario[]> => {
     try {
       const response = await fetch("/tests/comprehensive_test_scenarios.json");
       const data = await response.json();
-      setScenarios(data.test_scenarios);
-      setResults(data.test_scenarios.map((s: TestScenario) => ({
+      const loadedScenarios = data.test_scenarios as TestScenario[];
+      setScenarios(loadedScenarios);
+      setResults(loadedScenarios.map((s: TestScenario) => ({
         id: s.id,
         name: s.name,
         category: s.category,
         status: "pending" as const,
         details: []
       })));
+      return loadedScenarios;
     } catch (error) {
       console.error("Failed to load scenarios:", error);
+      return [];
     }
   }, []);
 
@@ -194,43 +197,52 @@ export default function TestRunner() {
   };
 
   const runAllTests = async () => {
-    if (scenarios.length === 0) {
-      await loadScenarios();
+    let testScenarios = scenarios;
+    if (testScenarios.length === 0) {
+      testScenarios = await loadScenarios();
+    }
+    
+    if (testScenarios.length === 0) {
+      console.error("No test scenarios loaded");
+      return;
     }
     
     setIsRunning(true);
     setProgress(0);
     
-    const newResults: TestResult[] = [];
-    
-    for (let i = 0; i < scenarios.length; i++) {
-      const scenario = scenarios[i];
+    for (let i = 0; i < testScenarios.length; i++) {
+      const scenario = testScenarios[i];
       
       setResults(prev => prev.map(r => 
         r.id === scenario.id ? { ...r, status: "running" as const } : r
       ));
       
       const result = await runTest(scenario);
-      newResults.push(result);
       
       setResults(prev => prev.map(r => 
         r.id === scenario.id ? result : r
       ));
       
-      setProgress(((i + 1) / scenarios.length) * 100);
+      setProgress(((i + 1) / testScenarios.length) * 100);
     }
     
     setIsRunning(false);
   };
 
   const runFilteredTests = async () => {
-    if (scenarios.length === 0) {
-      await loadScenarios();
+    let testScenarios = scenarios;
+    if (testScenarios.length === 0) {
+      testScenarios = await loadScenarios();
+    }
+    
+    if (testScenarios.length === 0) {
+      console.error("No test scenarios loaded");
+      return;
     }
     
     const filtered = filterCategory === "all" 
-      ? scenarios 
-      : scenarios.filter(s => s.category === filterCategory);
+      ? testScenarios 
+      : testScenarios.filter(s => s.category === filterCategory);
     
     setIsRunning(true);
     setProgress(0);
