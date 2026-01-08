@@ -1245,18 +1245,9 @@ Ask them which event they'd like to add to their calendar.
         
         if matching_events:
             if len(matching_events) == 1:
-                # Single event on this date - show full details
+                # Single event on this date - use SUMMARY for Stage-1 progressive disclosure
                 event = matching_events[0]
-                return f"""
-=== VERBATIM EVENT DATA FOR {date_str.upper()} (DO NOT PARAPHRASE) ===
-{{{{DIRECT_EVENT}}}}
-{format_event_for_chat(event)}
-=== END VERBATIM DATA ===
-
-CRITICAL: This event is happening on/includes {date_str}. 
-Copy the event details EXACTLY as shown above.
-Note: This may be a multi-day event that spans across multiple dates.
-"""
+                return _build_event_summary_response(event)
             else:
                 # Multiple events on this date
                 events_list = format_events_list(matching_events)
@@ -1308,20 +1299,21 @@ Here are all upcoming events you might be interested in:
                     top_match, top_score = matches[0]
                     
                     # CONFIDENT: High score means we're sure this is the right event
+                    # Use SUMMARY for Stage-1 progressive disclosure (not full details)
                     if top_score >= CONFIDENT_MATCH_THRESHOLD:
-                        return _build_single_event_response(top_match)
+                        return _build_event_summary_response(top_match)
                     
                     # SINGLE MATCH: Only one result, but require minimum confidence
                     if len(matches) == 1:
                         if top_score >= FUZZY_MATCH_THRESHOLD:
-                            return _build_single_event_response(top_match)
+                            return _build_event_summary_response(top_match)
                         # Too low confidence even for single match - fall through
                     
                     # MULTIPLE MATCHES: Check if top is clearly better with significant gap
                     if len(matches) > 1:
                         second_score = matches[1][1]
                         if top_score >= FUZZY_MATCH_THRESHOLD and top_score - second_score > 0.2:
-                            return _build_single_event_response(top_match)
+                            return _build_event_summary_response(top_match)
                     
                     # INSUFFICIENT CONFIDENCE: Ask for clarification
                     return _build_disambiguation_response(matches[:3])
@@ -1409,7 +1401,8 @@ Events Page: https://www.annakitney.com/events/
             
             if matching_events:
                 if len(matching_events) == 1:
-                    return _build_single_event_response(matching_events[0])
+                    # Use SUMMARY for Stage-1 progressive disclosure
+                    return _build_event_summary_response(matching_events[0])
                 else:
                     return _build_disambiguation_response([(e, 1.0) for e in matching_events[:5]])
             break  # Only try first matching pattern
@@ -1428,9 +1421,9 @@ Events Page: https://www.annakitney.com/events/
     if matches:
         top_match, top_score = matches[0]
         
-        # If top match is confident enough, use it directly
+        # If top match is confident enough, use SUMMARY for Stage-1
         if len(matches) == 1 or top_score >= CONFIDENT_MATCH_THRESHOLD:
-            return _build_single_event_response(top_match)
+            return _build_event_summary_response(top_match)
         
         # Multiple matches - check if top is clearly better
         if len(matches) > 1:
@@ -1438,7 +1431,7 @@ Events Page: https://www.annakitney.com/events/
             score_gap = top_score - second_score
             
             if score_gap > 0.2:
-                return _build_single_event_response(top_match)
+                return _build_event_summary_response(top_match)
             
             # Close scores - ask for disambiguation
             return _build_disambiguation_response(matches[:5])
@@ -1454,12 +1447,63 @@ Events Page: https://www.annakitney.com/events/
     return ""
 
 
+def _build_event_summary_response(event: Dict) -> str:
+    """
+    Build Stage-1 SUMMARY response for a single matched event.
+    Returns brief event summary with STAGE1_CTA asking if they want more details.
+    
+    This is the FIRST stage of progressive disclosure:
+    - Stage 1: Summary + "Would you like more details?" (this function)
+    - Stage 2: Full VERBATIM details + navigation CTA (_build_single_event_response)
+    """
+    title = event.get('title', 'Event')
+    start_date = event.get('startDate', '')
+    location = event.get('location', '')
+    event_page = event.get('eventPageUrl', '')
+    
+    # Format date nicely
+    date_str = ""
+    if start_date:
+        try:
+            dt = datetime.fromisoformat(start_date.replace('Z', '+00:00'))
+            date_str = dt.strftime('%B %d, %Y')
+        except:
+            date_str = start_date
+    
+    # Build concise summary
+    summary_parts = [f"**{title}**"]
+    if date_str:
+        summary_parts.append(f"Date: {date_str}")
+    if location:
+        # Truncate very long locations
+        loc_short = location.split(',')[0] if ',' in location else location
+        summary_parts.append(f"Location: {loc_short}")
+    
+    summary = "\n".join(summary_parts)
+    
+    # Add STAGE1_CTA for progressive disclosure
+    follow_up = "\n\n" + STAGE1_CTA
+    
+    # Return WITHOUT DIRECT_EVENT marker - let LLM add a friendly intro
+    return f"""
+=== EVENT SUMMARY ===
+{summary}
+{follow_up}
+
+EVENT_METADATA (for router tracking):
+- Title: {event.get('title', '')}
+- Event Page: {event_page}
+- Stage: SUMMARY_SHOWN
+"""
+
+
 def _build_single_event_response(event: Dict) -> str:
     """
-    Build response for a single matched event.
+    Build Stage-2 FULL DETAILS response for a single matched event.
     Returns formatted event data with DIRECT_EVENT marker for bypassing LLM paraphrasing.
     
     Uses canonical STAGE2_CTA_TEMPLATE/STAGE2_CTA_NO_URL to ensure router pattern matching.
+    This is called AFTER user confirms they want more details from Stage-1.
     """
     formatted_event = format_event_for_chat(event)
     event_page = event.get('eventPageUrl', '')
