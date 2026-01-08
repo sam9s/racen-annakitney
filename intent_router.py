@@ -87,12 +87,22 @@ def _get_cta_regex_patterns():
     This ensures any changes to CTA constants automatically update detection patterns.
     """
     try:
-        from events_service import STAGE1_CTA, STAGE2_CTA_TEMPLATE, STAGE2_CTA_NO_URL
+        from events_service import (
+            STAGE1_CTA, STAGE2_CTA_TEMPLATE, STAGE2_CTA_NO_URL,
+            PROGRAM_STAGE1_CTA, PROGRAM_STAGE2_CTA_TEMPLATE, PROGRAM_STAGE2_CTA_NO_URL,
+            PROGRAM_ENROLLMENT_CTA
+        )
         
         return {
+            # Event CTAs
             "stage1_regex": _cta_to_regex(STAGE1_CTA),
             "stage2_url_regex": _cta_to_regex(STAGE2_CTA_TEMPLATE),
             "stage2_no_url_regex": _cta_to_regex(STAGE2_CTA_NO_URL),
+            # Program CTAs (parallel flow)
+            "program_stage1_regex": _cta_to_regex(PROGRAM_STAGE1_CTA),
+            "program_stage2_url_regex": _cta_to_regex(PROGRAM_STAGE2_CTA_TEMPLATE),
+            "program_stage2_no_url_regex": _cta_to_regex(PROGRAM_STAGE2_CTA_NO_URL),
+            "program_enrollment_regex": _cta_to_regex(PROGRAM_ENROLLMENT_CTA),
         }
     except ImportError:
         # Fallback only if events_service import fails
@@ -100,6 +110,10 @@ def _get_cta_regex_patterns():
             "stage1_regex": r"would\s+you\s+like\s+more\s+details\s+about\s+this\s+event[\?\!\.]?",
             "stage2_url_regex": r"would\s+you\s+like\s+me\s+to\s+take\s+you\s+to\s+the\s+\[?event\s+page\]?\s*(?:\([^)]*\))?\s+to\s+learn\s+more\s+or\s+enroll[\?\!\.]?",
             "stage2_no_url_regex": r"would\s+you\s+like\s+to\s+add\s+this\s+event\s+to\s+your\s+calendar[\?\!\.]?",
+            "program_stage1_regex": r"would\s+you\s+like\s+more\s+details\s+about\s+this\s+program[\?\!\.]?",
+            "program_stage2_url_regex": r"would\s+you\s+like\s+me\s+to\s+take\s+you\s+to\s+the\s+\[?program\s+page\]?\s*(?:\([^)]*\))?\s+to\s+learn\s+more[\?\!\.]?",
+            "program_stage2_no_url_regex": r"would\s+you\s+like\s+to\s+know\s+more[\?\!\.]?",
+            "program_enrollment_regex": r"would\s+you\s+like\s+to\s+know\s+how\s+to\s+enroll[\?\!\.]?",
         }
 
 
@@ -115,6 +129,10 @@ class IntentType(Enum):
     FOLLOWUP_CONFIRM = "followup_confirm"  # User confirming (yes/tell me more)
     EVENT_DETAIL_REQUEST = "event_detail_request"  # User asking about specific event after listing
     EVENT_NAVIGATE = "event_navigate"  # User confirming navigation to event page
+    # Program flow intents (parallel to event flow)
+    PROGRAM_DETAIL_REQUEST = "program_detail_request"  # User wants more details about program
+    PROGRAM_NAVIGATE = "program_navigate"  # User confirming navigation to program page
+    PROGRAM_ENROLLMENT = "program_enrollment"  # User explicitly asking about enrollment
     OTHER = "other"              # Catch-all
 
 
@@ -125,6 +143,14 @@ class EventFollowupStage:
     LISTING_SHOWN = "listing_shown"  # Bot showed event listing
     SUMMARY_SHOWN = "summary_shown"  # Bot showed event summary, offered "more details?"
     DETAILS_SHOWN = "details_shown"  # Bot showed full details, offered "event page?"
+
+
+class ProgramFollowupStage:
+    """Stages for progressive program detail disclosure (parallel to EventFollowupStage)."""
+    NONE = "none"                    # No program follow-up in progress
+    SUMMARY_SHOWN = "summary_shown"  # Bot showed program summary, offered "more details?"
+    DETAILS_SHOWN = "details_shown"  # Bot showed full details, offered "navigate to page?"
+    NAVIGATE_OFFERED = "navigate_offered"  # Bot offered navigation, waiting for response
 
 
 # Patterns for detecting numbered lists in bot messages

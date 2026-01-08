@@ -987,6 +987,20 @@ STAGE1_CTA = "Would you like more details about this event?"
 STAGE2_CTA_TEMPLATE = "Would you like me to take you to the [event page]({url}) to learn more or enroll?"
 STAGE2_CTA_NO_URL = "Would you like to add this event to your calendar, or do you have any questions about it?"
 
+# ============================================================================
+# PROGRAM CTA CONSTANTS (Single Source of Truth for Program Flow)
+# ============================================================================
+# These constants define the CTAs for the progressive program disclosure flow.
+# The intent_router will derive detection patterns from these programmatically.
+# If you change the wording here, the router patterns will automatically update.
+
+PROGRAM_STAGE1_CTA = "Would you like more details about this program?"
+# Note: Stage-2 CTA offers navigation FIRST (not enrollment) per user requirement
+PROGRAM_STAGE2_CTA_TEMPLATE = "Would you like me to take you to the [program page]({url}) to learn more?"
+PROGRAM_STAGE2_CTA_NO_URL = "Would you like to know more, or do you have any questions about this program?"
+# Stage-3: Enrollment only comes after navigation or on explicit request
+PROGRAM_ENROLLMENT_CTA = "Would you like to know how to enroll in this program?"
+
 
 def _find_event_for_stage1(event_name: str, conversation_history: List[Dict] = None) -> Optional[Dict]:
     """
