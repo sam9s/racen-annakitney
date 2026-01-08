@@ -703,9 +703,9 @@ def get_greeting_message() -> str:
     LLM generation - the LLM produces generic responses. This structured message 
     was specifically designed to be warm and helpful.
     """
-    return """Hi there, I'm Anna — your friendly guide here at Anna Kitney!
+    return """Hi there! ✨ I'm Anna — your friendly guide here at Anna Kitney!
 
-I'm here to help you explore our programs, understand our philosophy, and find what might be right for you.
+I'm here to help you explore our programs, understand our philosophy, and find what might be right for you. 💫
 
 Are you looking for:
 - Program details (Elite Private Advisory, The Ascend Collective, SoulAlign courses)
@@ -713,7 +713,7 @@ Are you looking for:
 - Manifestation and abundance work
 - How to get started
 
-What brings you here today?"""
+What brings you here today? 🌟"""
 
 
 def check_knowledge_base_status() -> dict:
