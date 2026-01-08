@@ -1194,14 +1194,16 @@ Events Page: https://www.annakitney.com/events/
     # ========== LOCATION QUERY HANDLING ==========
     # Handle queries like "Where is the Dubai event held?" or "Is there an event in Dubai?"
     # Search for location keywords in both event titles AND location fields
+    # ALL patterns are DYNAMIC - they capture any location word, not hardcoded cities
     location_patterns = [
         r'\bwhere\s+(?:is|are)\s+(?:the\s+)?(\w+)\s+event',
         r'\b(\w+)\s+event\s+location',
         r'\blocation\s+(?:of|for)\s+(?:the\s+)?(\w+)',
         r'\bwhere\s+(?:does|will)\s+(?:the\s+)?(\w+)\s+(?:take\s+place|happen|be\s+held)',
-        r'\b(?:is\s+there|are\s+there)\s+(?:an?\s+)?(?:events?|workshops?|sessions?)\s+(?:in|at)\s+(\w+)',
-        r'\bevents?\s+(?:in|at)\s+(dubai|london|zoom|online)\b',
-        r'\b(dubai|london)\s+events?\b',
+        # Dynamic "is there an event in [location]" patterns
+        r'\b(?:is\s+there|are\s+there)\s+(?:an?y?\s+)?(?:events?|workshops?|sessions?)\s+(?:in|at)\s+(\w+)',
+        r'\bevents?\s+(?:in|at)\s+(\w+)\b',  # "events in [location]" - fully dynamic
+        r'\b(\w+)\s+events?\b',  # "[location] events" - fully dynamic (will match many things, last resort)
     ]
     
     for pattern in location_patterns:
