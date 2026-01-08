@@ -46,7 +46,7 @@ The webhook endpoint exists (`POST /api/calendar/webhook`) but requires Google C
 
 ## Recent Changes (Jan 2026)
 
-1. **Greeting Fix**: Restored LLM-powered greetings. The GREETING intent was incorrectly bypassing the LLM with a hardcoded response. Now greetings go through the LLM using the system prompt instruction "Introduce yourself warmly to greetings", producing varied, warm responses.
+1. **Greeting Fix**: Restored the curated greeting from `get_greeting_message()` in chatbot_engine.py. **CRITICAL: Never replace this with LLM calls** - the curated greeting is brand-approved and intentional. The LLM produces generic responses; the curated message is warm and structured.
 
 2. **Dynamic Location Queries**: Made location-based event queries fully dynamic (no hardcoded cities). Queries like "Is there an event in [any city]?" now search all events by title and location fields.
 

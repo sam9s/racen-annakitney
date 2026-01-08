@@ -285,40 +285,14 @@ def generate_response(
             "intent": "clarification"
         }
     
-    # Handle GREETING intent - use LLM for warm, personalized greeting
-    # (Don't bypass LLM - system prompt has "Introduce yourself warmly to greetings")
+    # Handle GREETING intent - use the curated greeting message (fast, consistent, brand-approved)
     if intent_result.intent == IntentType.GREETING:
-        greeting_name = f" The user's name is {user_name}. Address them by name naturally." if user_name else ""
-        system_prompt = get_system_prompt()
-        
-        greeting_messages = [
-            {"role": "system", "content": system_prompt + greeting_name},
-            {"role": "user", "content": user_message}
-        ]
-        
-        try:
-            response = client.chat.completions.create(
-                model="gpt-4o-mini",
-                messages=greeting_messages,
-                temperature=0.7,
-                max_tokens=300
-            )
-            greeting_response = response.choices[0].message.content.strip()
-            return {
-                "response": greeting_response,
-                "sources": [],
-                "safety_triggered": False,
-                "intent": "greeting"
-            }
-        except Exception as e:
-            print(f"[Greeting] LLM error: {e}, using fallback", flush=True)
-            name_part = f", {user_name}" if user_name else ""
-            return {
-                "response": f"Hello{name_part}! I'm Anna's wellness assistant. I'm here to help you explore our transformational programs and upcoming events. What would you like to know about today?",
-                "sources": [],
-                "safety_triggered": False,
-                "intent": "greeting"
-            }
+        return {
+            "response": get_greeting_message(),
+            "sources": [],
+            "safety_triggered": False,
+            "intent": "greeting"
+        }
     
     # Handle FOLLOWUP_SELECT intent - user selected from a numbered list
     if intent_result.intent == IntentType.FOLLOWUP_SELECT:
@@ -722,7 +696,13 @@ FOLLOW-UP QUESTIONS (choose ONE that's most relevant):
 
 
 def get_greeting_message() -> str:
-    """Return the initial greeting message for new conversations."""
+    """
+    Return the curated greeting message for new conversations.
+    
+    IMPORTANT: This is a brand-approved curated greeting. DO NOT replace this with 
+    LLM generation - the LLM produces generic responses. This structured message 
+    was specifically designed to be warm and helpful.
+    """
     return """Hi there, I'm Anna — your friendly guide here at Anna Kitney!
 
 I'm here to help you explore our programs, understand our philosophy, and find what might be right for you.
