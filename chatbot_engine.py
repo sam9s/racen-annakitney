@@ -285,15 +285,40 @@ def generate_response(
             "intent": "clarification"
         }
     
-    # Handle GREETING intent - simple greeting without database queries
+    # Handle GREETING intent - use LLM for warm, personalized greeting
+    # (Don't bypass LLM - system prompt has "Introduce yourself warmly to greetings")
     if intent_result.intent == IntentType.GREETING:
-        greeting_name = f", {user_name}" if user_name else ""
-        return {
-            "response": f"Hello{greeting_name}! I'm Anna's wellness assistant. I'm here to help you learn about our transformational programs and upcoming events. What would you like to explore today?",
-            "sources": [],
-            "safety_triggered": False,
-            "intent": "greeting"
-        }
+        greeting_name = f" The user's name is {user_name}. Address them by name naturally." if user_name else ""
+        system_prompt = get_system_prompt()
+        
+        greeting_messages = [
+            {"role": "system", "content": system_prompt + greeting_name},
+            {"role": "user", "content": user_message}
+        ]
+        
+        try:
+            response = client.chat.completions.create(
+                model="gpt-4o-mini",
+                messages=greeting_messages,
+                temperature=0.7,
+                max_tokens=300
+            )
+            greeting_response = response.choices[0].message.content.strip()
+            return {
+                "response": greeting_response,
+                "sources": [],
+                "safety_triggered": False,
+                "intent": "greeting"
+            }
+        except Exception as e:
+            print(f"[Greeting] LLM error: {e}, using fallback", flush=True)
+            name_part = f", {user_name}" if user_name else ""
+            return {
+                "response": f"Hello{name_part}! I'm Anna's wellness assistant. I'm here to help you explore our transformational programs and upcoming events. What would you like to know about today?",
+                "sources": [],
+                "safety_triggered": False,
+                "intent": "greeting"
+            }
     
     # Handle FOLLOWUP_SELECT intent - user selected from a numbered list
     if intent_result.intent == IntentType.FOLLOWUP_SELECT:

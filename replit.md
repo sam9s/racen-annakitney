@@ -27,3 +27,38 @@ The chatbot employs a hybrid architecture:
 -   **Vite**: Frontend tooling for React development.
 -   **Express**: Backend server for the React frontend.
 -   **Flask**: Python web framework for the API backend.
+
+## Pending Items / Future Work
+
+### Google Calendar Webhook (Real-time Sync) - NOT YET CONFIGURED
+The webhook endpoint exists (`POST /api/calendar/webhook`) but requires Google Cloud Console configuration:
+1. Create a Google Cloud Project with Calendar API enabled
+2. Set up push notifications (webhooks) in Google Calendar API
+3. Configure the webhook URL to point to your deployed app's `/api/calendar/webhook` endpoint
+4. Webhooks require HTTPS (will work once app is published/deployed)
+
+**Current workaround**: 30-minute scheduled sync runs automatically, plus full sync on app startup.
+
+### Other Future Enhancements
+- In-chat booking with email confirmations
+- Payment processing integration
+- Multi-language support
+
+## Recent Changes (Jan 2026)
+
+1. **Greeting Fix**: Restored LLM-powered greetings. The GREETING intent was incorrectly bypassing the LLM with a hardcoded response. Now greetings go through the LLM using the system prompt instruction "Introduce yourself warmly to greetings", producing varied, warm responses.
+
+2. **Dynamic Location Queries**: Made location-based event queries fully dynamic (no hardcoded cities). Queries like "Is there an event in [any city]?" now search all events by title and location fields.
+
+3. **GUI Test Runner**: Added `/test-runner` page for end-to-end testing of chatbot functionality. Runs 30 test scenarios covering events, dates, enrollment, programs, safety.
+
+4. **Intent Classification Improvements**: Expanded TIME_PATTERNS for month-based queries ("events in March"), generic event queries, and location queries.
+
+5. **Single Decision Point Follow-up Architecture**: FOLLOWUP_SELECT and FOLLOWUP_CONFIRM intent types in IntentRouter for handling numbered list selections.
+
+6. **Calendar PostgreSQL Sync**: Events sync from Google Calendar to PostgreSQL with full descriptions and URL parsing.
+
+## Important Technical Notes
+- **Markdown Parsing Order**: Bold-wrapped links `**[text](url)**` must be matched FIRST, then plain links, then bold text.
+- **Two Websites**: annakitney.com (marketing) and annakitneyportal.com (checkout, requires www. prefix)
+- **VERBATIM Delimiters**: Used in chatbot_engine.py to prevent LLM from paraphrasing event data
