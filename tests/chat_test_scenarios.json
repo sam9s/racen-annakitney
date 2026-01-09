@@ -332,6 +332,73 @@
           "keywords": ["September", "SoulAlign"]
         }
       ]
+    },
+    {
+      "id": "month_followup_may",
+      "name": "CRITICAL: Month Follow-up Query",
+      "description": "CRITICAL: 'What about in May?' should return May events, NOT fall back to conversation history",
+      "turns": [
+        {
+          "user": "What events are in March?",
+          "expected_intent": "event",
+          "keywords": ["March", "SoulAlign"]
+        },
+        {
+          "user": "What about in May?",
+          "expected_intent": "event",
+          "keywords": ["May"],
+          "must_not_contain": ["would you like more details", "ready to enroll"]
+        }
+      ]
+    },
+    {
+      "id": "month_year_parsing",
+      "name": "CRITICAL: April 2026 Not April 20",
+      "description": "CRITICAL: 'April 2026' should NOT be parsed as 'April 20, 2026'",
+      "turns": [
+        {
+          "user": "Any events in April 2026?",
+          "expected_intent": "event",
+          "keywords": ["April"],
+          "must_not_contain": ["April 20"]
+        }
+      ]
+    },
+    {
+      "id": "program_vs_event_context",
+      "name": "Program Context Preserved",
+      "description": "After asking about Divine Abundance Codes, 'yes' should stay in program context",
+      "turns": [
+        {
+          "user": "Tell me about Divine Abundance Codes",
+          "expected_intent": ["knowledge", "program"],
+          "keywords": ["Divine Abundance", "abundance"]
+        },
+        {
+          "user": "yes",
+          "expected_intent": ["followup_confirm", "program_detail_request"],
+          "keywords": [],
+          "must_not_contain": ["SoulAlign® Coach", "SoulAlign® Heal", "March 2026"]
+        }
+      ]
+    },
+    {
+      "id": "event_june1_not_ordinal",
+      "name": "CRITICAL: June 1st Not Ordinal Selection",
+      "description": "CRITICAL: 'June 1st' is a date, NOT 'option 1'",
+      "turns": [
+        {
+          "user": "What events do you have?",
+          "expected_intent": "event",
+          "keywords": ["1.", "2."]
+        },
+        {
+          "user": "Are there any events on June 1st?",
+          "expected_intent": "event",
+          "keywords": ["June"],
+          "must_not_contain": ["selected", "option 1", "first one"]
+        }
+      ]
     }
   ]
 }
