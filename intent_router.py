@@ -417,13 +417,15 @@ class IntentRouter:
                     reasoning=f"'{event_match}' exists as both event and program"
                 )
         
-        # Case 6: Only matches event title = EVENT
+        # Case 6: Only matches event title = EVENT_DETAIL_REQUEST (use deterministic summary)
+        # When user directly asks about a specific event, route to EVENT_DETAIL_REQUEST
+        # to ensure the deterministic Stage-1 summary with correct CTA is used
         if event_match and event_score > 0.5 and not program_match:
             return IntentResult(
-                intent=IntentType.EVENT,
+                intent=IntentType.EVENT_DETAIL_REQUEST,
                 confidence=event_score,
                 slots=slots,
-                reasoning=f"Message matches event title '{event_match}'"
+                reasoning=f"Message matches event title '{event_match}' - using deterministic summary"
             )
         
         # Case 7: Only matches program name = KNOWLEDGE

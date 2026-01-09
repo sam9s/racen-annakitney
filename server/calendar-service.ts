@@ -84,13 +84,15 @@ export interface EventInfo {
 }
 
 // Canonical URL mapping for known events (marketing URLs may differ from auto-generated slugs)
+// CRITICAL: These URLs must match the actual event page URLs on annakitney.com
+// The database (calendar_events table) is the source of truth - update this mapping when syncing
 const EVENT_URL_MAPPING: Record<string, string> = {
   "success redefined - the meditation: live in dubai": "https://www.annakitney.com/event/success-redefined-the-meditation/",
   "the identity overflow": "https://www.annakitney.com/event/the-identity-overflow/",
-  "soulalign® manifestation mastery": "https://www.annakitney.com/event/soulalign-manifestation-mastery/",
-  "soulalign® coach": "https://www.annakitney.com/event/soulalign-coach/",
+  "soulalign® manifestation mastery": "https://www.annakitney.com/event/phoenixrising/",
+  "soulalign® coach": "https://www.annakitney.com/event/soulalign-manifestation-mastery/",
   "soulalign® heal": "https://www.annakitney.com/event/soulalign-heal/",
-  "soulalign® business 2026": "https://www.annakitney.com/event/soulalign-business/",
+  "soulalign® business 2026": "https://www.annakitney.com/event/soulalign-business-2026/",
 };
 
 // Get canonical event page URL from mapping or generate from slug
