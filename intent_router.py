@@ -405,9 +405,9 @@ class IntentRouter:
                 reasoning="Knowledge pattern detected (price, cost, details, etc.)"
             )
         
-        # Case 5: Name matches BOTH event and program = HYBRID/CLARIFICATION
-        if event_match and program_match and event_score > 0.5 and program_score > 0.5:
-            # Same name exists in both - need clarification
+        # Case 5: Name matches BOTH event and program with HIGH scores = CLARIFICATION
+        if event_match and program_match and event_score > 0.7 and program_score > 0.7:
+            # Same name exists in both with high confidence - need clarification
             if not has_date and not has_event_action and not has_knowledge_pattern:
                 return IntentResult(
                     intent=IntentType.CLARIFICATION,
@@ -417,10 +417,10 @@ class IntentRouter:
                     reasoning=f"'{event_match}' exists as both event and program"
                 )
         
-        # Case 6: Only matches event title = EVENT_DETAIL_REQUEST (use deterministic summary)
+        # Case 6: Strong event match, weak/no program match = EVENT_DETAIL_REQUEST
         # When user directly asks about a specific event, route to EVENT_DETAIL_REQUEST
         # to ensure the deterministic Stage-1 summary with correct CTA is used
-        if event_match and event_score > 0.5 and not program_match:
+        if event_match and event_score > 0.5 and (not program_match or program_score < 0.5 or event_score - program_score > 0.3):
             return IntentResult(
                 intent=IntentType.EVENT_DETAIL_REQUEST,
                 confidence=event_score,
@@ -428,8 +428,8 @@ class IntentRouter:
                 reasoning=f"Message matches event title '{event_match}' - using deterministic summary"
             )
         
-        # Case 7: Only matches program name = KNOWLEDGE
-        if program_match and program_score > 0.5 and not event_match:
+        # Case 7: Strong program match, weak/no event match = KNOWLEDGE
+        if program_match and program_score > 0.5 and (not event_match or event_score < 0.5 or program_score - event_score > 0.3):
             return IntentResult(
                 intent=IntentType.KNOWLEDGE,
                 confidence=program_score,
@@ -437,7 +437,7 @@ class IntentRouter:
                 reasoning=f"Message matches program name '{program_match}'"
             )
         
-        # Case 8: Matches both but with context clues = HYBRID
+        # Case 8: Both match with similar scores = HYBRID
         if event_match or program_match:
             return IntentResult(
                 intent=IntentType.HYBRID,
@@ -508,30 +508,42 @@ class IntentRouter:
         """
         Check if message fuzzy-matches any event title.
         Returns (matched_title, score) or (None, 0).
+        
+        Scoring:
+        - Exact substring match: 0.95
+        - All title words in message: 0.85
+        - Majority of title words in message: percentage * 0.85
         """
         if not self._event_titles:
             return None, 0
         
         message_lower = message.lower()
+        # Normalize special characters (® → empty)
+        message_normalized = re.sub(r'[®™©]', '', message_lower)
         best_match = None
         best_score = 0
         
         for title in self._event_titles:
             title_lower = title.lower()
+            # Normalize special characters in title too
+            title_normalized = re.sub(r'[®™©]', '', title_lower)
             
-            # Exact substring match
-            if title_lower in message_lower or message_lower in title_lower:
+            # Exact substring match (after normalization)
+            if title_normalized in message_normalized or message_normalized in title_normalized:
                 score = 0.95
             else:
-                # Word overlap
-                msg_words = set(re.findall(r'\w+', message_lower))
-                title_words = set(re.findall(r'\w+', title_lower))
+                # Check if all title words are present in message
+                msg_words = set(re.findall(r'\w+', message_normalized))
+                title_words = set(re.findall(r'\w+', title_normalized))
                 
                 if not msg_words or not title_words:
                     continue
                 
+                # Score based on % of title words found in message
+                # This way "Tell me about SoulAlign Coach" scores high for "SoulAlign® Coach"
                 common = msg_words & title_words
-                score = len(common) / max(len(msg_words), len(title_words))
+                title_coverage = len(common) / len(title_words)
+                score = title_coverage * 0.85  # Max 0.85 for word overlap
             
             if score > best_score:
                 best_score = score
@@ -543,30 +555,40 @@ class IntentRouter:
         """
         Check if message fuzzy-matches any program name.
         Returns (matched_name, score) or (None, 0).
+        
+        Scoring:
+        - Exact substring match: 0.95
+        - All program name words in message: 0.85
+        - Majority of name words in message: percentage * 0.85
         """
         if not self._program_names:
             return None, 0
         
         message_lower = message.lower()
+        # Normalize special characters
+        message_normalized = re.sub(r'[®™©]', '', message_lower)
         best_match = None
         best_score = 0
         
         for name in self._program_names:
             name_lower = name.lower()
+            name_normalized = re.sub(r'[®™©]', '', name_lower)
             
-            # Exact substring match
-            if name_lower in message_lower or message_lower in name_lower:
+            # Exact substring match (after normalization)
+            if name_normalized in message_normalized or message_normalized in name_normalized:
                 score = 0.95
             else:
-                # Word overlap
-                msg_words = set(re.findall(r'\w+', message_lower))
-                name_words = set(re.findall(r'\w+', name_lower))
+                # Check if all name words are present in message
+                msg_words = set(re.findall(r'\w+', message_normalized))
+                name_words = set(re.findall(r'\w+', name_normalized))
                 
                 if not msg_words or not name_words:
                     continue
                 
+                # Score based on % of name words found in message
                 common = msg_words & name_words
-                score = len(common) / max(len(msg_words), len(name_words))
+                name_coverage = len(common) / len(name_words)
+                score = name_coverage * 0.85
             
             if score > best_score:
                 best_score = score

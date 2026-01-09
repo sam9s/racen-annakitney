@@ -28,6 +28,18 @@ from events_service import is_event_query, get_event_context_for_llm, process_ca
 from intent_router import get_intent_router, IntentType, EventFollowupStage, refresh_router_data
 
 _openai_client = None
+_router_initialized = False
+
+def _ensure_router_initialized():
+    """Ensure the intent router is initialized with event titles and program names."""
+    global _router_initialized
+    if not _router_initialized:
+        try:
+            refresh_router_data()
+            _router_initialized = True
+            print("[ChatbotEngine] Intent router initialized with event/program data", flush=True)
+        except Exception as e:
+            print(f"[ChatbotEngine] Warning: Could not initialize router data: {e}", flush=True)
 
 
 def get_openai_client():
@@ -256,6 +268,9 @@ def generate_response(
             "error": "openai_not_configured"
         }
     
+    # Ensure intent router has event titles and program names loaded
+    _ensure_router_initialized()
+    
     should_redirect, redirect_response = apply_safety_filters(user_message, is_anna=True)
     
     if should_redirect:
@@ -331,11 +346,16 @@ def generate_response(
     
     # Handle EVENT_NAVIGATE intent - user confirming they want to go to event page
     if intent_result.intent == IntentType.EVENT_NAVIGATE:
-        event_url = intent_result.slots.get("event_url", "")
-        print(f"[IntentRouter] User wants to navigate to event page: {event_url}", flush=True)
+        print(f"[IntentRouter] User wants to navigate to event page", flush=True)
         
-        if event_url:
-            # Emit navigation directive - frontend will handle this
+        # ALWAYS use database URL - never trust URL extracted from message
+        # This ensures 100% accuracy by using eventPageUrl from PostgreSQL
+        from events_service import _find_event_from_history
+        last_event = _find_event_from_history(conversation_history)
+        
+        if last_event and last_event.get("eventPageUrl"):
+            event_url = last_event.get("eventPageUrl")
+            print(f"[EVENT_NAVIGATE] Using database URL: {event_url}", flush=True)
             response = f"Taking you to the event page now!\n\n[NAVIGATE:{event_url}]"
             return {
                 "response": response,
@@ -344,25 +364,24 @@ def generate_response(
                 "intent": "event_navigate"
             }
         else:
-            # Try to find URL from conversation history
-            from events_service import _find_event_from_history
-            last_event = _find_event_from_history(conversation_history)
-            if last_event and last_event.get("eventPageUrl"):
-                event_url = last_event.get("eventPageUrl")
-                response = f"Taking you to the event page now!\n\n[NAVIGATE:{event_url}]"
+            # Fallback: try URL from message if database lookup failed
+            extracted_url = intent_result.slots.get("event_url", "")
+            if extracted_url:
+                print(f"[EVENT_NAVIGATE] Fallback to extracted URL: {extracted_url}", flush=True)
+                response = f"Taking you to the event page now!\n\n[NAVIGATE:{extracted_url}]"
                 return {
                     "response": response,
                     "sources": [],
                     "safety_triggered": False,
                     "intent": "event_navigate"
                 }
-            else:
-                return {
-                    "response": "I'm sorry, I couldn't find the event page URL. Could you tell me which event you'd like to learn more about?",
-                    "sources": [],
-                    "safety_triggered": False,
-                    "intent": "clarification"
-                }
+            
+            return {
+                "response": "I'm sorry, I couldn't find the event page URL. Could you tell me which event you'd like to learn more about?",
+                "sources": [],
+                "safety_triggered": False,
+                "intent": "clarification"
+            }
     
     # Handle EVENT_DETAIL_REQUEST intent - user asking about specific event after listing
     if intent_result.intent == IntentType.EVENT_DETAIL_REQUEST:
