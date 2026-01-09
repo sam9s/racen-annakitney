@@ -787,14 +787,43 @@ class IntentRouter:
                     reasoning="User confirming interest after event listing"
                 )
             
-            # Check if last message was about programs (non-event)
-            if any(word in last_msg_lower for word in ["program", "course", "enroll", "investment", "pricing"]):
-                return IntentResult(
-                    intent=IntentType.FOLLOWUP_CONFIRM,
-                    confidence=HIGH_CONFIDENCE,
-                    slots={"context": "program", "last_bot_message": last_bot_msg[:500]},
-                    reasoning="User confirming interest in previously discussed program"
-                )
+            # ========== PROGRAM FOLLOW-UP DETECTION ==========
+            # Check if last message was about programs (non-event) BEFORE falling back to events
+            # Extract program name from conversation to maintain context
+            program_stage = self._detect_program_followup_stage(last_msg_lower)
+            if program_stage != ProgramFollowupStage.NONE:
+                # Extract program name from the last bot message
+                program_name = self._extract_program_from_message(last_bot_msg)
+                print(f"[_check_followup_context] Detected program context: {program_name}, stage: {program_stage}", flush=True)
+                
+                if program_stage == ProgramFollowupStage.DETAILS_SHOWN:
+                    # User confirmed navigation to program page
+                    program_url = self._extract_program_url_from_message(last_bot_msg)
+                    return IntentResult(
+                        intent=IntentType.PROGRAM_NAVIGATE,
+                        confidence=HIGH_CONFIDENCE,
+                        slots={
+                            "context": "program",
+                            "stage": program_stage,
+                            "program_name": program_name,
+                            "program_url": program_url,
+                            "last_bot_message": last_bot_msg[:500]
+                        },
+                        reasoning=f"User confirming navigation to program page: {program_name}"
+                    )
+                else:
+                    # User wants more details about program
+                    return IntentResult(
+                        intent=IntentType.PROGRAM_DETAIL_REQUEST,
+                        confidence=HIGH_CONFIDENCE,
+                        slots={
+                            "context": "program",
+                            "stage": program_stage,
+                            "program_name": program_name,
+                            "last_bot_message": last_bot_msg[:500]
+                        },
+                        reasoning=f"User confirming interest in program: {program_name}"
+                    )
         
         # ========== EVENT NAME AFTER LISTING ==========
         # If last message was an event listing and user mentions an event name, route to EVENT_DETAIL_REQUEST
@@ -893,6 +922,110 @@ class IntentRouter:
             return url
         
         print(f"[_extract_event_url] No URL found in message (length: {len(message)})", flush=True)
+        return None
+    
+    def _detect_program_followup_stage(self, last_msg_lower: str) -> str:
+        """
+        Detect if the last bot message was about a PROGRAM (not an event).
+        Returns one of ProgramFollowupStage values.
+        
+        Program indicators:
+        - "program" mentioned but NOT "event"
+        - Specific program names (Divine Abundance Codes, SoulAlign Heal, etc.)
+        - CTAs like "take you to the X page" for programs
+        - Enrollment/pricing language
+        """
+        cta_patterns = _get_cta_regex_patterns()
+        
+        # Check for program-specific CTAs first (these override event detection)
+        # Program page navigation CTA: "Would you like me to take you to the Divine Abundance Codes page"
+        program_page_patterns = [
+            cta_patterns.get("program_stage2_url_regex", ""),
+            r"would you like me to take you to the .+ page",
+            r"take you to the \[?.+\]?\(?.+\)? page",
+            r"\[.+\]\(https://[^\)]+\) page",
+        ]
+        
+        for pattern in program_page_patterns:
+            if pattern and re.search(pattern, last_msg_lower):
+                # But exclude EVENT pages
+                if "event" not in last_msg_lower or "program" in last_msg_lower:
+                    print(f"[_detect_program_followup_stage] Matched DETAILS_SHOWN (program page CTA)", flush=True)
+                    return ProgramFollowupStage.DETAILS_SHOWN
+        
+        # Program more details CTA: "Would you like more details about this program?"
+        program_detail_patterns = [
+            cta_patterns.get("program_stage1_regex", ""),
+            r"would you like (?:to )?know more",
+            r"would you like more details",
+            r"like to learn more",
+        ]
+        
+        for pattern in program_detail_patterns:
+            if pattern and re.search(pattern, last_msg_lower):
+                # Check it's about programs, not events
+                if "event" not in last_msg_lower and any(word in last_msg_lower for word in [
+                    "program", "course", "coaching", "mastery", "codes", "collective",
+                    "enroll", "investment", "pricing", "includes", "divine abundance"
+                ]):
+                    print(f"[_detect_program_followup_stage] Matched SUMMARY_SHOWN (program detail CTA)", flush=True)
+                    return ProgramFollowupStage.SUMMARY_SHOWN
+        
+        return ProgramFollowupStage.NONE
+    
+    def _extract_program_from_message(self, message: str) -> str:
+        """
+        Extract program name from bot message using fuzzy matching against known programs.
+        """
+        if not self._program_names:
+            return ""
+        
+        message_lower = message.lower()
+        
+        # Try exact match first
+        for program in self._program_names:
+            if program.lower() in message_lower:
+                print(f"[_extract_program_from_message] Exact match: {program}", flush=True)
+                return program
+        
+        # Try fuzzy matching using simple word overlap
+        best_match = ""
+        best_score = 0.0
+        for program in self._program_names:
+            # Calculate simple word overlap score
+            program_words = set(program.lower().split())
+            message_words = set(message_lower.split())
+            overlap = len(program_words & message_words)
+            score = overlap / max(len(program_words), 1)
+            if score > best_score and score >= 0.4:
+                best_score = score
+                best_match = program
+        
+        if best_match:
+            print(f"[_extract_program_from_message] Fuzzy match: {best_match} (score: {best_score:.2f})", flush=True)
+        else:
+            print(f"[_extract_program_from_message] No match found in message", flush=True)
+        
+        return best_match
+    
+    def _extract_program_url_from_message(self, message: str) -> Optional[str]:
+        """
+        Extract program page URL from bot message if present.
+        """
+        # Pattern 1: [program name page](url)
+        match = re.search(r'\[[\w\s®™]+(?:page)?\]\((https?://[^)\s]+)\)', message, re.IGNORECASE)
+        if match:
+            url = match.group(1).rstrip('.,')
+            print(f"[_extract_program_url] Found: {url}", flush=True)
+            return url
+        
+        # Pattern 2: Any annakitney.com URL that's not an event
+        match = re.search(r'(https?://(?:www\.)?annakitney\.com/(?!event/)[^\s\)\]]+)', message)
+        if match:
+            url = match.group(1).rstrip('.,')
+            print(f"[_extract_program_url] Found program URL: {url}", flush=True)
+            return url
+        
         return None
     
     def _check_conversation_context(self, history: List[Dict]) -> Optional[IntentType]:

@@ -25,7 +25,7 @@ from tenacity import retry, stop_after_attempt, wait_exponential, retry_if_excep
 from knowledge_base import search_knowledge_base, get_knowledge_base_stats
 from safety_guardrails import apply_safety_filters, get_system_prompt, filter_response_for_safety, inject_program_links, inject_checkout_urls, append_contextual_links, format_numbered_lists, inject_dynamic_enrollment, fix_compound_trailing_questions
 from events_service import is_event_query, get_event_context_for_llm, process_calendar_action, fix_navigation_urls
-from intent_router import get_intent_router, IntentType, EventFollowupStage, refresh_router_data
+from intent_router import get_intent_router, IntentType, EventFollowupStage, ProgramFollowupStage, refresh_router_data
 
 _openai_client = None
 _router_initialized = False
@@ -382,6 +382,63 @@ def generate_response(
                 "safety_triggered": False,
                 "intent": "clarification"
             }
+    
+    # ========== PROGRAM FOLLOW-UP HANDLERS ==========
+    # Handle PROGRAM_NAVIGATE intent - user confirming they want to go to program page
+    if intent_result.intent == IntentType.PROGRAM_NAVIGATE:
+        program_name = intent_result.slots.get("program_name", "")
+        program_url = intent_result.slots.get("program_url", "")
+        print(f"[IntentRouter] User wants to navigate to program page: {program_name}", flush=True)
+        
+        # Try to get URL from known program URLs if not extracted
+        if not program_url and program_name:
+            from safety_guardrails import ANNA_PROGRAM_URLS
+            for name, url in ANNA_PROGRAM_URLS.items():
+                if program_name.lower() in name.lower() or name.lower() in program_name.lower():
+                    program_url = url
+                    break
+        
+        if program_url:
+            print(f"[PROGRAM_NAVIGATE] Using URL: {program_url}", flush=True)
+            response = f"Taking you to the {program_name} page now!\n\n[NAVIGATE:{program_url}]"
+            return {
+                "response": response,
+                "sources": [],
+                "safety_triggered": False,
+                "intent": "program_navigate"
+            }
+        else:
+            return {
+                "response": f"I'd love to help you learn more about {program_name}. Let me find the right page for you. Could you tell me a bit more about what you're looking for?",
+                "sources": [],
+                "safety_triggered": False,
+                "intent": "clarification"
+            }
+    
+    # Handle PROGRAM_DETAIL_REQUEST intent - user wants more details about a program
+    if intent_result.intent == IntentType.PROGRAM_DETAIL_REQUEST:
+        program_name = intent_result.slots.get("program_name", "")
+        print(f"[IntentRouter] User asking for program details: {program_name}", flush=True)
+        
+        # Query RAG for program information
+        if program_name:
+            search_query = f"{program_name} program details what's included enrollment"
+        else:
+            # Fallback: use the last bot message to find context
+            last_msg = intent_result.slots.get("last_bot_message", "")
+            search_query = f"program details {last_msg[:100]}"
+        
+        from knowledge_base import search_knowledge_base, format_context_from_docs
+        relevant_docs = search_knowledge_base(search_query, n_results=5)
+        context = format_context_from_docs(relevant_docs)
+        
+        if context:
+            # Let LLM generate response with program context
+            print(f"[PROGRAM_DETAIL_REQUEST] Found RAG context for: {program_name}", flush=True)
+            # Fall through to LLM with this context (don't return early)
+            # We'll set up the context and let the normal LLM flow handle it
+        else:
+            print(f"[PROGRAM_DETAIL_REQUEST] No RAG context found for: {program_name}", flush=True)
     
     # Handle EVENT_DETAIL_REQUEST intent - user asking about specific event after listing
     if intent_result.intent == IntentType.EVENT_DETAIL_REQUEST:
