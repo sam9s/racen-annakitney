@@ -90,9 +90,9 @@ SECTION 1 - FEATURED SERVICES CAROUSEL (350-400px):
 
 CAROUSEL SLIDES (4 services):
 
-Slide 1: Elite Private Coaching
+Slide 1: Elite Private Advisory
 - Description: "Personalized 1:1 mentorship for high-achieving founders ready to create their legacy."
-- Link: "Learn More" → https://www.annakitney.com/elite-private-coaching/
+- Link: "Learn More" → https://www.annakitney.com/elite-private-advisory/
 
 Slide 2: VIP Immersion Days
 - Description: "Intensive strategy sessions designed to accelerate your transformation."
