@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { Send, RotateCcw, Loader2, MessageCircle } from "lucide-react";
-import logoImage from "@assets/AK_gpt_transparent_1767940220766.png";
+import logoImage from "@assets/AnnaKitney_logo_transparent_gpt_pixellevel_1767940758809.png";
 
 function extractNavigationUrl(content: string): { url: string | null; cleanContent: string } {
   const navRegex = /\[NAVIGATE:(https?:\/\/[^\]]+)\]\s*/i;
@@ -407,7 +407,7 @@ export default function Home() {
     <div className="flex flex-col h-screen bg-background" data-testid="page-home">
       <header className="flex items-center justify-between gap-2 px-4 py-3 border-b bg-card">
         <div className="flex items-center gap-2">
-          <img src={logoImage} alt="Anna Kitney" className="h-12" data-testid="img-logo" />
+          <img src={logoImage} alt="Anna Kitney" className="h-14" data-testid="img-logo" />
           <h1 className="text-lg font-semibold" data-testid="text-header-title">Anna Kitney Wellness</h1>
         </div>
         <div className="flex items-center gap-1">
