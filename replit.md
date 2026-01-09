@@ -118,7 +118,12 @@ Comprehensive dashboard for monitoring and managing the chatbot system. See `doc
       4. No psychiatric/psychological advice
       5. No medical advice
 
+14. **Month Query Handling Fixes** (Jan 2026):
+    - Fixed date parsing: Added `(?!\d)` negative lookahead in `_extract_date_from_query()` to prevent "April 2026" from being parsed as "April 20, 2026"
+    - Month filter now checked BEFORE event keyword check in `_get_event_context_internal()` so queries like "What about in May?" correctly trigger month filtering instead of falling back to conversation history
+
 ## Important Technical Notes
 - **Markdown Parsing Order**: Bold-wrapped links `**[text](url)**` must be matched FIRST, then plain links, then bold text.
 - **Two Websites**: annakitney.com (marketing) and annakitneyportal.com (checkout, requires www. prefix)
 - **VERBATIM Delimiters**: Used in chatbot_engine.py to prevent LLM from paraphrasing event data
+- **Month Query Processing Order**: Month filter extraction MUST be checked before event keyword checks to handle follow-up queries like "What about in May?" that don't contain "event" keyword
