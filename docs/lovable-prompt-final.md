@@ -91,18 +91,22 @@ SECTION 1 - FEATURED SERVICES CAROUSEL (350-400px):
 CAROUSEL SLIDES (4 services):
 
 Slide 1: Elite Private Advisory
+- Image: https://www.annakitney.com/wp-content/uploads/2025/06/IMG_2449_AnnaKitney_web.jpg
 - Description: "Personalized 1:1 mentorship for high-achieving founders ready to create their legacy."
 - Link: "Learn More" → https://www.annakitney.com/elite-private-advisory/
 
-Slide 2: VIP Immersion Days
+Slide 2: VIP Immersion Day
+- Image: https://www.annakitney.com/wp-content/uploads/2021/07/Anna_Hari-Headshot-RedDress.jpg
 - Description: "Intensive strategy sessions designed to accelerate your transformation."
 - Link: "Learn More" → https://www.annakitney.com/vip-day/
 
 Slide 3: SoulAlign Business
+- Image: https://www.annakitney.com/wp-content/uploads/2022/12/Gold-chair.jpg
 - Description: "Build a soul-aligned empire with strategic spiritual guidance."
 - Link: "Learn More" → https://www.annakitney.com/soul-align-business-course/
 
 Slide 4: The ASCEND Collective
+- Image: https://www.annakitney.com/wp-content/uploads/2025/06/Ascend-Hero-2-scaled.jpg
 - Description: "Join an exclusive community of visionary female founders."
 - Link: "Learn More" → https://www.annakitney.com/the-ascend-collective/
 
