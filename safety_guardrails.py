@@ -435,6 +435,13 @@ def apply_safety_filters(message: str, is_anna: bool = False) -> Tuple[bool, str
     if is_medical:
         return True, medical_response
     
+    # 6. Live session topics - DISABLED until Anna provides her preferences
+    # To enable: uncomment the block below and add patterns to LIVE_SESSION_REFERRAL_PATTERNS
+    # if is_anna:
+    #     needs_referral, referral_response = check_for_live_session_topics(message)
+    #     if needs_referral:
+    #         return True, referral_response
+    
     return False, ""
 
 
@@ -1808,64 +1815,22 @@ JUDGMENTAL_TIME_PATTERNS = [
     rf"{SPELLED_NUMBERS}\s+years?\s+.{{0,20}}(long|difficult|hard)\s+(journey|road|path|battle)",
 ]
 
+# LIVE_SESSION_REFERRAL_PATTERNS - DISABLED
+# This is a placeholder for Anna-specific topics that should redirect to Clarity Call.
+# Currently empty - add Anna's specific topics here when we know what they are.
+# The function check_for_live_session_topics() is also disabled in apply_safety_filters().
 LIVE_SESSION_REFERRAL_PATTERNS = [
-    # Energy healing variants
-    r"\benergy[\s-]?heal(ing|er|s)?\b",
-    r"\benergy[\s-]?(work|worker|scan|scanning|body)\b",
-    
-    # Chakra variants
-    r"\bchakra(s)?[\s-]?(balanc(e|ing)|clear(ing)?|work|heal(ing)?)?\b",
-    
-    # Theta/Hypno variants
-    r"\btheta[\s-]?heal(ing|er)?\b",
-    r"\bhypno(s[ie]s|therap(y|ist|eutic))?\b",
-    
-    # Regression variants
-    r"\bregression[\s-]?(therap(y|ist)|work|session)?\b",
-    r"\bpast[\s-]?(life|lives)[\s-]?(regression|work|session)?\b",
-    
-    # Ancestral/Generational variants
-    r"\bancestral[\s-]?(heal(ing|er)?|work|patterns?)?\b",
-    r"\bgenerational[\s-]?(heal(ing|er)?|trauma|patterns?)?\b",
-    
-    # Blueprint clearing
-    r"\bblueprint[\s-]?(clear(ing)?|work)?\b",
-    r"\bclear(ing)?\s+(my|the|your)\s+blueprint\b",
-    
-    # Guided meditation/altered states
-    r"\bguided[\s-]?meditation\b",
-    r"\b(altered|alpha|theta|trance)[\s-]?state\b",
-    r"\btrance\b",
-    r"\bdeep[\s-]?meditation\b",
-    r"\bguide\s+(me|us)\s+(through|into)\s+(a\s+)?(meditation|relaxation)\b",
-    
-    # Physical/spiritual healing
-    r"\bphysical[\s-]?heal(ing|er)?\b",
-    r"\bheal\s+(my|the|your)\s+(pain|back|body|illness)\b",
-    r"\bheal\s+(my|the|your)\s+(chronic\s+)?(pain|back|body|illness)\b",
-    r"\bchronic[\s-]?pain\b.*\bheal",
-    r"\bheal.*\bchronic[\s-]?pain\b",
-    r"\bspiritual[\s-]?(heal(ing|er)?|work|practice)?\b",
-    
-    # Divine/spirit concepts
-    r"\bcreator\s+of\s+all\b",
-    r"\bdivine[\s-]?(light|guidance|healing)\b",
-    r"\bspirit[\s-]?(guide|guides|work)\b",
-    
-    # Aura work
-    r"\baura[\s-]?(read(ing|er)?|heal(ing|er)?|clear(ing)?)\b",
-    
-    # Inner child/shadow/trauma
-    r"\binner[\s-]?child[\s-]?(work|session|healing)?\b",
-    r"\btrauma[\s-]?(release|work|healing|session)\b",
-    r"\bshadow[\s-]?(work|session|healing)\b",
+    # ADD ANNA-SPECIFIC PATTERNS HERE WHEN KNOWN
+    # Example format:
+    # r"\bsome[\s-]?topic\b",
 ]
 
-LIVE_SESSION_REFERRAL_RESPONSE = """I can sense this is something that would really benefit from Anna's deeper work 💙. What you're describing - that kind of healing - is something she works on powerfully in her one-to-one sessions.
+# Response for live session referral - uses Anna's Clarity Call
+LIVE_SESSION_REFERRAL_RESPONSE = """This sounds like something that would really benefit from a personalized conversation with Anna.
 
-Would you like me to take you to the Discovery Call booking page so you can explore working with her directly?
+Would you like me to take you to the [Clarity Call](https://www.annakitney.com/clarity-call/) booking page so you can explore working with her directly?
 
-In the meantime, I'm here to listen and support you with what you're going through."""
+In the meantime, I'm here to share information about Anna's programs and services."""
 
 
 def _split_into_sentences(text: str) -> list:
@@ -1905,10 +1870,15 @@ def _check_judgmental_time_patterns(text: str) -> bool:
 
 def check_for_live_session_topics(message: str, session_id: Optional[str] = None) -> Tuple[bool, str]:
     """
+    CURRENTLY DISABLED - Waiting for Anna's specific topic preferences.
+    
     Check if the message contains topics that require live sessions with Anna.
-    These include energy healing, chakra work, regression, etc.
-    Uses regex with word boundaries for accurate matching.
-    Logs activation for monitoring.
+    When enabled, this will redirect certain topics to Anna's Clarity Call.
+    
+    To enable:
+    1. Add Anna-specific patterns to LIVE_SESSION_REFERRAL_PATTERNS
+    2. Uncomment the call in apply_safety_filters()
+    
     Returns (requires_referral, referral_response)
     """
     import re
