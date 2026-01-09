@@ -1107,6 +1107,9 @@ def inject_program_links(response: str) -> str:
     
     Handles ® and ™ symbols: "SoulAlign® Heal" matches "SoulAlign Heal" in database.
     Replaces ALL occurrences in the response, not just the first.
+    
+    CRITICAL: Must detect text that is already INSIDE a markdown link structure,
+    including [**bold text**](url) format where ** comes between [ and the text.
     """
     import re
     
@@ -1114,27 +1117,40 @@ def inject_program_links(response: str) -> str:
         """Remove ® ™ © symbols and collapse whitespace for matching."""
         return re.sub(r'[®™©]', '', text).strip()
     
+    def find_link_spans(text: str) -> list:
+        """Find all character positions that are inside markdown links."""
+        link_pattern = r'\[[^\]]+\]\([^)]+\)'
+        spans = []
+        for match in re.finditer(link_pattern, text):
+            spans.append((match.start(), match.end()))
+        return spans
+    
+    def is_inside_link(pos: int, spans: list) -> bool:
+        """Check if position is inside any markdown link."""
+        for start, end in spans:
+            if start <= pos < end:
+                return True
+        return False
+    
     result = response
     
     for program_name, url in ANNA_PROGRAM_URLS.items():
         if program_name in ["Services", "About", "Testimonials", "Contact", "Homepage"]:
             continue
         
-        # Create pattern that matches with or without ® ™ symbols
-        # e.g., "SoulAlign Heal" matches "SoulAlign® Heal" or "SoulAlign Heal"
         normalized_name = normalize_symbols(program_name)
-        
-        # Build flexible pattern: each word can optionally be followed by ®/™/©
         words = normalized_name.split()
         flexible_pattern = r'\s*'.join([re.escape(word) + r'[®™©]?' for word in words])
-        pattern = rf'(?<!\[)({flexible_pattern})(?!\]|\()'
+        pattern = rf'({flexible_pattern})'
         
-        # Replace ALL occurrences using re.sub with a replacement function
-        def make_link(match):
+        def make_link_if_not_in_link(match):
+            link_spans = find_link_spans(result)
+            if is_inside_link(match.start(), link_spans):
+                return match.group(0)
             matched_text = match.group(1)
             return f"[{matched_text}]({url})"
         
-        result = re.sub(pattern, make_link, result, flags=re.IGNORECASE)
+        result = re.sub(pattern, make_link_if_not_in_link, result, flags=re.IGNORECASE)
     
     return result
 
