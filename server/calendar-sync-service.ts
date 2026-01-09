@@ -86,10 +86,20 @@ function cleanDescription(html: string): string {
 }
 
 // Sync a single event to the database
+// IMPORTANT: Preserves manually set URLs in database if no URL is found in Calendar description
 export async function syncEventToDatabase(event: EventInfo): Promise<void> {
   const parsedUrls = parseUrlsFromDescription(event.description);
   const cleanedDescription = cleanDescription(event.description);
 
+  // Check for existing record to preserve manually set URLs
+  const existing = await db.select()
+    .from(calendarEvents)
+    .where(eq(calendarEvents.googleEventId, event.id))
+    .limit(1);
+
+  const existingRecord = existing[0];
+
+  // Build event data, preserving existing URLs if no new URL is provided
   const eventData = {
     googleEventId: event.id,
     title: event.title,
@@ -98,26 +108,22 @@ export async function syncEventToDatabase(event: EventInfo): Promise<void> {
     timezone: event.startTimeZone || 'UTC',
     location: event.location,
     description: cleanedDescription,
-    eventPageUrl: parsedUrls.eventPageUrl || event.eventPageUrl,
-    checkoutUrl: parsedUrls.checkoutUrl,
-    checkoutUrl6Month: parsedUrls.checkoutUrl6Month,
-    checkoutUrl12Month: parsedUrls.checkoutUrl12Month,
-    programPageUrl: parsedUrls.programPageUrl,
+    // Preserve existing URLs if no URL found in Calendar description
+    eventPageUrl: parsedUrls.eventPageUrl || existingRecord?.eventPageUrl || event.eventPageUrl || null,
+    checkoutUrl: parsedUrls.checkoutUrl || existingRecord?.checkoutUrl || null,
+    checkoutUrl6Month: parsedUrls.checkoutUrl6Month || existingRecord?.checkoutUrl6Month || null,
+    checkoutUrl12Month: parsedUrls.checkoutUrl12Month || existingRecord?.checkoutUrl12Month || null,
+    programPageUrl: parsedUrls.programPageUrl || existingRecord?.programPageUrl || null,
     isActive: true,
     lastSynced: new Date()
   };
 
   // Upsert: insert or update if exists
-  const existing = await db.select()
-    .from(calendarEvents)
-    .where(eq(calendarEvents.googleEventId, event.id))
-    .limit(1);
-
-  if (existing.length > 0) {
+  if (existingRecord) {
     await db.update(calendarEvents)
       .set(eventData)
       .where(eq(calendarEvents.googleEventId, event.id));
-    console.log(`Updated event: ${event.title}`);
+    console.log(`Updated event: ${event.title} (preserved URLs: ${!parsedUrls.eventPageUrl && existingRecord.eventPageUrl ? 'yes' : 'no'})`);
   } else {
     await db.insert(calendarEvents).values(eventData);
     console.log(`Inserted new event: ${event.title}`);
