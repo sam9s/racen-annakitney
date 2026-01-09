@@ -15,7 +15,7 @@ The chatbot employs a hybrid architecture:
 -   **Database**: PostgreSQL stores conversation history and synchronized Google Calendar events, handled by `events_service.py` and `server/calendar-sync-service.ts`.
 -   **Calendar Integration**: Google Calendar is the source of truth for events, synced to PostgreSQL via webhooks and scheduled backups for real-time and robust event data. Event descriptions can include specific URLs for event pages and checkout options.
 -   **Safety Features**: Includes crisis content detection, medical/mental health filtering, no personal information collection, and rate limiting.
--   **Branding**: The bot is named "Anna," uses `annakitney.com` and `annakitneyportal.com` (for checkout/courses), with a primary color of `#03a9f4`.
+-   **Branding**: The bot is named "Anna," uses `annakitney.com` and `annakitneyportal.com` (for checkout/courses). Primary color is Gold (#D4AF37), background is Cream (#F5F1E8), matching the Anna Kitney brand aesthetic for seamless iframe embedding.
 -   **Content Ingestion**: A `web_scraper.py` and `ingest_anna_website.py` script are used to populate the knowledge base from `annakitney.com`.
 -   **UI/UX**: The UI displays event details with Lora serif font, justified text, teal subtitles, horizontal rule dividers, and italic text support. Markdown links are rendered correctly with a specific parsing order to handle `**[text](url)**` formats.
 
@@ -96,9 +96,16 @@ Comprehensive dashboard for monitoring and managing the chatbot system. See `doc
 11. **Public Events API & Lovable Integration** (Jan 2026):
     - Added `/api/public/events` endpoint with CORS support for external landing pages
     - Added postMessage listener in `Home.tsx` for search-to-chat integration
-    - Created `docs/lovable-prompt-revised.md` with complete landing page prompt
+    - Created `docs/lovable-prompt-final.md` with complete landing page prompt
     - Chatbot can be embedded via iframe on external pages
     - Search queries from Lovable landing page auto-send to chatbot
+
+12. **Chatbot Theme Update for Iframe Embedding** (Jan 2026):
+    - Updated `client/src/index.css` with cream/gold color scheme matching annakitney.com
+    - Light mode: Cream background (#F5F1E8), Gold primary (#D4AF37), dark gray text
+    - Dark mode: Warm dark brown with gold accents for consistency
+    - Custom scrollbar styling with gold/cream colors
+    - Seamless visual integration when embedded in Lovable landing page
 
 ## Important Technical Notes
 - **Markdown Parsing Order**: Bold-wrapped links `**[text](url)**` must be matched FIRST, then plain links, then bold text.
