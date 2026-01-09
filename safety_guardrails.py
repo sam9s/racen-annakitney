@@ -396,52 +396,44 @@ def check_for_extreme_distress(message: str) -> Tuple[bool, str]:
 
 def apply_safety_filters(message: str, is_anna: bool = False) -> Tuple[bool, str]:
     """
-    Apply all safety filters to the message.
+    Apply universal safety filters to the message.
     Returns (should_redirect, redirect_response)
     
-    If should_redirect is True, the chatbot should return the redirect_response
-    instead of processing the query through the RAG system.
+    These are standard common-sense guardrails that any AI assistant should have:
+    - Crisis content (suicide, self-harm)
+    - Abuse/violence situations
+    - Extreme emotional distress
+    - No psychiatric/psychological advice
+    - No medical advice
     
     Args:
         message: The user's message
-        is_anna: If True, also check for live session referral topics
+        is_anna: Legacy parameter, no longer used
     """
+    # 1. Crisis content - suicide, self-harm triggers
     is_crisis, crisis_response = check_for_crisis_content(message)
     if is_crisis:
         return True, crisis_response
     
+    # 2. Abuse/violence - redirect to proper support
     is_abuse, abuse_response = check_for_abuse_violence(message)
     if is_abuse:
         return True, abuse_response
     
+    # 3. Extreme distress - multiple distress keywords
     is_distress, distress_response = check_for_extreme_distress(message)
     if is_distress:
         return True, distress_response
     
+    # 4. No psychiatric/psychological advice
     is_mental_health, mental_health_response = check_for_mental_health_content(message)
     if is_mental_health:
         return True, mental_health_response
     
+    # 5. No medical advice
     is_medical, medical_response = check_for_medical_content(message)
     if is_medical:
         return True, medical_response
-    
-    # NOTE: LIVE_SESSION_REFERRAL disabled for Anna Kitney
-    # Spirituality, energy healing, chakra work, etc. are Anna's CORE BUSINESS
-    # The bot should search the knowledge base and show Anna's programs
-    # NOT redirect to Discovery Call. These topics are what Anna teaches!
-    # 
-    # Retained guardrails for Anna:
-    # - Crisis content (suicide, self-harm)
-    # - Abuse/violence
-    # - Extreme distress
-    # - Mental health content (no psychiatric advice)
-    # - Medical content (no medical advice)
-    #
-    # if is_anna:
-    #     needs_referral, referral_response = check_for_live_session_topics(message)
-    #     if needs_referral:
-    #         return True, referral_response
     
     return False, ""
 

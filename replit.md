@@ -107,11 +107,16 @@ Comprehensive dashboard for monitoring and managing the chatbot system. See `doc
     - Custom scrollbar styling with gold/cream colors
     - Seamless visual integration when embedded in Lovable landing page
 
-13. **Removed Inappropriate LIVE_SESSION_REFERRAL Guardrail** (Jan 2026):
+13. **Removed JoveHeal-Specific LIVE_SESSION_REFERRAL Guardrail** (Jan 2026):
     - Disabled `check_for_live_session_topics` guardrail in `safety_guardrails.py`
-    - This was a JoveHeal leftover that redirected spiritual/energy healing queries to Discovery Call
-    - **Spirituality, energy healing, chakra work ARE Anna's CORE BUSINESS** - bot must search knowledge base for these
-    - Only 5 appropriate guardrails remain: crisis content, abuse/violence, extreme distress, mental health advice, medical advice
+    - This was a JoveHeal-specific guardrail (energy healing, chakra work) - NOT relevant to Anna
+    - Anna's specific session redirects TBD - we don't know her preferences yet
+    - Only universal common-sense guardrails remain:
+      1. Crisis content (suicide, self-harm)
+      2. Abuse/violence
+      3. Extreme distress
+      4. No psychiatric/psychological advice
+      5. No medical advice
 
 ## Important Technical Notes
 - **Markdown Parsing Order**: Bold-wrapped links `**[text](url)**` must be matched FIRST, then plain links, then bold text.
