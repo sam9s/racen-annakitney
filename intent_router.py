@@ -273,6 +273,18 @@ GREETING_PATTERNS = [
     r'^(?:what\'?s?\s+up|sup)\b',
 ]
 
+# Explicit program keywords - when present, prioritize PROGRAM intent over EVENT
+# even when event and program names overlap
+PROGRAM_KEYWORDS = [
+    r'\bprogram\b',
+    r'\bcourse\b',
+    r'\bmembership\b',
+    r'\btraining\b',
+    r'\bcertification\b',
+    r'\bself[- ]?paced\b',
+    r'\bonline\s+(?:course|program)\b',
+]
+
 
 class IntentRouter:
     """
@@ -420,6 +432,19 @@ class IntentRouter:
         # Case 6: Strong event match, weak/no program match = EVENT_DETAIL_REQUEST
         # When user directly asks about a specific event, route to EVENT_DETAIL_REQUEST
         # to ensure the deterministic Stage-1 summary with correct CTA is used
+        # IMPORTANT: If user explicitly mentions "program", "course", etc., prioritize PROGRAM intent
+        has_program_keyword = self._has_program_keyword(message_lower)
+        
+        # If user explicitly says "program", ALWAYS route to KNOWLEDGE (even without program_match)
+        # This respects the user's explicit intent and lets RAG handle the program lookup
+        if has_program_keyword:
+            return IntentResult(
+                intent=IntentType.KNOWLEDGE,
+                confidence=program_score if program_match else MEDIUM_CONFIDENCE,
+                slots=slots,
+                reasoning=f"User explicitly mentioned 'program' keyword - routing to KNOWLEDGE for program info"
+            )
+        
         if event_match and event_score > 0.5 and (not program_match or program_score < 0.5 or event_score - program_score > 0.3):
             return IntentResult(
                 intent=IntentType.EVENT_DETAIL_REQUEST,
@@ -500,6 +525,16 @@ class IntentRouter:
     def _has_time_pattern(self, message: str) -> bool:
         """Check for time-related patterns."""
         for pattern in TIME_PATTERNS:
+            if re.search(pattern, message, re.IGNORECASE):
+                return True
+        return False
+    
+    def _has_program_keyword(self, message: str) -> bool:
+        """
+        Check if message contains explicit program keywords like 'program', 'course', 'membership'.
+        Used to prioritize program intent when event and program names overlap.
+        """
+        for pattern in PROGRAM_KEYWORDS:
             if re.search(pattern, message, re.IGNORECASE):
                 return True
         return False

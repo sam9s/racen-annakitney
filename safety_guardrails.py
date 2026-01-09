@@ -1093,8 +1093,15 @@ def inject_program_links(response: str) -> str:
     
     Converts mentions like "Balance Mastery" or "balance mastery" to "[Balance Mastery](https://annakitney.com/balance-mastery/)"
     Case-insensitive matching, only converts if not already a markdown link.
+    
+    Handles ® and ™ symbols: "SoulAlign® Heal" matches "SoulAlign Heal" in database.
+    Replaces ALL occurrences in the response, not just the first.
     """
     import re
+    
+    def normalize_symbols(text: str) -> str:
+        """Remove ® ™ © symbols and collapse whitespace for matching."""
+        return re.sub(r'[®™©]', '', text).strip()
     
     result = response
     
@@ -1102,13 +1109,21 @@ def inject_program_links(response: str) -> str:
         if program_name in ["Services", "About", "Testimonials", "Contact", "Homepage"]:
             continue
         
-        pattern = rf'(?<!\[)({re.escape(program_name)})(?!\]|\()'
+        # Create pattern that matches with or without ® ™ symbols
+        # e.g., "SoulAlign Heal" matches "SoulAlign® Heal" or "SoulAlign Heal"
+        normalized_name = normalize_symbols(program_name)
         
-        match = re.search(pattern, result, re.IGNORECASE)
-        if match:
+        # Build flexible pattern: each word can optionally be followed by ®/™/©
+        words = normalized_name.split()
+        flexible_pattern = r'\s*'.join([re.escape(word) + r'[®™©]?' for word in words])
+        pattern = rf'(?<!\[)({flexible_pattern})(?!\]|\()'
+        
+        # Replace ALL occurrences using re.sub with a replacement function
+        def make_link(match):
             matched_text = match.group(1)
-            markdown_link = f"[{program_name}]({url})"
-            result = result[:match.start()] + markdown_link + result[match.end():]
+            return f"[{matched_text}]({url})"
+        
+        result = re.sub(pattern, make_link, result, flags=re.IGNORECASE)
     
     return result
 
