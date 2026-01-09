@@ -645,9 +645,10 @@ def extract_specific_date(message: str, default_year: int = 2026) -> Optional[Tu
     }
     
     # Patterns for specific dates
+    # IMPORTANT: Use negative lookahead to avoid matching "April 2026" as "April 20" (day from year)
     patterns = [
-        # "June 26", "June 26th", "June 26, 2026"
-        r"(january|jan|february|feb|march|mar|april|apr|may|june|jun|july|jul|august|aug|september|sept|sep|october|oct|november|nov|december|dec)\s+(\d{1,2})(?:st|nd|rd|th)?(?:,?\s*(\d{4}))?",
+        # "June 26", "June 26th", "June 26, 2026" - day must NOT be followed by more digits
+        r"(january|jan|february|feb|march|mar|april|apr|may|june|jun|july|jul|august|aug|september|sept|sep|october|oct|november|nov|december|dec)\s+(\d{1,2})(?:st|nd|rd|th)?(?!\d)(?:,?\s*(\d{4}))?",
         # "26 June", "26th of June", "26th June 2026"
         r"(\d{1,2})(?:st|nd|rd|th)?\s+(?:of\s+)?(january|jan|february|feb|march|mar|april|apr|may|june|jun|july|jul|august|aug|september|sept|sep|october|oct|november|nov|december|dec)(?:\s+(\d{4}))?",
         # "1st of June", "2nd of march"
