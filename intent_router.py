@@ -648,6 +648,51 @@ class IntentRouter:
                 return True
         return False
     
+    def _is_program_list(self, message: str) -> bool:
+        """
+        Determine if a numbered list is about programs (not events).
+        
+        Returns True if the list appears to be a program list based on:
+        - Presence of program-related keywords
+        - Absence of event-specific indicators (dates, times, locations)
+        - Pattern matching for known program names
+        """
+        message_lower = message.lower()
+        
+        # Program indicators: program names, course language, etc.
+        program_indicators = [
+            "program", "course", "training", "masterclass", "membership",
+            "collective", "heal", "business", "abundance codes", "manifestation",
+            "ascend collective", "soulalign heal", "soulalign coach",
+            "divine abundance", "soul align business"
+        ]
+        
+        # Event indicators: specific date/time, location language
+        event_indicators = [
+            "when:", "where:", "pm (", "am (", "timezone", "dubai", "london", "zoom event",
+            "saturday", "sunday", "monday", "tuesday", "wednesday", "thursday", "friday",
+            "january", "february", "march", "april", "may", "june", "july", "august",
+            "september", "october", "november", "december", "live in"
+        ]
+        
+        # Count indicators
+        program_score = sum(1 for ind in program_indicators if ind in message_lower)
+        event_score = sum(1 for ind in event_indicators if ind in message_lower)
+        
+        # Also check: does the message ask about programs explicitly?
+        if "spiritual program" in message_lower or "programs" in message_lower:
+            program_score += 2
+        
+        # If "would you like to know more about any of these programs" is present
+        if "these programs" in message_lower or "any of these programs" in message_lower:
+            program_score += 3
+        
+        # Event detection: presence of date patterns like "2026" combined with time
+        if re.search(r'\b202[5-9]\b', message) and re.search(r'\d{1,2}:\d{2}', message):
+            event_score += 2
+        
+        return program_score > event_score
+    
     def _is_bare_ordinal(self, message: str) -> Tuple[bool, Optional[int]]:
         """
         Check if message is a bare ordinal selection (NOT part of a date).
@@ -729,19 +774,66 @@ class IntentRouter:
         # Check if user is selecting from a numbered list
         is_ordinal, selection_idx = self._is_bare_ordinal(message)
         if is_ordinal and self._has_numbered_list(last_bot_msg):
+            # Determine context: is this a program list or event list?
+            # Check for program indicators in the last message
+            is_program_list = self._is_program_list(last_bot_msg)
+            context = "program" if is_program_list else "event"
+            
             return IntentResult(
                 intent=IntentType.FOLLOWUP_SELECT,
                 confidence=HIGH_CONFIDENCE,
-                slots={"selection_index": selection_idx, "last_bot_message": last_bot_msg[:500]},
-                reasoning=f"User selected item {selection_idx + 1} from numbered list"
+                slots={
+                    "selection_index": selection_idx, 
+                    "last_bot_message": last_bot_msg[:2000],  # Increased to capture full numbered lists
+                    "context": context
+                },
+                reasoning=f"User selected item {selection_idx + 1} from numbered {context} list"
             )
-        
-        # ========== EVENT FOLLOW-UP STAGE DETECTION ==========
-        # Detect current stage based on last bot message CTAs
-        current_stage = self._detect_event_followup_stage(last_msg_lower)
         
         # Check if user is confirming/asking for more info
         if self._is_affirmative(message):
+            # ========== PROGRAM FOLLOW-UP DETECTION (CHECK FIRST!) ==========
+            # Programs must be checked BEFORE events to prevent cross-domain contamination
+            # e.g., "Divine Abundance Codes" summary → user says "yes" → should stay in program context
+            program_stage = self._detect_program_followup_stage(last_msg_lower)
+            if program_stage != ProgramFollowupStage.NONE:
+                # Extract program name from the last bot message
+                program_name = self._extract_program_from_message(last_bot_msg)
+                print(f"[_check_followup_context] Detected program context: {program_name}, stage: {program_stage}", flush=True)
+                
+                if program_stage == ProgramFollowupStage.DETAILS_SHOWN:
+                    # User confirmed navigation to program page
+                    program_url = self._extract_program_url_from_message(last_bot_msg)
+                    return IntentResult(
+                        intent=IntentType.PROGRAM_NAVIGATE,
+                        confidence=HIGH_CONFIDENCE,
+                        slots={
+                            "context": "program",
+                            "stage": program_stage,
+                            "program_name": program_name,
+                            "program_url": program_url,
+                            "last_bot_message": last_bot_msg[:500]
+                        },
+                        reasoning=f"User confirming navigation to program page: {program_name}"
+                    )
+                else:
+                    # User wants more details about program
+                    return IntentResult(
+                        intent=IntentType.PROGRAM_DETAIL_REQUEST,
+                        confidence=HIGH_CONFIDENCE,
+                        slots={
+                            "context": "program",
+                            "stage": program_stage,
+                            "program_name": program_name,
+                            "last_bot_message": last_bot_msg[:2000]  # Need full message for program extraction
+                        },
+                        reasoning=f"User confirming interest in program: {program_name}"
+                    )
+            
+            # ========== EVENT FOLLOW-UP STAGE DETECTION ==========
+            # Only check events AFTER programs are ruled out
+            current_stage = self._detect_event_followup_stage(last_msg_lower)
+            
             # STAGE 3: User confirming navigation to event page
             if current_stage == EventFollowupStage.DETAILS_SHOWN:
                 # Extract event URL from last message if available
@@ -786,47 +878,11 @@ class IntentRouter:
                     },
                     reasoning="User confirming interest after event listing"
                 )
-            
-            # ========== PROGRAM FOLLOW-UP DETECTION ==========
-            # Check if last message was about programs (non-event) BEFORE falling back to events
-            # Extract program name from conversation to maintain context
-            program_stage = self._detect_program_followup_stage(last_msg_lower)
-            if program_stage != ProgramFollowupStage.NONE:
-                # Extract program name from the last bot message
-                program_name = self._extract_program_from_message(last_bot_msg)
-                print(f"[_check_followup_context] Detected program context: {program_name}, stage: {program_stage}", flush=True)
-                
-                if program_stage == ProgramFollowupStage.DETAILS_SHOWN:
-                    # User confirmed navigation to program page
-                    program_url = self._extract_program_url_from_message(last_bot_msg)
-                    return IntentResult(
-                        intent=IntentType.PROGRAM_NAVIGATE,
-                        confidence=HIGH_CONFIDENCE,
-                        slots={
-                            "context": "program",
-                            "stage": program_stage,
-                            "program_name": program_name,
-                            "program_url": program_url,
-                            "last_bot_message": last_bot_msg[:500]
-                        },
-                        reasoning=f"User confirming navigation to program page: {program_name}"
-                    )
-                else:
-                    # User wants more details about program
-                    return IntentResult(
-                        intent=IntentType.PROGRAM_DETAIL_REQUEST,
-                        confidence=HIGH_CONFIDENCE,
-                        slots={
-                            "context": "program",
-                            "stage": program_stage,
-                            "program_name": program_name,
-                            "last_bot_message": last_bot_msg[:500]
-                        },
-                        reasoning=f"User confirming interest in program: {program_name}"
-                    )
         
         # ========== EVENT NAME AFTER LISTING ==========
         # If last message was an event listing and user mentions an event name, route to EVENT_DETAIL_REQUEST
+        # Need to re-detect event stage outside the affirmative block
+        current_stage = self._detect_event_followup_stage(last_msg_lower)
         if current_stage == EventFollowupStage.LISTING_SHOWN:
             # Check if user's message contains an event title
             event_match, event_score = self._match_event_title(message)

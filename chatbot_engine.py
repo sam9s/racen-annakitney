@@ -42,6 +42,45 @@ def _ensure_router_initialized():
             print(f"[ChatbotEngine] Warning: Could not initialize router data: {e}", flush=True)
 
 
+def _extract_program_from_numbered_list(message: str, selection_idx: int) -> Optional[str]:
+    """
+    Extract the program name from a numbered list at the given index.
+    
+    Parses messages like:
+    1. **[The Ascend Collective](url)** - description
+    2. **[SoulAlign Heal](url)** - description
+    
+    Returns the program name at selection_idx (0-based).
+    """
+    # Pattern to match numbered list items with markdown links
+    # Matches: 1. **[Program Name](url)** or 1. [Program Name](url) or 1. **Program Name**
+    patterns = [
+        r'^\s*\d+\.\s*\*\*\[([^\]]+)\]\([^)]+\)\*\*',  # 1. **[Name](url)**
+        r'^\s*\d+\.\s*\[([^\]]+)\]\([^)]+\)',           # 1. [Name](url)
+        r'^\s*\d+\.\s*\*\*([^*]+)\*\*',                  # 1. **Name**
+        r'^\s*\d+\.\s*([^-\n]+)',                        # 1. Name - description
+    ]
+    
+    lines = message.split('\n')
+    extracted_items = []
+    
+    for line in lines:
+        for pattern in patterns:
+            match = re.match(pattern, line)
+            if match:
+                name = match.group(1).strip()
+                # Clean up any trailing special chars
+                name = re.sub(r'[\*\[\]]', '', name).strip()
+                if name:
+                    extracted_items.append(name)
+                    break
+    
+    if selection_idx < len(extracted_items):
+        return extracted_items[selection_idx]
+    
+    return None
+
+
 def get_openai_client():
     """Lazy initialization of OpenAI client with validation."""
     global _openai_client
@@ -313,8 +352,65 @@ def generate_response(
     if intent_result.intent == IntentType.FOLLOWUP_SELECT:
         selection_idx = intent_result.slots.get("selection_index", 0)
         last_bot_msg = intent_result.slots.get("last_bot_message", "")
-        print(f"[IntentRouter] User selected item {selection_idx + 1} from list", flush=True)
+        context_type = intent_result.slots.get("context", "event")  # Default to event for backwards compat
+        print(f"[IntentRouter] User selected item {selection_idx + 1} from {context_type} list", flush=True)
         
+        # ====== PROGRAM SELECTION ======
+        if context_type == "program":
+            # Extract the program name from the numbered list in last_bot_msg
+            program_name = _extract_program_from_numbered_list(last_bot_msg, selection_idx)
+            print(f"[IntentRouter] Program selection: extracted '{program_name}'", flush=True)
+            
+            if program_name:
+                # Query RAG for this specific program
+                search_query = f"{program_name} program details what's included benefits"
+                relevant_docs = search_knowledge_base(search_query, n_results=5, prefer_programs=True)
+                
+                if relevant_docs:
+                    context = format_context_from_docs(relevant_docs)
+                    program_summary_prompt = f"""Based on the following context about {program_name}, provide a brief 2-3 sentence summary of what this program offers. 
+End with EXACTLY this question: "Would you like more details about this program?"
+
+Context:
+{context}
+
+Respond with just the summary and question, no additional commentary."""
+                    
+                    messages = [
+                        {"role": "system", "content": "You are Anna, a warm wellness coach. Be concise and helpful."},
+                        {"role": "user", "content": program_summary_prompt}
+                    ]
+                    
+                    client = get_openai_client()
+                    if client:
+                        try:
+                            response = client.chat.completions.create(
+                                model="gpt-4o-mini",
+                                messages=messages,
+                                max_tokens=300,
+                                temperature=0.7
+                            )
+                            summary = response.choices[0].message.content.strip()
+                            # Inject program link
+                            summary = inject_program_links(summary)
+                            return {
+                                "response": summary,
+                                "sources": [doc.get("source", "") for doc in relevant_docs[:3]],
+                                "safety_triggered": False,
+                                "intent": "program_select"
+                            }
+                        except Exception as e:
+                            print(f"[Program Select] LLM error: {e}", flush=True)
+            
+            # Fallback if program extraction failed
+            return {
+                "response": f"I'd be happy to tell you more about that program! Could you please tell me which program from the list you're most interested in?",
+                "sources": [],
+                "safety_triggered": False,
+                "intent": "clarification"
+            }
+        
+        # ====== EVENT SELECTION ======
         # Extract the selected item from the last bot message
         # Pass to events service with selection context (get_event_context_for_llm imported at top)
         followup_event_context = get_event_context_for_llm(
@@ -428,11 +524,10 @@ def generate_response(
             last_msg = intent_result.slots.get("last_bot_message", "")
             search_query = f"program details {last_msg[:100]}"
         
-        from knowledge_base import search_knowledge_base, format_context_from_docs
-        relevant_docs = search_knowledge_base(search_query, n_results=5)
-        context = format_context_from_docs(relevant_docs)
+        program_docs = search_knowledge_base(search_query, n_results=5)
+        program_context = format_context_from_docs(program_docs)
         
-        if context:
+        if program_context:
             # Let LLM generate response with program context
             print(f"[PROGRAM_DETAIL_REQUEST] Found RAG context for: {program_name}", flush=True)
             # Fall through to LLM with this context (don't return early)
