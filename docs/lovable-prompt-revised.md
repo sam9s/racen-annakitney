@@ -193,7 +193,7 @@ Structure:
 
 Iframe configuration:
 - id: "chat-iframe"
-- src: "https://REPLIT_APP_URL_HERE" (placeholder - will be replaced after deployment)
+- src: "https://anna--ravensolutions.replit.app"
 - width: 100%
 - height: 100%
 - border: none
@@ -208,8 +208,8 @@ Container styling:
 - Height: calc(100vh - 160px)
 
 Include comment in code:
-// INTEGRATION NOTE: Replace iframe src with deployed Replit app URL
-// Example: src="https://anna-kitney-chatbot.replit.app"
+// INTEGRATION NOTE: Chatbot URL is configured
+// src="https://anna--ravensolutions.replit.app"
 // The iframe will display the full chatbot interface
 // The iframe listens for postMessage events to receive search queries
 
@@ -312,7 +312,7 @@ window.addEventListener('message', (event) => {
 ```javascript
 // Add this to the Events section component
 useEffect(() => {
-  fetch('https://anna-kitney-chatbot.replit.app/api/public/events')
+  fetch('https://anna--ravensolutions.replit.app/api/public/events')
     .then(res => res.json())
     .then(data => setEvents(data.events))
     .catch(err => console.error('Failed to load events:', err));
@@ -323,7 +323,7 @@ useEffect(() => {
 
 The iframe src will be:
 ```
-https://anna-kitney-chatbot.replit.app
+https://anna--ravensolutions.replit.app
 ```
 
 This displays the full chat interface, handling all:
