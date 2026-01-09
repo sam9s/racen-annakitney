@@ -407,7 +407,7 @@ export default function Home() {
     <div className="flex flex-col h-screen bg-background" data-testid="page-home">
       <header className="flex items-center justify-between gap-2 px-4 py-3 border-b bg-card">
         <div className="flex items-center gap-2">
-          <img src={logoImage} alt="Anna Kitney" className="h-16" data-testid="img-logo" />
+          <img src={logoImage} alt="Anna Kitney" className="h-14" data-testid="img-logo" />
           <h1 className="text-lg font-semibold" style={{ fontFamily: "'Playfair Display', serif" }} data-testid="text-header-title">Anna Kitney Wellness</h1>
         </div>
         <div className="flex items-center gap-1">
@@ -427,23 +427,23 @@ export default function Home() {
         <div className="max-w-2xl mx-auto space-y-4">
           {messages.length === 0 && (
             <div className="flex flex-col items-center justify-center min-h-[50vh] text-center px-4">
-              <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center mb-4">
-                <MessageCircle className="w-8 h-8 text-primary" />
+              <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center mb-3">
+                <MessageCircle className="w-6 h-6 text-primary" />
               </div>
-              <h2 className="text-xl font-light text-muted-foreground mb-2" data-testid="text-welcome-title">
+              <h2 className="text-lg font-light text-muted-foreground mb-1" data-testid="text-welcome-title">
                 Hi, I'm Anna
               </h2>
-              <p className="text-sm text-muted-foreground mb-6" data-testid="text-welcome-subtitle">
+              <p className="text-xs text-muted-foreground mb-4" data-testid="text-welcome-subtitle">
                 Your friendly wellness guide at Anna Kitney
               </p>
-              <div className="text-left text-sm text-muted-foreground space-y-1">
-                <p className="font-medium mb-2">I can help you explore:</p>
+              <div className="text-left text-xs text-muted-foreground space-y-0.5">
+                <p className="font-medium mb-1">I can help you explore:</p>
                 <p>Wellness coaching programs</p>
                 <p>Business and spiritual leadership</p>
                 <p>SoulAlign courses and offerings</p>
                 <p>How to get started with coaching</p>
               </div>
-              <p className="text-sm mt-6 text-muted-foreground/60" data-testid="text-prompt">
+              <p className="text-xs mt-4 text-muted-foreground/60" data-testid="text-prompt">
                 What brings you here today?
               </p>
             </div>

@@ -183,7 +183,7 @@
   }
 
   ::-webkit-scrollbar-track {
-    background: hsl(40 43% 90%);
+    background: hsl(var(--background));
     border-radius: 4px;
   }
 
@@ -199,7 +199,7 @@
   /* Firefox scrollbar */
   * {
     scrollbar-width: thin;
-    scrollbar-color: hsl(43 50% 70%) hsl(40 43% 90%);
+    scrollbar-color: hsl(43 50% 70%) hsl(var(--background));
   }
 }
 
