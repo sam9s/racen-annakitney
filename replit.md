@@ -39,6 +39,16 @@ The webhook endpoint exists (`POST /api/calendar/webhook`) but requires Google C
 
 **Current workaround**: 30-minute scheduled sync runs automatically, plus full sync on app startup.
 
+### Admin Dashboard (Planned)
+Comprehensive dashboard for monitoring and managing the chatbot system. See `docs/dashboard-design.md` for full design specification including:
+- Chat sessions and transcripts viewer
+- Analytics overview
+- Event/calendar management with inline URL editing
+- Database viewer and editor
+- Safety and security logs
+- System health monitoring
+- Sync controls
+
 ### Other Future Enhancements
 - In-chat booking with email confirmations
 - Payment processing integration
@@ -76,6 +86,12 @@ The webhook endpoint exists (`POST /api/calendar/webhook`) but requires Google C
    - Requires confidence thresholds for all matches (`CONFIDENT_MATCH_THRESHOLD`, `FUZZY_MATCH_THRESHOLD`)
    - Falls back to `_build_disambiguation_response()` when multiple matches have close scores
    - Prevents low-confidence matches from surfacing wrong events
+
+10. **Calendar Sync URL Preservation** (Jan 2026):
+    - Fixed `server/calendar-sync-service.ts` to preserve manually set URLs during sync
+    - Sync now checks for existing database URLs before overwriting
+    - Priority: Calendar description URLs > Existing DB URLs > Default null
+    - Manual database edits now persist through scheduled syncs
 
 ## Important Technical Notes
 - **Markdown Parsing Order**: Bold-wrapped links `**[text](url)**` must be matched FIRST, then plain links, then bold text.
