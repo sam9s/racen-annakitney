@@ -1274,6 +1274,43 @@ Here are all upcoming events you might be interested in:
 {{{{/DIRECT_EVENT}}}}
 """
     
+    # ========== MONTH FILTER CHECK (MUST BE BEFORE EVENT KEYWORD CHECK) ==========
+    # This handles queries like "What about in May?" or "events in April"
+    # Must run first so month queries aren't caught by fuzzy matching or history fallback
+    month_filter = extract_month_filter(user_message)
+    if month_filter:
+        events = get_upcoming_events(20)
+        events = filter_events_by_month(events, month_filter)
+        month_names = ["", "January", "February", "March", "April", "May", "June", 
+                      "July", "August", "September", "October", "November", "December"]
+        month_name = month_names[month_filter]
+        
+        if not events:
+            return f"""
+No events found for {month_name}. Here are all upcoming events:
+
+{format_events_list(get_upcoming_events(10))}
+
+Would you like details about any of these events?
+"""
+        
+        events_list = format_events_list(events)
+        return f"""
+=== VERBATIM EVENT LIST FOR {month_name.upper()} (DO NOT PARAPHRASE) ===
+{events_list}
+=== END VERBATIM DATA ===
+
+CRITICAL INSTRUCTIONS FOR THIS RESPONSE:
+1. Copy the event list above EXACTLY as shown - DO NOT rewrite or paraphrase
+2. State clearly that these are the events happening in {month_name}
+3. Preserve ALL markdown formatting including **bold**, [links](url), and numbered list format
+4. Each event MUST include its clickable link as shown above
+5. Keep all dates, times, and locations exactly as formatted
+6. After the list, ask which event they'd like to know more about
+
+Events Page: https://www.annakitney.com/events/
+"""
+    
     # Check if user is asking about upcoming events list
     # Include both singular "event" and plural "events", plus common phrasings
     if any(kw in message_lower for kw in ["event", "events", "upcoming", "what's happening", "happening in", "schedule", "calendar"]):
@@ -1321,7 +1358,7 @@ Here are all upcoming events you might be interested in:
                     return _build_disambiguation_response(matches[:3])
                 break  # Only use first matching keyword
         
-        # Check if user is asking about a specific month
+        # Note: Month filter already handled above, no need to check again here
         month_filter = extract_month_filter(user_message)
         if month_filter:
             events = filter_events_by_month(events, month_filter)
