@@ -407,7 +407,7 @@ export default function Home() {
     <div className="flex flex-col h-screen bg-background" data-testid="page-home">
       <header className="flex items-center justify-between gap-2 px-4 py-3 border-b bg-card">
         <div className="flex items-center gap-2">
-          <img src={logoImage} alt="Anna Kitney" className="h-14" data-testid="img-logo" />
+          <img src={logoImage} alt="Anna Kitney" className="h-16" data-testid="img-logo" />
           <h1 className="text-lg font-semibold" data-testid="text-header-title">Anna Kitney Wellness</h1>
         </div>
         <div className="flex items-center gap-1">
