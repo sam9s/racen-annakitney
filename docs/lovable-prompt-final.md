@@ -92,19 +92,19 @@ CAROUSEL SLIDES (4 services):
 
 Slide 1: Elite Private Coaching
 - Description: "Personalized 1:1 mentorship for high-achieving founders ready to create their legacy."
-- Link: "Learn More" → https://www.annakitney.com/coaching/
+- Link: "Learn More" → https://www.annakitney.com/elite-private-coaching/
 
 Slide 2: VIP Immersion Days
 - Description: "Intensive strategy sessions designed to accelerate your transformation."
-- Link: "Learn More" → https://www.annakitney.com/vip-days/
+- Link: "Learn More" → https://www.annakitney.com/vip-day/
 
 Slide 3: SoulAlign Business
 - Description: "Build a soul-aligned empire with strategic spiritual guidance."
-- Link: "Learn More" → https://www.annakitney.com/soulalign-business/
+- Link: "Learn More" → https://www.annakitney.com/soul-align-business-course/
 
 Slide 4: The ASCEND Collective
 - Description: "Join an exclusive community of visionary female founders."
-- Link: "Learn More" → https://www.annakitney.com/ascend/
+- Link: "Learn More" → https://www.annakitney.com/the-ascend-collective/
 
 - Carousel design: Cream background card, gold border on hover, rounded corners (8px)
 
