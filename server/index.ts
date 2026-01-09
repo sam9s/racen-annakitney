@@ -51,34 +51,16 @@ declare module "http" {
   }
 }
 
-// Enable CORS for iframe embedding from trusted origins
-const ALLOWED_ORIGINS = [
-  "https://annakitney.com",
-  "https://www.annakitney.com",
-  "https://anna--ravensolutions.replit.app",
-  /\.lovableproject\.com$/,
-  /\.lovable\.app$/,
-  /\.replit\.dev$/,
-  /\.replit\.app$/,
-];
-
+// Enable CORS for all origins (iframe embedding support)
+// This is safe because the chatbot is public-facing and doesn't require authentication
 app.use((req, res, next) => {
-  const origin = req.headers.origin || "";
+  const origin = req.headers.origin;
   
-  // Check if origin matches allowed patterns
-  const isAllowed = ALLOWED_ORIGINS.some(allowed => {
-    if (allowed instanceof RegExp) {
-      return allowed.test(origin);
-    }
-    return allowed === origin;
-  });
-  
-  if (isAllowed && origin) {
-    res.setHeader("Access-Control-Allow-Origin", origin);
-    res.setHeader("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS");
-    res.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization, X-Requested-With");
-    res.setHeader("Access-Control-Allow-Credentials", "true");
-  }
+  // Allow all origins for iframe embedding
+  res.setHeader("Access-Control-Allow-Origin", origin || "*");
+  res.setHeader("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS");
+  res.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization, X-Requested-With");
+  res.setHeader("Access-Control-Allow-Credentials", "true");
   
   // Handle preflight requests
   if (req.method === "OPTIONS") {
