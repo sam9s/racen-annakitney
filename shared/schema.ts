@@ -37,6 +37,7 @@ export const calendarEvents = pgTable("calendar_events", {
   
   // Status tracking
   isActive: boolean("is_active").default(true),
+  isRecurring: boolean("is_recurring").default(false),
   lastSynced: timestamp("last_synced").default(sql`NOW()`),
   createdAt: timestamp("created_at").default(sql`NOW()`),
 });

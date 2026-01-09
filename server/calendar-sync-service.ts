@@ -115,6 +115,7 @@ export async function syncEventToDatabase(event: EventInfo): Promise<void> {
     checkoutUrl12Month: parsedUrls.checkoutUrl12Month || existingRecord?.checkoutUrl12Month || null,
     programPageUrl: parsedUrls.programPageUrl || existingRecord?.programPageUrl || null,
     isActive: true,
+    isRecurring: event.isRecurring || false,
     lastSynced: new Date()
   };
 

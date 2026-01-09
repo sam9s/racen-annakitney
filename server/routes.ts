@@ -207,7 +207,8 @@ export async function registerRoutes(
         location: event.location,
         description: event.description?.substring(0, 200) || null, // Truncate for preview
         eventPageUrl: event.eventPageUrl,
-        checkoutUrl: event.checkoutUrl
+        checkoutUrl: event.checkoutUrl,
+        isRecurring: event.isRecurring || false
       }));
       
       res.json({ 

@@ -81,6 +81,7 @@ export interface EventInfo {
   slug: string;
   eventPageUrl: string;
   calendarId: string;
+  isRecurring: boolean;
 }
 
 // Canonical URL mapping for known events (marketing URLs may differ from auto-generated slugs)
@@ -173,6 +174,10 @@ export async function getEvents(calendarId: string, maxResults: number = 20): Pr
     const title = event.summary || 'Untitled Event';
     const slug = generateSlug(title);
     
+    // Detect recurring events: Google Calendar provides recurringEventId for recurring instances
+    // If recurringEventId exists, this event is an instance of a recurring series
+    const isRecurring = !!(event.recurringEventId);
+    
     return {
       id: event.id || '',
       title,
@@ -185,7 +190,8 @@ export async function getEvents(calendarId: string, maxResults: number = 20): Pr
       htmlLink: event.htmlLink || '',
       slug,
       eventPageUrl: getEventPageUrl(title, slug),
-      calendarId
+      calendarId,
+      isRecurring
     };
   });
 }
