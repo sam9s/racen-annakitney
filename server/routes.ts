@@ -185,6 +185,50 @@ export async function registerRoutes(
     }
   });
 
+  // ============ PUBLIC API ENDPOINTS (CORS enabled for external landing pages) ============
+
+  // Public events endpoint for external landing pages (e.g., Lovable)
+  // This allows the Anna Collective landing page to fetch events
+  app.get("/api/public/events", async (_req: Request, res: Response) => {
+    // Enable CORS for external access
+    res.setHeader("Access-Control-Allow-Origin", "*");
+    res.setHeader("Access-Control-Allow-Methods", "GET, OPTIONS");
+    res.setHeader("Access-Control-Allow-Headers", "Content-Type");
+    
+    try {
+      const events = await getEventsFromDatabase(false); // Only active events
+      
+      // Format events for landing page display
+      const formattedEvents = events.map(event => ({
+        id: event.id,
+        title: event.title,
+        startDate: event.startDate,
+        endDate: event.endDate,
+        location: event.location,
+        description: event.description?.substring(0, 200) || null, // Truncate for preview
+        eventPageUrl: event.eventPageUrl,
+        checkoutUrl: event.checkoutUrl
+      }));
+      
+      res.json({ 
+        events: formattedEvents,
+        count: formattedEvents.length,
+        lastUpdated: new Date().toISOString()
+      });
+    } catch (error: any) {
+      console.error("Error fetching public events:", error);
+      res.status(500).json({ error: "Failed to fetch events" });
+    }
+  });
+
+  // Handle CORS preflight for public endpoints
+  app.options("/api/public/*", (_req: Request, res: Response) => {
+    res.setHeader("Access-Control-Allow-Origin", "*");
+    res.setHeader("Access-Control-Allow-Methods", "GET, OPTIONS");
+    res.setHeader("Access-Control-Allow-Headers", "Content-Type");
+    res.status(200).send();
+  });
+
   // ============ GOOGLE CALENDAR ENDPOINTS ============
 
   // List all calendars (for debugging/finding Anna's calendar)

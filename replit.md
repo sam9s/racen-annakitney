@@ -93,6 +93,13 @@ Comprehensive dashboard for monitoring and managing the chatbot system. See `doc
     - Priority: Calendar description URLs > Existing DB URLs > Default null
     - Manual database edits now persist through scheduled syncs
 
+11. **Public Events API & Lovable Integration** (Jan 2026):
+    - Added `/api/public/events` endpoint with CORS support for external landing pages
+    - Added postMessage listener in `Home.tsx` for search-to-chat integration
+    - Created `docs/lovable-prompt-revised.md` with complete landing page prompt
+    - Chatbot can be embedded via iframe on external pages
+    - Search queries from Lovable landing page auto-send to chatbot
+
 ## Important Technical Notes
 - **Markdown Parsing Order**: Bold-wrapped links `**[text](url)**` must be matched FIRST, then plain links, then bold text.
 - **Two Websites**: annakitney.com (marketing) and annakitneyportal.com (checkout, requires www. prefix)

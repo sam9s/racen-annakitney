@@ -244,6 +244,74 @@ export default function Home() {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages, isLoading]);
 
+  // Listen for postMessage from parent page (Lovable landing page search bar)
+  useEffect(() => {
+    const handleMessage = (event: MessageEvent) => {
+      // Accept messages with sendMessage type from any origin (for iframe embedding)
+      if (event.data && event.data.type === 'sendMessage' && event.data.message) {
+        const query = event.data.message.trim();
+        if (query) {
+          setInput(query);
+          // Use setTimeout to ensure input state is set before sending
+          setTimeout(() => {
+            const userMessage: Message = {
+              id: `msg_${Date.now()}`,
+              role: "user",
+              content: query,
+              timestamp: new Date(),
+            };
+            setMessages((prev) => [...prev, userMessage]);
+            setIsLoading(true);
+
+            // Send to API
+            fetch("/api/chat", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                message: query,
+                session_id: sessionId,
+                conversation_history: [],
+              }),
+            })
+              .then(res => res.json())
+              .then(data => {
+                const rawResponse = data.response || "I apologize, but I encountered an issue. Please try again.";
+                const { url: navigationUrl, cleanContent } = extractNavigationUrl(rawResponse);
+                
+                const assistantMessage: Message = {
+                  id: `msg_${Date.now()}_assistant`,
+                  role: "assistant",
+                  content: cleanContent,
+                  sources: data.sources || [],
+                  timestamp: new Date(),
+                };
+                setMessages((prev) => [...prev, assistantMessage]);
+                
+                if (navigationUrl) {
+                  setTimeout(() => window.open(navigationUrl, '_blank'), 1500);
+                }
+              })
+              .catch(() => {
+                setMessages((prev) => [...prev, {
+                  id: `msg_${Date.now()}_error`,
+                  role: "assistant",
+                  content: "I apologize, but I encountered a connection issue. Please try again.",
+                  timestamp: new Date(),
+                }]);
+              })
+              .finally(() => {
+                setIsLoading(false);
+                setInput("");
+              });
+          }, 100);
+        }
+      }
+    };
+
+    window.addEventListener('message', handleMessage);
+    return () => window.removeEventListener('message', handleMessage);
+  }, [sessionId]);
+
   useEffect(() => {
     if (textareaRef.current) {
       textareaRef.current.style.height = "auto";
