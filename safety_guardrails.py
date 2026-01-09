@@ -426,10 +426,22 @@ def apply_safety_filters(message: str, is_anna: bool = False) -> Tuple[bool, str
     if is_medical:
         return True, medical_response
     
-    if is_anna:
-        needs_referral, referral_response = check_for_live_session_topics(message)
-        if needs_referral:
-            return True, referral_response
+    # NOTE: LIVE_SESSION_REFERRAL disabled for Anna Kitney
+    # Spirituality, energy healing, chakra work, etc. are Anna's CORE BUSINESS
+    # The bot should search the knowledge base and show Anna's programs
+    # NOT redirect to Discovery Call. These topics are what Anna teaches!
+    # 
+    # Retained guardrails for Anna:
+    # - Crisis content (suicide, self-harm)
+    # - Abuse/violence
+    # - Extreme distress
+    # - Mental health content (no psychiatric advice)
+    # - Medical content (no medical advice)
+    #
+    # if is_anna:
+    #     needs_referral, referral_response = check_for_live_session_topics(message)
+    #     if needs_referral:
+    #         return True, referral_response
     
     return False, ""
 
