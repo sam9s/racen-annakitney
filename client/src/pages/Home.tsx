@@ -319,6 +319,12 @@ export default function Home() {
     }
   }, [input]);
 
+  useEffect(() => {
+    if (textareaRef.current) {
+      textareaRef.current.style.height = "40px";
+    }
+  }, []);
+
   const sendMessage = async () => {
     if (!input.trim() || isLoading) return;
 
