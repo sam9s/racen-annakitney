@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { Send, RotateCcw, Loader2, MessageCircle } from "lucide-react";
-import logoImage from "@assets/AK_logo_black_compressed_1767495757104.png";
+import logoImage from "@assets/AnnaKitney_logo_sml_1767937286018.gif";
 
 function extractNavigationUrl(content: string): { url: string | null; cleanContent: string } {
   const navRegex = /\[NAVIGATE:(https?:\/\/[^\]]+)\]\s*/i;
