@@ -1,18 +1,19 @@
-# The Ana Collective - Revised Lovable Prompt
+# The Anna Collective - Revised Lovable Prompt
 
 ## Changes Made from Original
 
 1. **Chat window is now an EMBED PLACEHOLDER** - Lovable creates the container, but the actual chat is embedded via iframe from our deployed Replit app
 2. **Calendar widget fetches from API** - Instead of direct Google Calendar integration, it fetches from our `/api/public/events` endpoint
-3. **Search bar removed from hero** - Moved functionality to chatbot (ask the bot instead)
+3. **Search bar redirects to chat** - Hero search bar sends query directly to the chatbot (smooth scroll + auto-send)
 4. **Clarified static vs dynamic content** - Services/testimonials are hardcoded; calendar/chat are dynamic
+5. **Fixed spelling** - "Anna" with double N throughout (except "The Anna Collective" branding if intentional)
 
 ---
 
 ## REVISED PROMPT FOR LOVABLE
 
 ```
-You are creating a premium, luxury landing page for "The Ana Collective" - 
+You are creating a premium, luxury landing page for "The Anna Collective" - 
 an information portal for Anna Kitney, a spiritual advisor and legacy mentor 
 to visionary female founders.
 
@@ -20,6 +21,7 @@ PROJECT OVERVIEW:
 - Single landing page (not a multi-page website)
 - Two-column layout: Content (40% left) + Chat Embed (60% right)
 - Chat window is an IFRAME EMBED from external URL (not built by Lovable)
+- Hero search bar sends queries to the chatbot (scroll + auto-send)
 - Target audience: Visionary, purpose-driven women entrepreneurs
 - Brand: Luxury, spiritual, strategic, elegant
 
@@ -48,11 +50,38 @@ HERO SECTION:
 - Background: Subtle gradient (cream to white)
 - Content (top to bottom):
   1. Anna Kitney logo (centered, 60px height)
-  2. Main heading: "The Ana Collective" (large, elegant serif, gold color, 48px)
+  2. Main heading: "The Anna Collective" (large, elegant serif, gold color, 48px)
   3. Subheading: "Your Portal to Purpose-Driven Prosperity" (elegant serif, 24px, dark gray)
-  4. CTA: "Start a Conversation" button (gold background, white text, scrolls to chat section)
-- Height: 300-350px
-- NO search bar in hero
+  4. SMART SEARCH BAR (see behavior below)
+  5. "Explore The Collective" button (gold background, white text, scrolls to content)
+- Height: 350-400px
+
+SMART SEARCH BAR BEHAVIOR:
+- Wide search input (centered, rounded, placeholder: "Ask about programs, events, coaching...")
+- Gold "Ask Anna" button on right side of search bar
+- When user types and clicks "Ask Anna" or presses Enter:
+  1. Page smoothly scrolls down to the chat section (right column)
+  2. The search query is automatically inserted into the chat input field
+  3. The message is automatically sent to the chatbot
+  4. Bot responds with relevant information
+- This creates a seamless "search to chat" experience
+- Include JavaScript to handle this behavior:
+
+```javascript
+// Search bar submit handler
+function handleSearchSubmit(query) {
+  // 1. Scroll to chat section
+  document.getElementById('chat-container').scrollIntoView({ behavior: 'smooth' });
+  
+  // 2. Post message to iframe to send the query
+  const chatIframe = document.getElementById('chat-iframe');
+  chatIframe.contentWindow.postMessage({ type: 'sendMessage', message: query }, '*');
+}
+```
+
+Note: The iframe will need to listen for this postMessage. Replit will implement the listener.
+
+---
 
 MAIN LAYOUT (Two Columns):
 
@@ -160,9 +189,10 @@ This is an IFRAME that embeds an external chat application.
 Structure:
 - Container div with id="chat-container"
 - Full height of viewport (minus header/footer)
-- Contains single iframe element
+- Contains single iframe element with id="chat-iframe"
 
 Iframe configuration:
+- id: "chat-iframe"
 - src: "https://REPLIT_APP_URL_HERE" (placeholder - will be replaced after deployment)
 - width: 100%
 - height: 100%
@@ -181,6 +211,7 @@ Include comment in code:
 // INTEGRATION NOTE: Replace iframe src with deployed Replit app URL
 // Example: src="https://anna-kitney-chatbot.replit.app"
 // The iframe will display the full chatbot interface
+// The iframe listens for postMessage events to receive search queries
 
 ---
 
@@ -223,12 +254,14 @@ IMPORTANT IMPLEMENTATION NOTES:
 5. Include data-testid attributes on interactive elements
 6. Ensure all images have alt text
 7. Use semantic HTML (header, main, section, footer)
+8. Search bar must trigger scroll + postMessage to iframe
 
 ---
 
 DELIVERABLE:
 - Single React page with TypeScript
 - Two-column layout with iframe chat placeholder
+- Smart search bar that sends queries to chat
 - All content sections with hardcoded data
 - Ready for backend integration
 - Clean, production-ready code
@@ -243,12 +276,36 @@ After Lovable generates the page, I (Replit) will:
 
 1. **Deploy the chatbot** → Get public URL (e.g., https://anna-kitney-chatbot.replit.app)
 2. **Update iframe src** → Replace placeholder with actual URL
-3. **Create /api/public/events endpoint** → For dynamic event listing
-4. **Provide event fetching code** → JavaScript to populate events section
+3. **Add postMessage listener** → To receive search queries from parent page
+4. **Create /api/public/events endpoint** → For dynamic event listing
+5. **Provide event fetching code** → JavaScript to populate events section
 
 ---
 
 ## INTEGRATION CODE (For Later)
+
+### Search → Chat Communication
+
+Lovable will generate:
+```javascript
+// In landing page - sends query to chat iframe
+function handleSearchSubmit(query) {
+  document.getElementById('chat-container').scrollIntoView({ behavior: 'smooth' });
+  const chatIframe = document.getElementById('chat-iframe');
+  chatIframe.contentWindow.postMessage({ type: 'sendMessage', message: query }, '*');
+}
+```
+
+Replit will add to chatbot:
+```javascript
+// In chatbot - receives query from parent page
+window.addEventListener('message', (event) => {
+  if (event.data.type === 'sendMessage') {
+    // Insert message into chat input and send
+    sendMessage(event.data.message);
+  }
+});
+```
 
 ### Events Section - Dynamic Loading
 
@@ -275,6 +332,7 @@ This displays the full chat interface, handling all:
 - Markdown rendering
 - Navigation commands
 - Safety features
+- PostMessage listener for search queries
 
 ---
 
@@ -283,7 +341,16 @@ This displays the full chat interface, handling all:
 1. **Give revised prompt to Lovable** → Generate landing page
 2. **Review output** → Adjust styling if needed
 3. **Deploy Replit chatbot** → Get public URL
-4. **Update iframe src** → Connect chat
-5. **Create public events API** → For dynamic events
-6. **Test end-to-end** → Verify everything works
-7. **Go live** → Launch The Ana Collective
+4. **Add postMessage listener** → Handle search queries
+5. **Update iframe src** → Connect chat
+6. **Create public events API** → For dynamic events
+7. **Test end-to-end** → Verify everything works
+8. **Go live** → Launch The Anna Collective
+
+---
+
+## BRANDING NOTE
+
+- **Person**: Anna Kitney (double N)
+- **Collective Name**: "The Anna Collective" (or "The Ana Collective" if single N is intentional branding - confirm with Anna)
+- All references in the prompt use "Anna" for the person's name
