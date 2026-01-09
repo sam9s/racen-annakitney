@@ -463,7 +463,7 @@ export default function Home() {
                 }`}
               >
                 <div 
-                  className="text-sm whitespace-pre-wrap leading-relaxed text-justify"
+                  className="text-xs whitespace-pre-wrap leading-relaxed text-justify"
                   style={{ fontFamily: 'var(--font-serif)' }}
                 >
                   {message.role === "assistant" 
@@ -499,7 +499,7 @@ export default function Home() {
               <Card className="bg-muted p-3">
                 <div className="flex items-center gap-2">
                   <Loader2 className="w-4 h-4 animate-spin" />
-                  <span className="text-sm text-muted-foreground">Anna is typing...</span>
+                  <span className="text-xs text-muted-foreground">Anna is typing...</span>
                 </div>
               </Card>
             </div>
