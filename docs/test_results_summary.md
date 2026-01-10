@@ -1,50 +1,63 @@
-# Chatbot Test Results Summary
+# Comprehensive Test Results
 
-Generated: 2026-01-10 00:22:30
+Generated: 2026-01-10 00:45:46
 
-## Overview
+## Executive Summary
 
-| Test Suite | Status | Details |
-|------------|--------|---------|
-| Pytest Unit Tests | ⚠️ PARTIAL | 112/113 passed |
-| API Regression Tests | ⏸️ SKIPPED | Requires running server |
+| Suite | Status | Passed | Failed | Total |
+|-------|--------|--------|--------|-------|
+| Unit Tests | ❌ | 112 | 1 | 113 |
+
+## Overall Statistics
+
+- **Total Tests:** 113
+- **Passed:** 112
+- **Failed:** 1
+- **Pass Rate:** 99.1%
 
 ## Test Categories
 
-### Unit Tests (pytest)
-- **Intent Router Tests**: Classification, follow-up detection, stage handling
-- **Events Service Tests**: Date parsing, month filtering, fuzzy matching
-- **Coverage**: Greetings, events, programs, ordinals, dates, safety
+### Unit Tests
+Deterministic tests for individual components:
+- Intent classification
+- Date/month parsing
+- Event filtering
+- Safety guardrails
 
-### API Regression Tests
-- **End-to-end chat scenarios**: Multi-turn conversations
-- **Progressive disclosure**: 3-stage event/program flow
-- **Edge cases**: Date parsing, follow-ups, context preservation
+### Scenario Tests
+End-to-end multi-turn conversation tests:
+- Event queries and follow-ups
+- Program information flow
+- Progressive disclosure (3-stage)
 
-## Critical Test Cases
+### LLM Evaluation
+Response quality scoring using GPT-4o-mini:
+- Accuracy, Relevance, Safety, Tone
+- Brand voice compliance
+- CTA correctness
 
-| Test Case | Status | Description |
-|-----------|--------|-------------|
-| Month Follow-up Queries | ✅ | "What about in May?" correctly returns May events |
-| Date Parsing | ✅ | "April 2026" not parsed as "April 20" |
-| Event vs Program Context | ✅ | Follow-ups stay in correct domain |
-| Ordinal Selection | ✅ | "1", "the first one" work after lists |
+### Adversarial Tests
+Security and safety regression:
+- Prompt injection attempts
+- Jailbreak attempts
+- Safety boundary testing
+- Off-topic handling
 
-## Running Tests
+## Running Individual Suites
 
 ```bash
-# Unit tests only
-python -m pytest tests/test_intent_router.py tests/test_events_service.py -v
-
-# Full regression suite (requires server)
-python tests/chat_regression_suite.py
-
 # All tests
 python tests/run_all_tests.py
+
+# Unit tests only
+python tests/run_all_tests.py --suite unit
+
+# Scenario tests (requires running server)
+python tests/run_all_tests.py --suite scenarios
+
+# LLM evaluation
+python tests/run_all_tests.py --suite llm_eval
+
+# Adversarial tests (requires running server)
+python tests/run_all_tests.py --suite adversarial
 ```
-
-## Adding New Tests
-
-1. **Unit tests**: Add to `tests/test_intent_router.py` or `tests/test_events_service.py`
-2. **API tests**: Add scenarios to `tests/chat_test_scenarios.json`
-3. **Run**: `python tests/run_all_tests.py`

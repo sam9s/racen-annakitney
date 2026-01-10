@@ -320,6 +320,11 @@ def main():
     evaluator = LLMEvaluator()
     
     if args.demo:
+        print("=" * 60)
+        print("DEMO MODE - Using sample data (NOT production evaluation)")
+        print("=" * 60)
+        print()
+        
         # Demo with sample data
         demo_transcript = [
             {
@@ -336,14 +341,22 @@ def main():
         
         results = evaluator.evaluate_transcript(demo_transcript, "demo-001")
         summary = evaluator.summarize_results(results)
-        report = evaluator.generate_report(summary)
         
-        print(report)
+        # Add demo warning to report
+        report = "# ⚠️ DEMO MODE - Not Production Results\n\n"
+        report += "This report was generated with sample data for testing purposes only.\n"
+        report += "For real evaluation, run with: `--input <transcript_file.json>`\n\n"
+        report += "---\n\n"
+        report += evaluator.generate_report(summary)
+        
+        print(report[:1500] + "\n...")
         
         os.makedirs(os.path.dirname(args.output), exist_ok=True)
-        with open(args.output, "w") as f:
+        demo_output = args.output.replace('.md', '_demo.md')
+        with open(demo_output, "w") as f:
             f.write(report)
-        print(f"\nReport saved to: {args.output}")
+        print(f"\nDemo report saved to: {demo_output}")
+        print("Note: This is demo mode. Results are not suitable for CI/CD gates.")
     
     elif args.input:
         with open(args.input, "r") as f:

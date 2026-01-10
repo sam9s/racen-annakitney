@@ -1,0 +1,4 @@
+# Generated test reports - do not commit
+*.md
+*.json
+*.html

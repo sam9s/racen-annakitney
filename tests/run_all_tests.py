@@ -69,12 +69,25 @@ def run_scenario_suite(base_url: str) -> Tuple[bool, Dict]:
         [sys.executable, "tests/scenarios/scenario_runner.py",
          "--base-url", base_url],
         capture_output=True,
-        text=True
+        text=True,
+        timeout=300
     )
     
     print(result.stdout)
+    if result.stderr:
+        print(result.stderr)
     
-    # Parse summary
+    # Try to read JSON summary first (more reliable)
+    json_path = "tests/reports/scenario_results.json"
+    if os.path.exists(json_path):
+        try:
+            with open(json_path, 'r') as f:
+                stats = json.load(f)
+            return result.returncode == 0, stats
+        except:
+            pass
+    
+    # Fallback: Parse summary from stdout
     passed = 0
     total = 0
     for line in result.stdout.split('\n'):

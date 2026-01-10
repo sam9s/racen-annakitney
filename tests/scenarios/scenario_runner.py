@@ -78,11 +78,11 @@ class ScenarioRunner:
         """Check if response matches expected criteria."""
         failures = []
         
-        # Check required patterns (must contain)
-        if "contains" in expected:
-            for pattern in expected["contains"]:
-                if pattern.lower() not in response.lower():
-                    failures.append(f"Missing expected text: '{pattern}'")
+        # Check required patterns (must contain) - support both "contains" and "keywords"
+        contains = expected.get("contains", expected.get("keywords", []))
+        for pattern in contains:
+            if pattern.lower() not in response.lower():
+                failures.append(f"Missing expected text: '{pattern}'")
         
         # Check regex patterns
         if "matches" in expected:
@@ -90,11 +90,11 @@ class ScenarioRunner:
                 if not re.search(pattern, response, re.IGNORECASE):
                     failures.append(f"Missing expected pattern: '{pattern}'")
         
-        # Check forbidden patterns (must NOT contain)
-        if "not_contains" in expected:
-            for pattern in expected["not_contains"]:
-                if pattern.lower() in response.lower():
-                    failures.append(f"Contains forbidden text: '{pattern}'")
+        # Check forbidden patterns (must NOT contain) - support both "not_contains" and "must_not_contain"
+        not_contains = expected.get("not_contains", expected.get("must_not_contain", []))
+        for pattern in not_contains:
+            if pattern.lower() in response.lower():
+                failures.append(f"Contains forbidden text: '{pattern}'")
         
         # Check response is non-empty
         if not response.strip():
@@ -118,7 +118,10 @@ class ScenarioRunner:
         
         for i, turn in enumerate(turns):
             user_message = turn.get("user", "")
+            # Support both "expected" dict and flat structure with keywords
             expected = turn.get("expected", {})
+            if not expected and "keywords" in turn:
+                expected = {"keywords": turn.get("keywords", []), "must_not_contain": turn.get("must_not_contain", [])}
             
             # Send message
             success, response = self._send_message(user_message, session_id)
@@ -188,7 +191,7 @@ Generated: {datetime.now().strftime("%Y-%m-%d %H:%M:%S")}
 | Total Scenarios | {result.total_scenarios} |
 | Passed | {result.passed_scenarios} |
 | Failed | {result.failed_scenarios} |
-| Pass Rate | {result.passed_scenarios/result.total_scenarios*100:.1f}% |
+| Pass Rate | {result.passed_scenarios/result.total_scenarios*100 if result.total_scenarios > 0 else 0:.1f}% |
 | Total Turns | {result.total_turns} |
 | Passed Turns | {result.passed_turns} |
 | Duration | {result.duration_seconds:.2f}s |
@@ -216,7 +219,10 @@ def load_scenarios(file_path: str) -> List[Dict]:
     """Load scenarios from a JSON file."""
     with open(file_path, "r") as f:
         data = json.load(f)
-    return data.get("scenarios", data) if isinstance(data, dict) else data
+    # Support both "scenarios" and "test_scenarios" keys
+    if isinstance(data, dict):
+        return data.get("scenarios", data.get("test_scenarios", []))
+    return data
 
 
 def main():
@@ -260,7 +266,7 @@ def main():
         f.write(report)
     print(f"\nReport saved to: {args.output}")
     
-    # Print summary
+    # Print summary (format must match what run_all_tests.py expects)
     print()
     print("=" * 60)
     print("SUMMARY")
@@ -268,6 +274,18 @@ def main():
     print(f"Scenarios: {result.passed_scenarios}/{result.total_scenarios} passed")
     print(f"Turns: {result.passed_turns}/{result.total_turns} passed")
     print(f"Duration: {result.duration_seconds:.2f}s")
+    
+    # Write JSON summary for programmatic access
+    summary_json = {
+        "passed": result.passed_scenarios,
+        "failed": result.failed_scenarios,
+        "total": result.total_scenarios,
+        "turns_passed": result.passed_turns,
+        "turns_total": result.total_turns
+    }
+    json_path = args.output.replace('.md', '.json')
+    with open(json_path, 'w') as f:
+        json.dump(summary_json, f, indent=2)
     
     return 0 if result.failed_scenarios == 0 else 1
 
