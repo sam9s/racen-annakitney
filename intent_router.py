@@ -751,6 +751,33 @@ class IntentRouter:
                 return True
         return False
     
+    def _is_negative_response(self, message: str) -> bool:
+        """
+        Check if message is a negative response declining a CTA.
+        Used to prevent "no" from being treated as an event query.
+        """
+        msg = message.strip().lower()
+        negative_patterns = [
+            r"^no+$",           # "no", "nooo"
+            r"^nope$",
+            r"^nah$",
+            r"^not now$",
+            r"^not interested$",
+            r"^maybe later$",
+            r"^later$",
+            r"^no thanks?$",    # "no thank", "no thanks"
+            r"^no,?\s*thank you$",
+            r"^i'?m (good|fine|ok|okay)$",
+            r"^that'?s (ok|okay|fine|all|it)$",
+            r"^never\s*mind$",
+            r"^skip$",
+            r"^pass$",
+        ]
+        for pattern in negative_patterns:
+            if re.match(pattern, msg, re.IGNORECASE):
+                return True
+        return False
+    
     def _check_followup_context(self, message: str, conversation_history: List[Dict]) -> Optional[IntentResult]:
         """
         Check if user is responding to a previous bot message (selection or confirmation).
@@ -795,6 +822,19 @@ class IntentRouter:
                     "context": context
                 },
                 reasoning=f"User selected item {selection_idx + 1} from numbered {context} list"
+            )
+        
+        # ========== NEGATIVE RESPONSE DETECTION (CHECK FIRST!) ==========
+        # If user declines a follow-up CTA, don't treat as event/program query
+        # This prevents "no" from triggering event details retrieval
+        if self._is_negative_response(message):
+            # User is declining the offered CTA - reset flow and let LLM respond naturally
+            print(f"[_check_followup_context] User declined CTA with: '{message}'", flush=True)
+            return IntentResult(
+                intent=IntentType.OTHER,
+                confidence=HIGH_CONFIDENCE,
+                slots={"declined_cta": True, "last_bot_message": last_bot_msg[:500]},
+                reasoning="User declined follow-up CTA with negative response"
             )
         
         # Check if user is confirming/asking for more info

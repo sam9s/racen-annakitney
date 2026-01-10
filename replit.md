@@ -139,6 +139,14 @@ Comprehensive dashboard for monitoring and managing the chatbot system. See `doc
     - Updated `safety_guardrails.py` DON'T section and added HANDLING UNKNOWN TOPICS section
     - Bot now gracefully redirects: "I don't have specific information about that. Would you like me to help you connect with our team?"
 
+17. **Negative Response Handling for CTAs** (Jan 2026):
+    - **Problem**: User says "no" to CTA (e.g., "Would you like me to take you to the event page?") but bot shows event details anyway
+    - **Root cause**: `_check_conversation_context` was returning EVENT because conversation history contained "event" keyword
+    - **Solution**: Added `_is_negative_response()` method in IntentRouter
+    - Patterns detected: "no", "nope", "nah", "not now", "maybe later", "no thanks", "I'm good", "skip", "pass", etc.
+    - When negative response detected, returns `IntentType.OTHER` with `declined_cta=True` slot
+    - Prevents event details from being re-shown when user declines
+
 ## Important Technical Notes
 - **Markdown Parsing Order**: Bold-wrapped links `**[text](url)**` must be matched FIRST, then plain links, then bold text.
 - **Two Websites**: annakitney.com (marketing) and annakitneyportal.com (checkout, requires www. prefix)
