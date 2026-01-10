@@ -248,7 +248,8 @@ export default function Home() {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
-  const [sessionId] = useState(() => `anna_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`);
+  const generateSessionId = () => `anna_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+  const [sessionId, setSessionId] = useState(generateSessionId);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const { toast } = useToast();
@@ -481,6 +482,7 @@ export default function Home() {
 
   const resetConversation = () => {
     setMessages([]);
+    setSessionId(generateSessionId());
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
