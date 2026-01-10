@@ -360,15 +360,15 @@ export default function Admin() {
                         data-testid={`button-session-${session.sessionId}`}
                       >
                         <div className="flex items-start justify-between gap-2 mb-1">
-                          <span className="font-medium text-sm truncate">{session.userName}</span>
-                          <Badge variant="outline" className="text-xs shrink-0">
+                          <span className="font-medium text-sm truncate text-gray-900">{session.userName}</span>
+                          <Badge variant="outline" className="text-xs shrink-0 text-gray-700 border-gray-300">
                             {session.channel}
                           </Badge>
                         </div>
-                        <p className="text-xs text-muted-foreground truncate mb-1">
+                        <p className="text-xs text-gray-600 truncate mb-1">
                           {session.firstMessage || 'No messages'}
                         </p>
-                        <div className="flex items-center justify-between text-xs text-muted-foreground">
+                        <div className="flex items-center justify-between text-xs text-gray-500">
                           <span>{session.messageCount} messages</span>
                           <span>{formatDate(session.lastActivity)}</span>
                         </div>
@@ -403,9 +403,9 @@ export default function Admin() {
               </div>
               {conversationDetail && (
                 <div className="flex gap-2 mt-2">
-                  <Badge variant="outline">{conversationDetail.session.channel}</Badge>
-                  <Badge variant="outline">{conversationDetail.messages.length} messages</Badge>
-                  <Badge variant="outline">{formatDate(conversationDetail.session.createdAt)}</Badge>
+                  <Badge variant="outline" className="text-gray-700 border-gray-300">{conversationDetail.session.channel}</Badge>
+                  <Badge variant="outline" className="text-gray-700 border-gray-300">{conversationDetail.messages.length} messages</Badge>
+                  <Badge variant="outline" className="text-gray-700 border-gray-300">{formatDate(conversationDetail.session.createdAt)}</Badge>
                 </div>
               )}
             </CardHeader>
@@ -430,9 +430,9 @@ export default function Admin() {
                         </div>
                         <div className="flex justify-start">
                           <div className="bg-gray-100 rounded-2xl rounded-bl-md px-4 py-2 max-w-[80%]">
-                            <p className="text-sm whitespace-pre-wrap">{message.botAnswer}</p>
+                            <p className="text-sm whitespace-pre-wrap text-gray-900">{message.botAnswer}</p>
                             {message.responseTimeMs && (
-                              <p className="text-xs text-muted-foreground mt-1">
+                              <p className="text-xs text-gray-500 mt-1">
                                 {(message.responseTimeMs / 1000).toFixed(1)}s response
                               </p>
                             )}
