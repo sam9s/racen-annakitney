@@ -1081,6 +1081,107 @@ def inject_checkout_urls(response: str, user_message: str = "") -> str:
     return response
 
 
+def enforce_trailing_cta(response: str, stage: str = None, program_url: str = None) -> str:
+    """
+    CRITICAL: Enforce the correct CTA at the end of responses.
+    
+    This function strips any LLM-generated trailing question and appends
+    the canonical stage-appropriate CTA from events_service.
+    
+    This prevents the LLM from freestyling CTAs that include "enroll" prematurely,
+    which causes the intent router to misclassify follow-up intents.
+    
+    Args:
+        response: The LLM response to process
+        stage: One of 'summary_shown', 'details_shown', 'enrollment', or None
+        program_url: Optional URL to include in the CTA
+    
+    Returns:
+        Response with enforced canonical CTA
+    """
+    from events_service import (
+        PROGRAM_STAGE1_CTA, 
+        PROGRAM_STAGE2_CTA_TEMPLATE, 
+        PROGRAM_STAGE2_CTA_NO_URL,
+        PROGRAM_ENROLLMENT_CTA
+    )
+    
+    if not stage or stage == 'none':
+        return response
+    
+    # Determine the correct CTA based on stage FIRST
+    if stage == 'summary_shown':
+        cta = PROGRAM_STAGE1_CTA
+    elif stage == 'details_shown':
+        if program_url:
+            cta = PROGRAM_STAGE2_CTA_TEMPLATE.format(url=program_url)
+        else:
+            cta = PROGRAM_STAGE2_CTA_NO_URL
+    elif stage == 'enrollment':
+        cta = PROGRAM_ENROLLMENT_CTA
+    else:
+        return response
+    
+    # Check if response ALREADY ends with the canonical CTA (preserve it)
+    # Normalize markdown and whitespace for comparison
+    def normalize_for_cta_check(text: str) -> str:
+        """Strip markdown formatting and normalize whitespace for CTA comparison.
+        
+        Handles cases like:
+        - **Would you like more details about this program?**
+        - *Would you like more details about this program?*
+        - Would you like more details about this program?
+        """
+        normalized = text.rstrip()
+        # Get just the last sentence/question for comparison
+        # Look for the last question mark and extract the sentence before it
+        lines = normalized.split('\n')
+        last_line = lines[-1].strip() if lines else normalized
+        
+        # Remove wrapping markdown markers (e.g., **text** → text)
+        # This handles bold and italic wrapped around the whole CTA
+        last_line = re.sub(r'^\*\*(.+?)\*\*$', r'\1', last_line)  # **text**
+        last_line = re.sub(r'^\*(.+?)\*$', r'\1', last_line)      # *text*
+        last_line = re.sub(r'^__(.+?)__$', r'\1', last_line)      # __text__
+        last_line = re.sub(r'^_(.+?)_$', r'\1', last_line)        # _text_
+        
+        # Collapse multiple spaces
+        last_line = re.sub(r'\s+', ' ', last_line)
+        return last_line.strip()
+    
+    response_normalized = normalize_for_cta_check(response)
+    cta_normalized = normalize_for_cta_check(cta)
+    
+    if response_normalized.endswith(cta_normalized):
+        print(f"[CTA Enforcer] Stage: {stage}, Already has canonical CTA - skipping", flush=True)
+        return response
+    
+    # Patterns that identify trailing questions to strip
+    trailing_question_patterns = [
+        r'\n*\s*Would you like[^?]*\??\s*$',
+        r'\n*\s*Do you want[^?]*\??\s*$',
+        r'\n*\s*Are you interested[^?]*\??\s*$',
+        r'\n*\s*Shall I[^?]*\??\s*$',
+        r'\n*\s*Want me to[^?]*\??\s*$',
+        r'\n*\s*Let me know if[^?]*\??\s*$',
+        r'\n*\s*Ready to[^?]*\??\s*$',
+    ]
+    
+    # Strip existing trailing questions
+    cleaned_response = response
+    for pattern in trailing_question_patterns:
+        cleaned_response = re.sub(pattern, '', cleaned_response, flags=re.IGNORECASE)
+    
+    cleaned_response = cleaned_response.rstrip()
+    
+    # Append the canonical CTA
+    result = f"{cleaned_response}\n\n{cta}"
+    
+    print(f"[CTA Enforcer] Stage: {stage}, Enforced CTA: {cta[:50]}...", flush=True)
+    
+    return result
+
+
 def format_numbered_lists(response: str) -> str:
     """
     Post-process LLM response to ensure numbered lists have proper line breaks.

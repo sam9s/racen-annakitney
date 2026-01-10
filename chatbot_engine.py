@@ -23,7 +23,7 @@ from typing import List, Optional
 from tenacity import retry, stop_after_attempt, wait_exponential, retry_if_exception
 
 from knowledge_base import search_knowledge_base, get_knowledge_base_stats
-from safety_guardrails import apply_safety_filters, get_system_prompt, filter_response_for_safety, inject_program_links, inject_checkout_urls, append_contextual_links, format_numbered_lists, inject_dynamic_enrollment, fix_compound_trailing_questions
+from safety_guardrails import apply_safety_filters, get_system_prompt, filter_response_for_safety, inject_program_links, inject_checkout_urls, append_contextual_links, format_numbered_lists, inject_dynamic_enrollment, fix_compound_trailing_questions, enforce_trailing_cta
 from events_service import is_event_query, get_event_context_for_llm, process_calendar_action, fix_navigation_urls
 from intent_router import get_intent_router, IntentType, EventFollowupStage, ProgramFollowupStage, refresh_router_data
 
@@ -393,6 +393,16 @@ Respond with just the summary and question, no additional commentary."""
                             summary = response.choices[0].message.content.strip()
                             # Inject program link
                             summary = inject_program_links(summary)
+                            # CRITICAL: Enforce canonical Stage 1 CTA for program selection
+                            # This prevents LLM from drifting to "enroll" language which misroutes follow-ups
+                            from safety_guardrails import ANNA_PROGRAM_URLS
+                            program_url = None
+                            for name, url in ANNA_PROGRAM_URLS.items():
+                                if program_name and (program_name.lower() in name.lower() or name.lower() in program_name.lower()):
+                                    program_url = url
+                                    break
+                            summary = enforce_trailing_cta(summary, stage='summary_shown', program_url=program_url)
+                            print(f"[FOLLOWUP_SELECT] Applied CTA enforcement for {program_name}", flush=True)
                             return {
                                 "response": summary,
                                 "sources": [doc.get("source", "") for doc in relevant_docs[:3]],
@@ -784,6 +794,31 @@ IMPORTANT: Only ask about enrollment if the user EXPLICITLY asks about enrolling
         
         final_response = append_contextual_links(user_message, response_with_calendar)
         
+        # CRITICAL: Enforce canonical CTAs for program responses
+        # This prevents the LLM from freestyling CTAs that include "enroll" prematurely
+        # ONLY apply when router explicitly sets a stage - don't guess stages
+        program_stage = intent_result.slots.get("stage", None)
+        if program_stage and program_stage != ProgramFollowupStage.NONE:
+            # Map ProgramFollowupStage enum values to enforce_trailing_cta stage strings
+            stage_map = {
+                ProgramFollowupStage.SUMMARY_SHOWN: 'summary_shown',
+                ProgramFollowupStage.DETAILS_SHOWN: 'details_shown',
+                ProgramFollowupStage.NAVIGATE_OFFERED: 'details_shown',  # Same CTA as details_shown
+            }
+            cta_stage = stage_map.get(program_stage, None)
+            if cta_stage:
+                program_url = intent_result.slots.get("program_url", None)
+                # Look up program URL if not provided
+                if not program_url:
+                    program_name = intent_result.slots.get("program_name", "")
+                    from safety_guardrails import ANNA_PROGRAM_URLS
+                    for name, url in ANNA_PROGRAM_URLS.items():
+                        if program_name and (program_name.lower() in name.lower() or name.lower() in program_name.lower()):
+                            program_url = url
+                            break
+                print(f"[CTA Enforcement] Applying stage: {cta_stage}, url: {program_url}", flush=True)
+                final_response = enforce_trailing_cta(final_response, stage=cta_stage, program_url=program_url)
+        
         sources = []
         for doc in relevant_docs:
             source = doc.get("source", "Unknown")
@@ -970,6 +1005,28 @@ IMPORTANT: Only ask about enrollment if the user EXPLICITLY asks about enrolling
         response_with_checkout_urls = inject_checkout_urls(response_with_enrollment, user_message)
         response_with_links = inject_program_links(response_with_checkout_urls)
         final_response = append_contextual_links(user_message, response_with_links)
+        
+        # CRITICAL: Enforce canonical CTAs for program responses (streaming path)
+        # ONLY apply when router explicitly sets a stage - don't guess stages
+        program_stage = intent_result.slots.get("stage", None)
+        if program_stage and program_stage != ProgramFollowupStage.NONE:
+            stage_map = {
+                ProgramFollowupStage.SUMMARY_SHOWN: 'summary_shown',
+                ProgramFollowupStage.DETAILS_SHOWN: 'details_shown',
+                ProgramFollowupStage.NAVIGATE_OFFERED: 'details_shown',  # Same CTA as details_shown
+            }
+            cta_stage = stage_map.get(program_stage, None)
+            if cta_stage:
+                program_url = intent_result.slots.get("program_url", None)
+                if not program_url:
+                    program_name = intent_result.slots.get("program_name", "")
+                    from safety_guardrails import ANNA_PROGRAM_URLS
+                    for name, url in ANNA_PROGRAM_URLS.items():
+                        if program_name and (program_name.lower() in name.lower() or name.lower() in program_name.lower()):
+                            program_url = url
+                            break
+                print(f"[CTA Enforcement Stream] Applying stage: {cta_stage}", flush=True)
+                final_response = enforce_trailing_cta(final_response, stage=cta_stage, program_url=program_url)
         
         sources = []
         for doc in relevant_docs:
