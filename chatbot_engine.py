@@ -368,13 +368,28 @@ def generate_response(
                 
                 if relevant_docs:
                     context = format_context_from_docs(relevant_docs)
-                    program_summary_prompt = f"""Based on the following context about {program_name}, provide a brief 2-3 sentence summary of what this program offers. 
-End with EXACTLY this question: "Would you like more details about this program?"
+                    
+                    # Get program URL for the navigation CTA
+                    from safety_guardrails import ANNA_PROGRAM_URLS
+                    program_url = None
+                    for name, url in ANNA_PROGRAM_URLS.items():
+                        if program_name and (program_name.lower() in name.lower() or name.lower() in program_name.lower()):
+                            program_url = url
+                            break
+                    
+                    # SIMPLE FLOW (like JoveHeal): Summary → Navigation CTA
+                    # User selects program → Bot shows summary → "Would you like me to take you to the page?"
+                    program_summary_prompt = f"""Based on the following context about {program_name}, provide a brief summary of what this program offers. Format as:
+
+1. A 2-3 sentence overview of the program
+2. 3-5 key features as a bulleted list
+
+Do NOT include any trailing question - the system will add one automatically.
 
 Context:
 {context}
 
-Respond with just the summary and question, no additional commentary."""
+Respond with just the summary and features, nothing else."""
                     
                     messages = [
                         {"role": "system", "content": "You are Anna, a warm wellness coach. Be concise and helpful."},
@@ -387,24 +402,21 @@ Respond with just the summary and question, no additional commentary."""
                             response = client.chat.completions.create(
                                 model="gpt-4o-mini",
                                 messages=messages,
-                                max_tokens=300,
+                                max_tokens=400,
                                 temperature=0.7
                             )
                             summary = response.choices[0].message.content.strip()
                             # Inject program link
                             summary = inject_program_links(summary)
-                            # CRITICAL: Enforce canonical Stage 1 CTA for program selection
-                            # This prevents LLM from drifting to "enroll" language which misroutes follow-ups
-                            from safety_guardrails import ANNA_PROGRAM_URLS
-                            program_url = None
-                            for name, url in ANNA_PROGRAM_URLS.items():
-                                if program_name and (program_name.lower() in name.lower() or name.lower() in program_name.lower()):
-                                    program_url = url
-                                    break
-                            # Use 'details_shown' to get Stage 2 navigation CTA
-                            # User's expected flow: Summary → "Would you like me to navigate to that page?"
-                            summary = enforce_trailing_cta(summary, stage='details_shown', program_url=program_url)
-                            print(f"[FOLLOWUP_SELECT] Applied navigation CTA for {program_name}", flush=True)
+                            
+                            # SIMPLE NAVIGATION CTA (like JoveHeal)
+                            # After summary, ask: "Would you like me to take you to the [Program] page?"
+                            if program_url:
+                                summary += f"\n\nWould you like me to take you to the [{program_name}]({program_url}) page?"
+                            else:
+                                summary += f"\n\nWould you like to learn more about {program_name}?"
+                            
+                            print(f"[FOLLOWUP_SELECT] Program summary with navigation CTA for {program_name}", flush=True)
                             return {
                                 "response": summary,
                                 "sources": [doc.get("source", "") for doc in relevant_docs[:3]],
