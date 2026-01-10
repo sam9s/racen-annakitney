@@ -722,10 +722,17 @@ The following information is from Anna Kitney's official website and documents. 
 {context}
 
 IMPORTANT GUIDELINES:
-1. Only use information from the context above. If the answer is not in the context, politely say you don't have that specific information and offer to help them contact us at https://www.annakitney.com/contact
-2. When describing programs, include key details like: what it is, who it's for, what's included, and the transformation it offers.
-3. After providing program information, ALWAYS end with a follow-up question to invite deeper engagement.
-4. For EVENTS: If event information is provided above, use that LIVE data from the calendar. Always offer to navigate to the event page or add to calendar.
+1. STRICT KNOWLEDGE BOUNDS: Only answer questions that are EXPLICITLY addressed in the context above. If the exact topic is not covered, say: "I don't have specific information about that. Would you like me to help you connect with our team at https://www.annakitney.com/contact for more details?"
+2. NO EXTRAPOLATION: Do NOT infer, guess, or extrapolate answers from loosely related information. Example: If context mentions "lifetime access to replays" but user asks about "pre-recorded sessions" - these are NOT the same thing. Do not assume one implies the other.
+3. When describing programs, include key details like: what it is, who it's for, what's included, and the transformation it offers.
+4. After providing program information, ALWAYS end with a follow-up question to invite deeper engagement.
+5. For EVENTS: If event information is provided above, use that LIVE data from the calendar. Always offer to navigate to the event page or add to calendar.
+
+WHEN TO DECLINE ANSWERING:
+- Topic not explicitly covered in context
+- User asks about specific features/offerings not clearly mentioned
+- Information would require inference or assumption
+In these cases, gracefully redirect to contact page or ask clarifying questions.
 
 FOLLOW-UP QUESTIONS (choose ONE that's most relevant):
 - "Would you like me to take you to the program page to learn more?"
@@ -745,8 +752,6 @@ IMPORTANT: Only ask about enrollment if the user EXPLICITLY asks about enrolling
     messages.append({"role": "user", "content": user_message})
     
     try:
-        # the newest OpenAI model is "gpt-5" which was released August 7, 2025.
-        # do not change this unless explicitly requested by the user
         response = client.chat.completions.create(
             model="gpt-4o-mini",
             messages=messages,
@@ -912,10 +917,17 @@ The following information is from Anna Kitney's official website and documents. 
 {context}
 
 IMPORTANT GUIDELINES:
-1. Only use information from the context above. If the answer is not in the context, politely say you don't have that specific information and offer to help them contact us at https://www.annakitney.com/contact
-2. When describing programs, include key details like: what it is, who it's for, what's included, and the transformation it offers.
-3. After providing program information, ALWAYS end with a follow-up question to invite deeper engagement.
-4. For EVENTS: If event information is provided above, use that LIVE data from the calendar. Always offer to navigate to the event page or add to calendar.
+1. STRICT KNOWLEDGE BOUNDS: Only answer questions that are EXPLICITLY addressed in the context above. If the exact topic is not covered, say: "I don't have specific information about that. Would you like me to help you connect with our team at https://www.annakitney.com/contact for more details?"
+2. NO EXTRAPOLATION: Do NOT infer, guess, or extrapolate answers from loosely related information. Example: If context mentions "lifetime access to replays" but user asks about "pre-recorded sessions" - these are NOT the same thing. Do not assume one implies the other.
+3. When describing programs, include key details like: what it is, who it's for, what's included, and the transformation it offers.
+4. After providing program information, ALWAYS end with a follow-up question to invite deeper engagement.
+5. For EVENTS: If event information is provided above, use that LIVE data from the calendar. Always offer to navigate to the event page or add to calendar.
+
+WHEN TO DECLINE ANSWERING:
+- Topic not explicitly covered in context
+- User asks about specific features/offerings not clearly mentioned
+- Information would require inference or assumption
+In these cases, gracefully redirect to contact page or ask clarifying questions.
 
 FOLLOW-UP QUESTIONS (choose ONE that's most relevant):
 - "Would you like me to take you to the program page to learn more?"

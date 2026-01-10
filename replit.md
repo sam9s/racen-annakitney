@@ -122,6 +122,23 @@ Comprehensive dashboard for monitoring and managing the chatbot system. See `doc
     - Fixed date parsing: Added `(?!\d)` negative lookahead in `_extract_date_from_query()` to prevent "April 2026" from being parsed as "April 20, 2026"
     - Month filter now checked BEFORE event keyword check in `_get_event_context_internal()` so queries like "What about in May?" correctly trigger month filtering instead of falling back to conversation history
 
+15. **Event Follow-up Routing Fixes** (Jan 2026):
+    - Fixed `_find_event_from_history` to prioritize PRIMARY event by position (earliest mention = main topic)
+    - Added `_extract_event_from_message` to extract event name from bot responses for FOLLOWUP_CONFIRM handling
+    - Added `get_event_details_by_name` for direct event lookup by name
+    - Fixed key mismatch in `_build_event_summary_response` to support both `start` and `startDate` keys
+    - Now correctly shows Dubai event when user confirms "yes" after asking about Dubai (not The Identity Switch)
+
+16. **Fallback Mechanism for Unknown Topics** (Jan 2026):
+    - **Problem**: Bot was extrapolating answers from loosely related info (e.g., "lifetime access to replays" → "pre-recorded sessions")
+    - **Solution**: Strengthened LLM guidelines with NO EXTRAPOLATION rule
+    - Key changes in `chatbot_engine.py` IMPORTANT GUIDELINES section:
+      1. STRICT KNOWLEDGE BOUNDS - only answer if EXPLICITLY covered
+      2. NO EXTRAPOLATION - don't infer from related but not matching info
+      3. WHEN TO DECLINE - redirect to contact page for unknown topics
+    - Updated `safety_guardrails.py` DON'T section and added HANDLING UNKNOWN TOPICS section
+    - Bot now gracefully redirects: "I don't have specific information about that. Would you like me to help you connect with our team?"
+
 ## Important Technical Notes
 - **Markdown Parsing Order**: Bold-wrapped links `**[text](url)**` must be matched FIRST, then plain links, then bold text.
 - **Two Websites**: annakitney.com (marketing) and annakitneyportal.com (checkout, requires www. prefix)
