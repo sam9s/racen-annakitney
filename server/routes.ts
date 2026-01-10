@@ -466,6 +466,24 @@ export async function registerRoutes(
     }
   };
 
+  app.get("/api/admin/db-health", adminAuthMiddleware, async (req: Request, res: Response) => {
+    try {
+      const response = await fetch(`${FLASK_API_URL}/api/admin/db-health`, {
+        headers: {
+          ...(INTERNAL_API_KEY && { "X-Internal-Api-Key": INTERNAL_API_KEY }),
+        },
+      });
+      if (!response.ok) {
+        return res.status(response.status).json({ error: "Failed to fetch db health" });
+      }
+      const data = await response.json();
+      res.json(data);
+    } catch (error) {
+      console.error("Error fetching db health:", error);
+      res.status(500).json({ error: "Failed to fetch db health" });
+    }
+  });
+
   app.get("/api/admin/stats", async (req: Request, res: Response) => {
     try {
       const range = req.query.range || '7d';

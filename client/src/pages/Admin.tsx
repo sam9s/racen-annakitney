@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
-import { MessageSquare, Users, Clock, ChevronLeft, RefreshCw, Lock } from 'lucide-react';
+import { MessageSquare, Users, Clock, ChevronLeft, RefreshCw, Lock, Database, AlertCircle, CheckCircle } from 'lucide-react';
 
 interface DashboardStats {
   totalConversations: number;
@@ -49,6 +49,15 @@ interface ConversationDetail {
   messages: ChatMessage[];
 }
 
+interface DbHealth {
+  database_available: boolean;
+  database_url_set: boolean;
+  connection_status: string;
+  tables?: { chat_sessions: number; conversations: number };
+  latest_conversation?: string | null;
+  error?: string;
+}
+
 export default function Admin() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [password, setPassword] = useState('');
@@ -60,6 +69,8 @@ export default function Admin() {
   const [loading, setLoading] = useState(false);
   const [timeRange, setTimeRange] = useState('7d');
   const [checkingAuth, setCheckingAuth] = useState(true);
+  const [dbHealth, setDbHealth] = useState<DbHealth | null>(null);
+  const [checkingDb, setCheckingDb] = useState(false);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -106,8 +117,8 @@ export default function Admin() {
     setLoading(true);
     try {
       const [statsRes, sessionsRes] = await Promise.all([
-        fetch(`${FLASK_API}/api/admin/stats?range=${timeRange}`),
-        fetch(`${FLASK_API}/api/admin/conversations?range=${timeRange}&limit=100`)
+        fetch(`/api/admin/stats?range=${timeRange}`, { credentials: 'include' }),
+        fetch(`/api/admin/conversations?range=${timeRange}&limit=100`, { credentials: 'include' })
       ]);
       
       if (statsRes.ok) {
@@ -125,10 +136,26 @@ export default function Admin() {
     setLoading(false);
   };
 
+  const checkDbHealth = async () => {
+    setCheckingDb(true);
+    try {
+      const res = await fetch('/api/admin/db-health', { credentials: 'include' });
+      if (res.ok) {
+        const data = await res.json();
+        setDbHealth(data);
+      } else {
+        setDbHealth({ database_available: false, database_url_set: false, connection_status: 'api_error' });
+      }
+    } catch (error) {
+      setDbHealth({ database_available: false, database_url_set: false, connection_status: 'fetch_failed' });
+    }
+    setCheckingDb(false);
+  };
+
   const fetchConversationDetail = async (sessionId: string) => {
     setSelectedSession(sessionId);
     try {
-      const res = await fetch(`${FLASK_API}/api/admin/conversations/${encodeURIComponent(sessionId)}`);
+      const res = await fetch(`/api/admin/conversations/${encodeURIComponent(sessionId)}`, { credentials: 'include' });
       if (res.ok) {
         const data = await res.json();
         setConversationDetail(data);
@@ -211,6 +238,10 @@ export default function Admin() {
                 </Button>
               ))}
             </div>
+            <Button variant="outline" size="sm" onClick={checkDbHealth} disabled={checkingDb} data-testid="button-check-db">
+              <Database className={`w-4 h-4 mr-2 ${checkingDb ? 'animate-pulse' : ''}`} />
+              Check DB
+            </Button>
             <Button variant="outline" size="sm" onClick={fetchData} disabled={loading} data-testid="button-refresh">
               <RefreshCw className={`w-4 h-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
               Refresh
@@ -223,6 +254,34 @@ export default function Admin() {
       </header>
 
       <main className="max-w-7xl mx-auto p-6">
+        {dbHealth && (
+          <Card className={`mb-6 ${dbHealth.connection_status === 'connected' ? 'border-green-500' : 'border-red-500'}`}>
+            <CardContent className="pt-4">
+              <div className="flex items-center gap-4">
+                {dbHealth.connection_status === 'connected' ? (
+                  <CheckCircle className="w-8 h-8 text-green-500" />
+                ) : (
+                  <AlertCircle className="w-8 h-8 text-red-500" />
+                )}
+                <div className="flex-1">
+                  <p className="font-semibold">Database Status: {dbHealth.connection_status}</p>
+                  <div className="text-sm text-muted-foreground grid grid-cols-2 md:grid-cols-4 gap-2 mt-2">
+                    <span>DB Available: {dbHealth.database_available ? 'Yes' : 'No'}</span>
+                    <span>URL Set: {dbHealth.database_url_set ? 'Yes' : 'No'}</span>
+                    {dbHealth.tables && <span>Sessions: {dbHealth.tables.chat_sessions}</span>}
+                    {dbHealth.tables && <span>Conversations: {dbHealth.tables.conversations}</span>}
+                    {dbHealth.latest_conversation && <span className="col-span-2">Latest: {new Date(dbHealth.latest_conversation).toLocaleString()}</span>}
+                    {dbHealth.error && <span className="text-red-500 col-span-4">Error: {dbHealth.error}</span>}
+                  </div>
+                </div>
+                <Button variant="ghost" size="sm" onClick={() => setDbHealth(null)}>
+                  Dismiss
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
           <Card>
             <CardContent className="pt-6">

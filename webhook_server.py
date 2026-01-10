@@ -23,12 +23,21 @@ from chatbot_engine import generate_response, generate_response_stream, generate
 from intent_router import refresh_router_data
 from somera_engine import generate_somera_response, generate_somera_response_stream
 from conversation_logger import log_feedback, log_conversation, ensure_session_exists
-from database import get_or_create_user, get_user_conversation_history, get_conversation_summary, upsert_conversation_summary
+from database import get_or_create_user, get_user_conversation_history, get_conversation_summary, upsert_conversation_summary, init_database, is_database_available, get_db_session, ChatSession, Conversation
 from knowledge_base import initialize_knowledge_base, get_knowledge_base_stats
 from rate_limiter import rate_limiter, get_client_ip
 
 app = Flask(__name__)
 CORS(app)
+
+# Initialize database tables on startup (ensures tables exist in production)
+try:
+    if init_database():
+        print("[Startup] Database tables initialized successfully")
+    else:
+        print("[Startup] Warning: Database not available")
+except Exception as e:
+    print(f"[Startup] Warning: Database initialization error: {e}")
 
 KNOWLEDGE_BASE_READY = False
 
@@ -85,6 +94,44 @@ def health_check():
             "reason": "Knowledge base not initialized"
         }), 503
     return jsonify({"status": "healthy", "service": "Anna Kitney API Server"})
+
+
+@app.route("/api/admin/db-health", methods=["GET"])
+def db_health_check():
+    """Database health check endpoint with table stats."""
+    if not validate_internal_api_key():
+        return jsonify({"error": "Unauthorized"}), 401
+    
+    result = {
+        "database_available": is_database_available(),
+        "database_url_set": bool(os.environ.get("DATABASE_URL")),
+        "tables": {}
+    }
+    
+    if is_database_available():
+        try:
+            from sqlalchemy import func
+            with get_db_session() as db:
+                if db:
+                    result["tables"]["chat_sessions"] = db.query(func.count(ChatSession.id)).scalar() or 0
+                    result["tables"]["conversations"] = db.query(func.count(Conversation.id)).scalar() or 0
+                    
+                    latest = db.query(Conversation).order_by(Conversation.timestamp.desc()).first()
+                    if latest:
+                        result["latest_conversation"] = latest.timestamp.isoformat() if latest.timestamp else None
+                    else:
+                        result["latest_conversation"] = None
+                    
+                    result["connection_status"] = "connected"
+                else:
+                    result["connection_status"] = "session_failed"
+        except Exception as e:
+            result["connection_status"] = "error"
+            result["error"] = str(e)
+    else:
+        result["connection_status"] = "unavailable"
+    
+    return jsonify(result)
 
 
 @app.route("/api/channels/status", methods=["GET"])
