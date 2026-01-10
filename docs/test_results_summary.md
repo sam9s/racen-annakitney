@@ -1,12 +1,12 @@
 # Chatbot Test Results Summary
 
-Generated: 2026-01-10 00:16:31
+Generated: 2026-01-10 00:22:30
 
 ## Overview
 
 | Test Suite | Status | Details |
 |------------|--------|---------|
-| Pytest Unit Tests | ⚠️ PARTIAL | 105/113 passed |
+| Pytest Unit Tests | ⚠️ PARTIAL | 112/113 passed |
 | API Regression Tests | ⏸️ SKIPPED | Requires running server |
 
 ## Test Categories

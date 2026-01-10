@@ -606,6 +606,7 @@ def extract_month_filter(message: str) -> Optional[int]:
             rf"\bwhat\s+about\s+(?:in\s+)?{month_name}\b",
             rf"\band\s+(?:what\s+about\s+)?(?:in\s+)?{month_name}\b",
             rf"\b{month_name}\?",  # Just "June?" at end
+            rf"\b{month_name}\s+(?:workshops?|sessions?|classes?)\b",  # "February workshops"
         ]
         for pattern in patterns:
             if re.search(pattern, message_lower):
