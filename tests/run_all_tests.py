@@ -28,12 +28,33 @@ def run_pytest_suite():
         [sys.executable, "-m", "pytest", 
          "tests/test_intent_router.py", 
          "tests/test_events_service.py",
-         "-v", "--tb=no", "--json-report", "--json-report-file=tests/pytest_results.json"],
+         "-v", "--tb=line"],
         capture_output=True,
         text=True
     )
     
     print(result.stdout)
+    
+    # Parse results from output
+    passed = 0
+    failed = 0
+    total = 0
+    for line in result.stdout.split('\n'):
+        if 'passed' in line and ('failed' in line or 'passed' in line):
+            # Parse line like "105 passed, 8 failed"
+            import re
+            passed_match = re.search(r'(\d+) passed', line)
+            failed_match = re.search(r'(\d+) failed', line)
+            if passed_match:
+                passed = int(passed_match.group(1))
+            if failed_match:
+                failed = int(failed_match.group(1))
+            total = passed + failed
+    
+    # Save results to JSON for report generation
+    with open("tests/pytest_results.json", "w") as f:
+        json.dump({"summary": {"passed": passed, "failed": failed, "total": total}}, f)
+    
     if result.returncode != 0:
         print("Some tests failed. See details above.")
     
