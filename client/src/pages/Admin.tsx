@@ -365,10 +365,10 @@ export default function Admin() {
                             {session.channel}
                           </Badge>
                         </div>
-                        <p className="text-xs text-gray-600 truncate mb-1">
+                        <p className="text-xs text-gray-800 truncate mb-1">
                           {session.firstMessage || 'No messages'}
                         </p>
-                        <div className="flex items-center justify-between text-xs text-gray-500">
+                        <div className="flex items-center justify-between text-xs text-gray-700">
                           <span>{session.messageCount} messages</span>
                           <span>{formatDate(session.lastActivity)}</span>
                         </div>
