@@ -859,15 +859,20 @@ class IntentRouter:
             
             # STAGE 2: User confirming they want more details (after summary)
             if current_stage == EventFollowupStage.SUMMARY_SHOWN:
+                # CRITICAL: Extract the event name from the last bot message
+                # This ensures we know WHICH event the user is confirming interest in
+                event_name = self._extract_event_from_message(last_bot_msg)
+                print(f"[_check_followup_context] STAGE2 - Extracted event: {event_name}", flush=True)
                 return IntentResult(
                     intent=IntentType.FOLLOWUP_CONFIRM,
                     confidence=HIGH_CONFIDENCE,
                     slots={
                         "context": "event", 
                         "stage": EventFollowupStage.SUMMARY_SHOWN,
-                        "last_bot_message": last_bot_msg[:500]
+                        "matched_event": event_name,  # Pass extracted event name
+                        "last_bot_message": last_bot_msg[:1000]  # Increase to capture event details
                     },
-                    reasoning="User confirming interest in full event details"
+                    reasoning=f"User confirming interest in full event details for: {event_name}"
                 )
             
             # STAGE 1: User confirming after event listing (wants to hear about specific event)
@@ -1035,6 +1040,37 @@ class IntentRouter:
                     return ProgramFollowupStage.SUMMARY_SHOWN
         
         return ProgramFollowupStage.NONE
+    
+    def _extract_event_from_message(self, message: str) -> str:
+        """
+        Extract the PRIMARY event name from a bot message.
+        Finds the event that appears earliest in the message (the main topic).
+        """
+        if not self._event_titles:
+            return ""
+        
+        message_lower = message.lower()
+        best_match = ""
+        best_position = float('inf')
+        
+        for title in self._event_titles:
+            title_lower = title.lower()
+            pos = message_lower.find(title_lower)
+            
+            if pos != -1:
+                # Events mentioned early are more likely to be the PRIMARY topic
+                # vs. events in footer links like "these might resonate with you"
+                is_primary = pos < 200 or f"**{title}" in message or f"*{title}" in message
+                if is_primary and pos < best_position:
+                    best_position = pos
+                    best_match = title
+        
+        if best_match:
+            print(f"[_extract_event_from_message] Found PRIMARY: {best_match} at pos {best_position}", flush=True)
+        else:
+            print(f"[_extract_event_from_message] No event found in message", flush=True)
+        
+        return best_match
     
     def _extract_program_from_message(self, message: str) -> str:
         """

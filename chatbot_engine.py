@@ -588,10 +588,14 @@ Respond with just the summary and question, no additional commentary."""
         
         # STAGE 2: After summary, user wants full details → Show VERBATIM from database
         if context_type == "event" and stage == EventFollowupStage.SUMMARY_SHOWN:
-            print(f"[FOLLOWUP_CONFIRM] Stage 2 triggered - getting full VERBATIM event details", flush=True)
+            # CRITICAL: Use the event name extracted by the router, not fuzzy matching
+            extracted_event = intent_result.slots.get("matched_event", "")
+            print(f"[FOLLOWUP_CONFIRM] Stage 2 triggered - getting full VERBATIM details for: {extracted_event}", flush=True)
             
-            # Get full VERBATIM details from calendar
-            confirm_event_context = get_event_context_for_llm(user_message, conversation_history)
+            # Get full VERBATIM details from calendar using extracted event name
+            # Pass the event name so it doesn't need to guess from user message "y"
+            from events_service import get_event_details_by_name
+            confirm_event_context = get_event_details_by_name(extracted_event) if extracted_event else get_event_context_for_llm(user_message, conversation_history)
             print(f"[FOLLOWUP_CONFIRM] Got event context: {len(confirm_event_context) if confirm_event_context else 0} chars", flush=True)
             
             if confirm_event_context and "{{DIRECT_EVENT}}" in confirm_event_context:

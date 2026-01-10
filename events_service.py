@@ -944,6 +944,10 @@ def _find_event_from_history(conversation_history: List[Dict]) -> Optional[Dict]
     Find the last discussed event from conversation history.
     Uses FUZZY MATCHING - NO HARDCODED EVENT NAMES.
     
+    CRITICAL FIX: Process conversation in strict reverse order and return the FIRST match.
+    This ensures we find the MOST RECENTLY discussed event, not just any event
+    that happens to appear in the database order.
+    
     Searches conversation in reverse order to find the most recently discussed event.
     """
     if not conversation_history:
@@ -958,31 +962,44 @@ def _find_event_from_history(conversation_history: List[Dict]) -> Optional[Dict]
     
     print(f"[_find_event_from_history] Searching {len(conversation_history)} messages for events", flush=True)
     
-    # Search in reverse order (most recent first)
+    # FIXED: Search each message (most recent first) and check BOTH user and assistant messages
+    # Return the FIRST event we find - this will be from the most recent relevant message
     for msg in reversed(conversation_history[-10:]):
         content = msg.get("content", "")
         role = msg.get("role", "")
         
         # For user messages, use fuzzy matching to find event mentions
         if role == "user":
-            # Use the same fuzzy matching function
             matches = find_matching_events(content, all_events)
             if matches and matches[0][1] >= FUZZY_MATCH_THRESHOLD:
                 print(f"[_find_event_from_history] Found via user message: {matches[0][0].get('title')}", flush=True)
                 return matches[0][0]
-    
-    # Fallback: check assistant messages for the last detailed event response
-    for msg in reversed(conversation_history[-10:]):
-        content = msg.get("content", "").lower()
-        role = msg.get("role", "")
         
+        # For assistant messages, find the PRIMARY event being discussed
+        # CRITICAL FIX: Don't just check if any event title appears - find the BEST match
+        # by scoring how prominently each event is featured (early in message = primary topic)
         if role == "assistant":
+            content_lower = content.lower()
+            best_match = None
+            best_position = float('inf')  # Lower is better (earlier in message)
+            
             for event in all_events:
                 title = event.get("title", "")
-                # Check if this event was discussed in detail (full title mentioned)
-                if title.lower() in content:
-                    print(f"[_find_event_from_history] Found via assistant message: {title}", flush=True)
-                    return event
+                title_lower = title.lower()
+                pos = content_lower.find(title_lower)
+                
+                if pos != -1:
+                    # Check if this is the PRIMARY event (mentioned early, likely bold/featured)
+                    # Events in "Here are some programs" links are at the END of messages
+                    is_primary = pos < 200 or f"**{title}" in content or f"*{title}" in content
+                    
+                    if is_primary and pos < best_position:
+                        best_position = pos
+                        best_match = event
+            
+            if best_match:
+                print(f"[_find_event_from_history] Found PRIMARY event in assistant msg: {best_match.get('title')} at pos {best_position}", flush=True)
+                return best_match
     
     print("[_find_event_from_history] No event found in history", flush=True)
     return None
@@ -1502,7 +1519,8 @@ def _build_event_summary_response(event: Dict) -> str:
     - Stage 2: Full VERBATIM details + navigation CTA (_build_single_event_response)
     """
     title = event.get('title', 'Event')
-    start_date = event.get('startDate', '')
+    # Support both formats: 'start' from get_upcoming_events() and 'startDate' from raw DB
+    start_date = event.get('start') or event.get('startDate', '')
     location = event.get('location', '')
     event_page = event.get('eventPageUrl', '')
     
@@ -1529,17 +1547,56 @@ def _build_event_summary_response(event: Dict) -> str:
     # Add STAGE1_CTA for progressive disclosure
     follow_up = "\n\n" + STAGE1_CTA
     
-    # Return WITHOUT DIRECT_EVENT marker - let LLM add a friendly intro
-    return f"""
-=== EVENT SUMMARY ===
-{summary}
-{follow_up}
+    # CRITICAL FIX: Use DIRECT_EVENT marker so the LLM doesn't paraphrase and drop the date
+    # Stage-1 summaries MUST include the date - users need to know WHEN the event is
+    return f"""{{{{DIRECT_EVENT}}}}
+We have an upcoming event: {summary}
+
+{STAGE1_CTA}
+{{{{/DIRECT_EVENT}}}}
 
 EVENT_METADATA (for router tracking):
 - Title: {event.get('title', '')}
 - Event Page: {event_page}
 - Stage: SUMMARY_SHOWN
 """
+
+
+def get_event_details_by_name(event_name: str) -> str:
+    """
+    Get full VERBATIM event details by event name.
+    Called when user confirms interest in a specific event (e.g., "yes" after summary).
+    
+    Args:
+        event_name: The name of the event to look up
+        
+    Returns:
+        Formatted event details with DIRECT_EVENT marker
+    """
+    if not event_name:
+        print("[get_event_details_by_name] No event name provided", flush=True)
+        return ""
+    
+    events = get_upcoming_events(20)
+    if not events:
+        return ""
+    
+    # Find the event by name (case-insensitive partial match)
+    event_name_lower = event_name.lower()
+    matched_event = None
+    
+    for event in events:
+        title = event.get("title", "")
+        if title.lower() == event_name_lower or event_name_lower in title.lower():
+            matched_event = event
+            break
+    
+    if matched_event:
+        print(f"[get_event_details_by_name] Found event: {matched_event.get('title')}", flush=True)
+        return _build_single_event_response(matched_event)
+    
+    print(f"[get_event_details_by_name] No match for: {event_name}", flush=True)
+    return ""
 
 
 def _build_single_event_response(event: Dict) -> str:
