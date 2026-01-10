@@ -220,8 +220,10 @@ TIME_PATTERNS = [
     r'\blist\s+(?:of\s+)?(?:events?|workshops?|sessions?)\b',
     r'\bshow\s+(?:me\s+)?(?:events?|workshops?|sessions?)\b',
     r'\bhave\s+any\s+events?\b',
-    r'\bdo\s+you\s+have\s+(?:any\s+)?(?:events?|workshops?|sessions?)\b',
+    r'\bdo\s+you\s+have\s+(?:any\s+)?(?:events?|workshops?|sessions?|retreats?)\b',
     r'\bgive\s+me\s+(?:the\s+)?events?\b',
+    r'\btell\s+me\s+about\s+(?:your\s+)?(?:events?|workshops?|retreats?)\b',
+    r'\b(?:any|have\s+any)\s+retreats?\b',
     # Location queries (about events)
     r'\bwhere\s+is\s+(?:the\s+)?(?:\w+\s+)+(?:held|happening|taking\s+place|located)\b',
     r'\blocation\s+(?:of|for)\b',
@@ -724,6 +726,11 @@ class IntentRouter:
         
         # #1, #2, etc.
         match = re.match(r'^#([1-9])$', msg)
+        if match:
+            return int(match.group(1)) - 1
+        
+        # "option 2", "number 3", "choice 1" patterns
+        match = re.search(r'(?:option|number|choice)\s*([1-9])', msg)
         if match:
             return int(match.group(1)) - 1
         

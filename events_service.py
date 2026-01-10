@@ -601,6 +601,11 @@ def extract_month_filter(message: str) -> Optional[int]:
             rf"\bevents?\s+in\s+{month_name}\b",
             rf"\bhappening\s+in\s+{month_name}\b",
             rf"\b{month_name}\s+\d{{4}}\b",  # "June 2026"
+            # Follow-up patterns: "How about June?", "What about April?", "And what about May?"
+            rf"\bhow\s+about\s+{month_name}\b",
+            rf"\bwhat\s+about\s+(?:in\s+)?{month_name}\b",
+            rf"\band\s+(?:what\s+about\s+)?(?:in\s+)?{month_name}\b",
+            rf"\b{month_name}\?",  # Just "June?" at end
         ]
         for pattern in patterns:
             if re.search(pattern, message_lower):
