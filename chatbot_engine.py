@@ -26,9 +26,167 @@ from knowledge_base import search_knowledge_base, get_knowledge_base_stats
 from safety_guardrails import apply_safety_filters, get_system_prompt, filter_response_for_safety, inject_program_links, inject_checkout_urls, append_contextual_links, format_numbered_lists, inject_dynamic_enrollment, fix_compound_trailing_questions, enforce_trailing_cta
 from events_service import is_event_query, get_event_context_for_llm, process_calendar_action, fix_navigation_urls
 from intent_router import get_intent_router, IntentType, EventFollowupStage, ProgramFollowupStage, refresh_router_data
+from safety_guardrails import ANNA_PROGRAM_URLS
 
 _openai_client = None
 _router_initialized = False
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# PROGRAM NAMES FOR LLM-FIRST DETECTION (bypass IntentRouter for program queries)
+# ═══════════════════════════════════════════════════════════════════════════════
+PROGRAM_NAMES = [
+    "Elite Private Advisory", "The Ascend Collective", "VIP Day",
+    "SoulAlign Heal", "SoulAlign Manifestation Mastery", "SoulAlign Money",
+    "Divine Abundance Codes", "Avatar", "Soul Align Business Course",
+    "Launch and Grow Live", "Get Clients Fast Masterclass", "SoulAlign Coach",
+    "SoulAlign Business"
+]
+
+def is_program_query(user_message: str, conversation_history: List[dict] = None) -> bool:
+    """
+    Lightweight detection for program-related queries.
+    Used to bypass IntentRouter for programs (LLM-first approach like JoveHeal).
+    
+    Returns True if:
+    - Message mentions a specific program name
+    - Message asks about "programs", "courses", "coaching"
+    - Message is a follow-up to a program conversation (e.g., "yes", "tell me more")
+    """
+    message_lower = user_message.lower()
+    
+    # Check for explicit program keywords
+    program_keywords = ["program", "course", "coaching", "training", "enroll", "sign up"]
+    if any(kw in message_lower for kw in program_keywords):
+        return True
+    
+    # Check for specific program names
+    for program in PROGRAM_NAMES:
+        if program.lower() in message_lower:
+            return True
+    
+    # Check if this is a follow-up to a program conversation
+    if conversation_history:
+        last_bot_msg = ""
+        for msg in reversed(conversation_history[-4:]):
+            if msg.get("role") == "assistant":
+                last_bot_msg = msg.get("content", "").lower()
+                break
+        
+        # If last bot message was about programs, and user gives short affirmative/follow-up
+        if last_bot_msg:
+            is_program_context = any(prog.lower() in last_bot_msg for prog in PROGRAM_NAMES)
+            is_program_context = is_program_context or "program" in last_bot_msg
+            
+            # Short responses in program context should stay in program flow
+            is_short_followup = len(user_message.split()) <= 5
+            affirmatives = ["yes", "yeah", "sure", "ok", "okay", "please", "tell me more", "more", "details"]
+            is_affirmative = any(aff in message_lower for aff in affirmatives)
+            
+            # Number selections (e.g., "3" or "option 3")
+            is_selection = bool(re.match(r'^[1-9]$|^option\s*[1-9]$|^number\s*[1-9]$', message_lower.strip()))
+            
+            if is_program_context and (is_short_followup and (is_affirmative or is_selection)):
+                return True
+    
+    return False
+
+
+def _handle_program_llm_first(
+    user_message: str,
+    conversation_history: List[dict] = None,
+    n_context_docs: int = 8
+) -> dict:
+    """
+    LLM-FIRST PROGRAM HANDLER (bypasses IntentRouter)
+    
+    This mimics JoveHeal's simple approach:
+    1. Get relevant program info from knowledge base
+    2. Let LLM respond naturally with program info
+    3. LLM offers navigation: "Would you like me to take you to the [Program](url) page?"
+    4. If user says "yes", LLM emits [NAVIGATE:url]
+    
+    The system prompt instructs the LLM how to handle the full conversation flow.
+    """
+    client = get_openai_client()
+    if client is None:
+        return None  # Fall back to regular flow
+    
+    # Build context-aware search query
+    search_query = build_context_aware_query(user_message, conversation_history)
+    
+    # Get program info from knowledge base
+    relevant_docs = search_knowledge_base(search_query, n_results=n_context_docs, prefer_programs=True)
+    context = format_context_from_docs(relevant_docs) if relevant_docs else ""
+    
+    # Build conversation messages
+    messages = []
+    
+    # System prompt with program navigation instructions
+    system_prompt = get_system_prompt() + """
+
+═══════════════════════════════════════════════════════════════════════════════
+PROGRAM NAVIGATION INSTRUCTIONS (CRITICAL - FOLLOW EXACTLY)
+═══════════════════════════════════════════════════════════════════════════════
+
+When discussing programs, follow this EXACT flow:
+
+1. INITIAL QUESTION: When user asks about programs or a specific program:
+   - Provide helpful information from the knowledge base
+   - End with: "Would you like me to take you to the [Program Name](url) page?"
+
+2. USER CONFIRMS (says "yes", "sure", "please", etc.):
+   - Respond with a brief confirmation message
+   - Include the navigation marker: [NAVIGATE:url]
+   - Example: "Taking you to the SoulAlign Heal page now!\n\n[NAVIGATE:https://www.annakitney.com/soulalign-heal/]"
+
+3. USER SELECTS NUMBER: When user selects from a numbered list (e.g., "3"):
+   - Provide summary of that specific program
+   - End with navigation offer: "Would you like me to take you to the [Program Name](url) page?"
+
+PROGRAM URLS (use these exact URLs):
+""" + "\n".join([f"- {name}: {url}" for name, url in ANNA_PROGRAM_URLS.items() if name not in ["All Programs", "Work With Me", "Contact", "Clarity Call"]])
+    
+    messages.append({"role": "system", "content": system_prompt})
+    
+    # Add context
+    if context:
+        messages.append({"role": "system", "content": f"KNOWLEDGE BASE CONTEXT:\n{context}"})
+    
+    # Add conversation history
+    if conversation_history:
+        for msg in conversation_history[-6:]:
+            if msg.get("role") in ["user", "assistant"]:
+                messages.append({"role": msg["role"], "content": msg["content"]})
+    
+    # Add current user message
+    messages.append({"role": "user", "content": user_message})
+    
+    try:
+        response = client.chat.completions.create(
+            model="gpt-4o-mini",
+            messages=messages,
+            max_tokens=800,
+            temperature=0.7
+        )
+        
+        response_text = response.choices[0].message.content.strip()
+        
+        # Post-process: inject program links, apply safety filters
+        response_text = inject_program_links(response_text)
+        response_text = filter_response_for_safety(response_text)
+        
+        print(f"[LLM-FIRST PROGRAM] Generated response (length: {len(response_text)})", flush=True)
+        
+        return {
+            "response": response_text,
+            "sources": [doc.get("source", "") for doc in relevant_docs[:3]] if relevant_docs else [],
+            "safety_triggered": False,
+            "intent": "program_llm_first"
+        }
+        
+    except Exception as e:
+        print(f"[LLM-FIRST PROGRAM] Error: {e}", flush=True)
+        return None  # Fall back to regular flow
 
 def _ensure_router_initialized():
     """Ensure the intent router is initialized with event titles and program names."""
@@ -321,7 +479,20 @@ def generate_response(
         }
     
     # ═══════════════════════════════════════════════════════════════════════
-    # INTENT-FIRST ROUTING: Classify intent BEFORE any database queries
+    # LLM-FIRST PROGRAM HANDLING (BYPASS INTENTROUTER FOR PROGRAMS)
+    # This mimics JoveHeal's simple approach - let LLM handle program 
+    # conversations naturally without complex intent routing
+    # ═══════════════════════════════════════════════════════════════════════
+    if is_program_query(user_message, conversation_history):
+        print(f"[LLM-FIRST] Detected program query, bypassing IntentRouter", flush=True)
+        program_response = _handle_program_llm_first(user_message, conversation_history, n_context_docs)
+        if program_response:
+            return program_response
+        # Fall through to router if LLM-first fails
+        print(f"[LLM-FIRST] Fallback to IntentRouter", flush=True)
+    
+    # ═══════════════════════════════════════════════════════════════════════
+    # INTENT-FIRST ROUTING: Only for EVENT queries (programs bypass above)
     # This prevents RAG from polluting event queries and vice versa
     # ═══════════════════════════════════════════════════════════════════════
     router = get_intent_router()
