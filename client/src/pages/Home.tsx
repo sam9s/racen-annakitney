@@ -325,6 +325,13 @@ export default function Home() {
     }
   }, []);
 
+  // Refocus the textarea after loading completes so user can continue typing
+  useEffect(() => {
+    if (!isLoading && textareaRef.current) {
+      textareaRef.current.focus();
+    }
+  }, [isLoading]);
+
   const sendMessage = async () => {
     if (!input.trim() || isLoading) return;
 
