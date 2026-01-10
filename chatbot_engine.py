@@ -401,8 +401,10 @@ Respond with just the summary and question, no additional commentary."""
                                 if program_name and (program_name.lower() in name.lower() or name.lower() in program_name.lower()):
                                     program_url = url
                                     break
-                            summary = enforce_trailing_cta(summary, stage='summary_shown', program_url=program_url)
-                            print(f"[FOLLOWUP_SELECT] Applied CTA enforcement for {program_name}", flush=True)
+                            # Use 'details_shown' to get Stage 2 navigation CTA
+                            # User's expected flow: Summary → "Would you like me to navigate to that page?"
+                            summary = enforce_trailing_cta(summary, stage='details_shown', program_url=program_url)
+                            print(f"[FOLLOWUP_SELECT] Applied navigation CTA for {program_name}", flush=True)
                             return {
                                 "response": summary,
                                 "sources": [doc.get("source", "") for doc in relevant_docs[:3]],
