@@ -413,5 +413,117 @@ export async function registerRoutes(
   // Start the scheduled sync
   startScheduledSync();
 
+  // ============ ADMIN DASHBOARD API ROUTES ============
+  
+  const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD;
+  const adminSessions = new Map<string, { email: string; name: string; expires: number }>();
+
+  app.post("/api/admin/login", (req: Request, res: Response) => {
+    const { password } = req.body;
+    if (!ADMIN_PASSWORD) {
+      return res.status(500).json({ error: 'Admin password not configured' });
+    }
+    if (password === ADMIN_PASSWORD) {
+      const sessionId = Math.random().toString(36).substring(2, 15);
+      adminSessions.set(sessionId, {
+        email: 'admin@annakitney.com',
+        name: 'Admin',
+        expires: Date.now() + 24 * 60 * 60 * 1000
+      });
+      res.cookie('adminSession', sessionId, { httpOnly: true, maxAge: 24 * 60 * 60 * 1000 });
+      res.json({ success: true, user: { email: 'admin@annakitney.com', name: 'Admin' } });
+    } else {
+      res.status(401).json({ error: 'Invalid password' });
+    }
+  });
+
+  app.get("/api/admin/session", (req: Request, res: Response) => {
+    const sessionId = req.cookies?.adminSession;
+    const session = sessionId ? adminSessions.get(sessionId) : null;
+    if (session && session.expires > Date.now()) {
+      res.json({ authenticated: true, user: { email: session.email, name: session.name } });
+    } else {
+      res.json({ authenticated: false });
+    }
+  });
+
+  app.delete("/api/admin/login", (req: Request, res: Response) => {
+    const sessionId = req.cookies?.adminSession;
+    if (sessionId) {
+      adminSessions.delete(sessionId);
+      res.clearCookie('adminSession');
+    }
+    res.json({ success: true });
+  });
+
+  const adminAuthMiddleware = (req: Request, res: Response, next: Function) => {
+    const sessionId = req.cookies?.adminSession;
+    const session = sessionId ? adminSessions.get(sessionId) : null;
+    if (session && session.expires > Date.now()) {
+      next();
+    } else {
+      res.status(401).json({ error: 'Unauthorized' });
+    }
+  };
+
+  app.get("/api/admin/stats", async (req: Request, res: Response) => {
+    try {
+      const range = req.query.range || '7d';
+      const response = await fetch(`${FLASK_API_URL}/api/admin/stats?range=${range}`, {
+        headers: {
+          ...(INTERNAL_API_KEY && { "X-Internal-Api-Key": INTERNAL_API_KEY }),
+        },
+      });
+      if (!response.ok) {
+        return res.status(response.status).json({ error: "Failed to fetch stats" });
+      }
+      const data = await response.json();
+      res.json(data);
+    } catch (error) {
+      console.error("Error fetching admin stats:", error);
+      res.status(500).json({ error: "Failed to fetch stats" });
+    }
+  });
+
+  app.get("/api/admin/conversations", async (req: Request, res: Response) => {
+    try {
+      const range = req.query.range || '7d';
+      const limit = req.query.limit || '50';
+      const page = req.query.page || '1';
+      const response = await fetch(`${FLASK_API_URL}/api/admin/conversations?range=${range}&limit=${limit}&page=${page}`, {
+        headers: {
+          ...(INTERNAL_API_KEY && { "X-Internal-Api-Key": INTERNAL_API_KEY }),
+        },
+      });
+      if (!response.ok) {
+        return res.status(response.status).json({ error: "Failed to fetch conversations" });
+      }
+      const data = await response.json();
+      res.json(data);
+    } catch (error) {
+      console.error("Error fetching admin conversations:", error);
+      res.status(500).json({ error: "Failed to fetch conversations" });
+    }
+  });
+
+  app.get("/api/admin/conversations/:sessionId", async (req: Request, res: Response) => {
+    try {
+      const sessionId = encodeURIComponent(req.params.sessionId);
+      const response = await fetch(`${FLASK_API_URL}/api/admin/conversations/${sessionId}`, {
+        headers: {
+          ...(INTERNAL_API_KEY && { "X-Internal-Api-Key": INTERNAL_API_KEY }),
+        },
+      });
+      if (!response.ok) {
+        return res.status(response.status).json({ error: "Failed to fetch conversation" });
+      }
+      const data = await response.json();
+      res.json(data);
+    } catch (error) {
+      console.error("Error fetching conversation detail:", error);
+      res.status(500).json({ error: "Failed to fetch conversation" });
+    }
+  });
+
   return httpServer;
 }

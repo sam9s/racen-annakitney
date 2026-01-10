@@ -45,3 +45,8 @@ waitForPort = 5000
 
 [agent]
 integrations = ["javascript_openai_ai_integrations:2.0.0", "google-calendar:1.0.0"]
+
+[userenv]
+
+[userenv.shared]
+INTERNAL_API_KEY = "6fd21da22cefc1aa5c9f630f9cf62bba"
