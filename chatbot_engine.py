@@ -800,10 +800,12 @@ IMPORTANT: Only ask about enrollment if the user EXPLICITLY asks about enrolling
         program_stage = intent_result.slots.get("stage", None)
         if program_stage and program_stage != ProgramFollowupStage.NONE:
             # Map ProgramFollowupStage enum values to enforce_trailing_cta stage strings
+            # Stage indicates what was shown in PREVIOUS message
+            # Map to what CTA should appear in CURRENT message
             stage_map = {
-                ProgramFollowupStage.SUMMARY_SHOWN: 'summary_shown',
-                ProgramFollowupStage.DETAILS_SHOWN: 'details_shown',
-                ProgramFollowupStage.NAVIGATE_OFFERED: 'details_shown',  # Same CTA as details_shown
+                ProgramFollowupStage.SUMMARY_SHOWN: 'details_shown',     # Previous showed summary → NOW show details + Stage 2 CTA
+                ProgramFollowupStage.DETAILS_SHOWN: None,                # Previous showed details → NOW navigate (no CTA needed)
+                ProgramFollowupStage.NAVIGATE_OFFERED: None,             # Navigation already offered → no CTA needed
             }
             cta_stage = stage_map.get(program_stage, None)
             if cta_stage:
@@ -1010,10 +1012,12 @@ IMPORTANT: Only ask about enrollment if the user EXPLICITLY asks about enrolling
         # ONLY apply when router explicitly sets a stage - don't guess stages
         program_stage = intent_result.slots.get("stage", None)
         if program_stage and program_stage != ProgramFollowupStage.NONE:
+            # Stage indicates what was shown in PREVIOUS message
+            # Map to what CTA should appear in CURRENT message
             stage_map = {
-                ProgramFollowupStage.SUMMARY_SHOWN: 'summary_shown',
-                ProgramFollowupStage.DETAILS_SHOWN: 'details_shown',
-                ProgramFollowupStage.NAVIGATE_OFFERED: 'details_shown',  # Same CTA as details_shown
+                ProgramFollowupStage.SUMMARY_SHOWN: 'details_shown',     # Previous showed summary → NOW show details + Stage 2 CTA
+                ProgramFollowupStage.DETAILS_SHOWN: None,                # Previous showed details → NOW navigate (no CTA needed)
+                ProgramFollowupStage.NAVIGATE_OFFERED: None,             # Navigation already offered → no CTA needed
             }
             cta_stage = stage_map.get(program_stage, None)
             if cta_stage:
