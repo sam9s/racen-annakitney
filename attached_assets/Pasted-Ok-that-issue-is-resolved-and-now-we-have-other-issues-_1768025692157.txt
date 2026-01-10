@@ -1,0 +1,46 @@
+Ok, that issue is resolved, and now we have other issues again. A logical error. This is what I am saying, brother. We need to develop a very comprehensive human-oriented test. You came up with a detailed plan of how we can test the chatbot because every time we try to hold a conversation, the bot is not giving correct responses, and we are struggling a lot on this. Consider the below conversation. In the second question, I was kind of impressed when I asked, "I need details on SoulAlign Heal program," and the bot correctly says that it's a program as well as an event. So, I said, "I just said one, which means I want program details." And instead of giving me SoulAlign Heal program details, it gives me SoulAlign business score summary. I still continued by putting a why and again wrong response. The last response I didn't expect because we haven't rectified the why issue, but the rest logic is still incorrect, and we are not able to make this clear. We need to plan a comprehensive testing method. Please consult with the architect; otherwise, we will be running in circles, and it would take months and months before the bot becomes perfect. There has to be a testing mechanism, and not the CLI testing mechanism. A testing mechanism that tests how a natural human will chat with the bot. I don't know. There must be some way. Okay, do one thing: can you also create an MD file of the exact issue that we are facing? Not the issue, create an MD file wherein you need to describe in detail what we are facing, the issue we are facing, we are not able to create that test methodology and all that stuff. I will ask ChatGPT and come back to you. In the meantime, you can also consult the architect what we need to do.
+
+Below is the conversation that still went wrong. 
+
+What other programs do you offer?
+
+We offer several programs to support your journey:
+
+1. Elite Private Advisory - Premium 1:1 mentorship for visionary female founders.
+
+2. The Ascend Collective - Our signature group coaching experience for soul-led entrepreneurs.
+
+3. SoulAlign Heal - Deep healing work to clear blocks and align with your purpose.
+
+4. SoulAlign Manifestation Mastery - Master the art of conscious manifestation.
+
+5. Divine Abundance Codes - Transform your relationship with money and abundance.
+
+Would you like to know more about any of these?
+Sources:
+
+https://www.annakitney.com/soulalign-money/
+https://www.annakitney.com/soulalign-manifestation-mastery/
+https://www.annakitney.com/all-the-things/
+I need details on SoulAlign Heal program.
+
+I see 'SoulAlign® Heal' is both a program and an upcoming event. Are you asking about:
+1. Program details - What's included, pricing, and how to enroll
+2. Event dates - When it's happening and how to register
+
+Just let me know which one you'd like to explore!
+1
+
+The Soul Align Business Course offers lifetime access to a comprehensive program that includes recorded content, meditations, energy clearings, and live group coaching calls over eight weeks. Participants will learn effective strategies to attract their ideal clients and build a successful business while receiving ongoing support and new materials at no extra cost. Would you like more details about this program?
+Sources:
+
+https://www.annakitney.com/soul-align-business-course/
+https://www.annakitney.com/soul-align-business-course/
+https://www.annakitney.com/soulalign-money/
+y
+
+I see 'The Identity Overflow' is both a program and an upcoming event. Are you asking about:
+1. Program details - What's included, pricing, and how to enroll
+2. Event dates - When it's happening and how to register
+
+Just let me know which one you'd like to explore!

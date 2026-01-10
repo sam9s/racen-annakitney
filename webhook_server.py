@@ -80,6 +80,167 @@ except Exception as e:
 
 conversation_histories = {}
 
+# Track pending selections and confirmations per session
+# Structure: {session_id: {"pending_selection": [{"type": "event"|"program", "id": ..., "name": ...}, ...],
+#                          "pending_confirmation": {"type": "event"|"program", "id": ..., "name": ..., "action": "details"|"navigate"}}}
+conversation_states = {}
+
+import re
+
+def _extract_numbered_list_items(response_text: str) -> list:
+    """
+    Extract items from a numbered list in a response.
+    Returns list of dicts: [{"name": "...", "type": "event"|"program"}, ...]
+    """
+    items = []
+    patterns = [
+        r'^\s*\d+\.\s*\*\*\[([^\]]+)\]\([^)]+\)\*\*',  # 1. **[Name](url)**
+        r'^\s*\[?\*\*([^\*\]]+)\*\*\]?\s*[-–—]',        # **Name** - 
+        r'^\s*\d+\.\s*\[([^\]]+)\]\([^)]+\)',           # 1. [Name](url)
+        r'^\s*\d+\.\s*\*\*([^*\-]+)\*\*',               # 1. **Name**
+        r'^\s*\d+\.\s+([A-Z][^-\n]{3,50})\s*[-–—]',     # 1. Name - description
+    ]
+    
+    event_keywords = ['event', 'workshop', 'meditation', 'retreat', 'challenge', 'session', 'live']
+    program_keywords = ['program', 'course', 'coaching', 'mentorship', 'advisory', 'collective', 'masterclass']
+    
+    response_lower = response_text.lower()
+    
+    for line in response_text.split('\n'):
+        for pattern in patterns:
+            match = re.match(pattern, line, re.IGNORECASE)
+            if match:
+                name = match.group(1).strip()
+                name = re.sub(r'[\*\[\]]', '', name).strip()
+                if name and len(name) > 2:
+                    item_type = "program"
+                    if any(kw in response_lower for kw in event_keywords):
+                        if any(kw in response_lower for kw in ['event', 'upcoming']):
+                            item_type = "event"
+                    items.append({"name": name, "type": item_type})
+                    break
+    
+    return items
+
+def _is_numbered_selection(message: str) -> tuple:
+    """
+    Check if message is a numbered selection (1, 2, first, second, etc.)
+    Returns (is_selection, zero_based_index)
+    """
+    message = message.strip().lower()
+    ordinal_map = {
+        '1': 0, 'one': 0, 'first': 0, '1st': 0,
+        '2': 1, 'two': 1, 'second': 1, '2nd': 1,
+        '3': 2, 'three': 2, 'third': 2, '3rd': 2,
+        '4': 3, 'four': 3, 'fourth': 3, '4th': 3,
+        '5': 4, 'five': 4, 'fifth': 4, '5th': 4,
+    }
+    if message in ordinal_map:
+        return True, ordinal_map[message]
+    if message.isdigit() and 1 <= int(message) <= 10:
+        return True, int(message) - 1
+    return False, -1
+
+def _update_conversation_state(session_id: str, response_text: str):
+    """
+    Analyze response and update conversation state for pending selections/confirmations.
+    """
+    global conversation_states
+    
+    if session_id not in conversation_states:
+        conversation_states[session_id] = {}
+    
+    items = _extract_numbered_list_items(response_text)
+    if items:
+        conversation_states[session_id]["pending_selection"] = items
+        print(f"[ConversationState] Stored {len(items)} pending selections: {[i['name'] for i in items]}", flush=True)
+    
+    detail_cta_patterns = [
+        r"would you like (?:more )?details",
+        r"would you like to know more",
+        r"shall I (?:share|tell|provide) more",
+        r"want me to share more",
+    ]
+    navigate_cta_patterns = [
+        r"would you like me to take you to",
+        r"take you to the (?:event|program) page",
+        r"view (?:the )?(?:event|program) page",
+    ]
+    
+    response_lower = response_text.lower()
+    
+    for pattern in navigate_cta_patterns:
+        if re.search(pattern, response_lower):
+            name_match = re.search(r'\*\*([^\*]+)\*\*', response_text)
+            if name_match:
+                name = name_match.group(1).strip()
+                conversation_states[session_id]["pending_confirmation"] = {
+                    "name": name,
+                    "action": "navigate"
+                }
+                print(f"[ConversationState] Stored pending navigation confirmation for: {name}", flush=True)
+            break
+    else:
+        for pattern in detail_cta_patterns:
+            if re.search(pattern, response_lower):
+                name_match = re.search(r'\*\*([^\*]+)\*\*', response_text)
+                if name_match:
+                    name = name_match.group(1).strip()
+                    conversation_states[session_id]["pending_confirmation"] = {
+                        "name": name,
+                        "action": "details"
+                    }
+                    print(f"[ConversationState] Stored pending details confirmation for: {name}", flush=True)
+                break
+
+def _resolve_selection_message(session_id: str, message: str) -> str:
+    """
+    If message is a numbered selection, resolve it using stored state.
+    Returns modified message with explicit item name, or original if not a selection.
+    """
+    is_selection, idx = _is_numbered_selection(message)
+    if not is_selection:
+        return message
+    
+    state = conversation_states.get(session_id, {})
+    pending = state.get("pending_selection", [])
+    
+    if idx < len(pending):
+        item = pending[idx]
+        resolved_msg = f"Tell me about {item['name']}"
+        print(f"[ConversationState] Resolved '{message}' to '{resolved_msg}'", flush=True)
+        conversation_states[session_id]["pending_selection"] = []
+        return resolved_msg
+    
+    return message
+
+def _resolve_confirmation_message(session_id: str, message: str) -> str:
+    """
+    If message is an affirmative and we have pending confirmation, resolve it.
+    Returns modified message or original.
+    """
+    affirmatives = ['y', 'yes', 'yeah', 'yep', 'sure', 'ok', 'okay', 'please', 'go ahead', 'tell me more']
+    if message.strip().lower() not in affirmatives:
+        return message
+    
+    state = conversation_states.get(session_id, {})
+    pending = state.get("pending_confirmation", {})
+    
+    if pending:
+        name = pending.get("name", "")
+        action = pending.get("action", "details")
+        
+        if action == "navigate":
+            resolved_msg = f"Yes, take me to the {name} page"
+        else:
+            resolved_msg = f"Yes, tell me more about {name}"
+        
+        print(f"[ConversationState] Resolved '{message}' to '{resolved_msg}'", flush=True)
+        conversation_states[session_id]["pending_confirmation"] = {}
+        return resolved_msg
+    
+    return message
+
 
 @app.route("/health", methods=["GET"])
 def health_check():
@@ -309,8 +470,12 @@ def api_chat():
     if conversation_history and not conversation_histories[session_id]:
         conversation_histories[session_id] = conversation_history
     
+    # RESOLVE: If message is a numbered selection or confirmation, resolve it using stored state
+    resolved_message = _resolve_selection_message(session_id, message)
+    resolved_message = _resolve_confirmation_message(session_id, resolved_message)
+    
     result = generate_response(
-        message, 
+        resolved_message,  # Use resolved message instead of raw message
         conversation_histories[session_id],
         user_name=user_name,
         is_returning_user=is_returning_user,
@@ -318,6 +483,9 @@ def api_chat():
     )
     
     response_text = result.get("response", "")
+    
+    # UPDATE STATE: Analyze response for numbered lists or CTAs to store for next turn
+    _update_conversation_state(session_id, response_text)
     
     logged_entry = log_conversation(
         session_id=session_id,
@@ -464,13 +632,17 @@ def api_chat_stream():
     if conversation_history and not conversation_histories[session_id]:
         conversation_histories[session_id] = conversation_history
     
+    # RESOLVE: If message is a numbered selection or confirmation, resolve it using stored state
+    resolved_message = _resolve_selection_message(session_id, message)
+    resolved_message = _resolve_confirmation_message(session_id, resolved_message)
+    
     def generate():
         full_response = ""
         sources = []
         safety_triggered = False
         
         for chunk in generate_response_stream(
-            message, 
+            resolved_message,  # Use resolved message instead of raw message
             conversation_histories[session_id],
             user_name=user_name,
             is_returning_user=is_returning_user,
@@ -496,6 +668,9 @@ def api_chat_stream():
             sources=sources,
             channel="web"
         )
+        
+        # UPDATE STATE: Analyze response for numbered lists or CTAs to store for next turn
+        _update_conversation_state(session_id, full_response)
         
         conversation_histories[session_id].append({"role": "user", "content": message})
         conversation_histories[session_id].append({"role": "assistant", "content": full_response})
