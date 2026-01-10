@@ -319,7 +319,7 @@ def api_chat():
     
     response_text = result.get("response", "")
     
-    log_conversation(
+    logged_entry = log_conversation(
         session_id=session_id,
         user_question=message,
         bot_answer=response_text,
@@ -328,6 +328,8 @@ def api_chat():
         sources=result.get("sources", []),
         channel="web"
     )
+    
+    conversation_id = logged_entry.get("conversation_id") if logged_entry else None
     
     conversation_histories[session_id].append({"role": "user", "content": message})
     conversation_histories[session_id].append({"role": "assistant", "content": response_text})
@@ -356,7 +358,8 @@ def api_chat():
         "session_id": session_id,
         "user_id": user_id,
         "is_returning_user": is_returning_user,
-        "intent": result.get("intent", "unknown")
+        "intent": result.get("intent", "unknown"),
+        "conversation_id": conversation_id
     })
 
 
