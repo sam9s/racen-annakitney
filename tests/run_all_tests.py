@@ -1,33 +1,42 @@
 #!/usr/bin/env python3
 """
-Comprehensive Test Runner for Anna Kitney Chatbot
+Comprehensive Test Runner for Chatbot Testing Framework
 
-Runs all test suites and generates a summary report.
+Orchestrates all test suites:
+- Unit tests (pytest)
+- Scenario tests (end-to-end API tests)
+- LLM evaluation (response quality scoring)
+- Adversarial tests (security and safety)
 
 Usage:
-    python tests/run_all_tests.py
+    python tests/run_all_tests.py [--suite SUITE] [--base-url URL]
 
-Output:
-    - Console output with pass/fail status
-    - docs/test_results_summary.md with detailed results
+Suites:
+    all         Run all test suites (default)
+    unit        Run pytest unit tests only
+    scenarios   Run end-to-end scenario tests only
+    llm_eval    Run LLM-as-Judge evaluation only
+    adversarial Run adversarial/safety tests only
 """
 
 import subprocess
 import sys
 import json
 import os
+import re
+import argparse
 from datetime import datetime
+from typing import Dict, Tuple
 
-def run_pytest_suite():
+def run_pytest_suite() -> Tuple[bool, Dict]:
     """Run pytest unit tests."""
     print("\n" + "=" * 60)
     print("RUNNING PYTEST UNIT TESTS")
-    print("=" * 60)
+    print("=" * 60 + "\n")
     
     result = subprocess.run(
         [sys.executable, "-m", "pytest", 
-         "tests/test_intent_router.py", 
-         "tests/test_events_service.py",
+         "tests/unit/",
          "-v", "--tb=line"],
         capture_output=True,
         text=True
@@ -35,159 +44,251 @@ def run_pytest_suite():
     
     print(result.stdout)
     
-    # Parse results from output
+    # Parse results
     passed = 0
     failed = 0
-    total = 0
     for line in result.stdout.split('\n'):
-        if 'passed' in line and ('failed' in line or 'passed' in line):
-            # Parse line like "105 passed, 8 failed"
-            import re
+        if 'passed' in line:
             passed_match = re.search(r'(\d+) passed', line)
             failed_match = re.search(r'(\d+) failed', line)
             if passed_match:
                 passed = int(passed_match.group(1))
             if failed_match:
                 failed = int(failed_match.group(1))
-            total = passed + failed
     
-    # Save results to JSON for report generation
-    with open("tests/pytest_results.json", "w") as f:
-        json.dump({"summary": {"passed": passed, "failed": failed, "total": total}}, f)
-    
-    if result.returncode != 0:
-        print("Some tests failed. See details above.")
-    
-    return result.returncode == 0
+    return result.returncode == 0, {"passed": passed, "failed": failed, "total": passed + failed}
 
-def run_api_regression_suite():
-    """Run API regression tests (requires running server)."""
+
+def run_scenario_suite(base_url: str) -> Tuple[bool, Dict]:
+    """Run end-to-end scenario tests."""
     print("\n" + "=" * 60)
-    print("RUNNING API REGRESSION TESTS")
-    print("=" * 60)
+    print("RUNNING SCENARIO TESTS")
+    print("=" * 60 + "\n")
     
-    try:
-        result = subprocess.run(
-            [sys.executable, "tests/chat_regression_suite.py"],
-            capture_output=True,
-            text=True,
-            timeout=300
-        )
-        print(result.stdout[:5000])  # Truncate output
-        return result.returncode == 0
-    except subprocess.TimeoutExpired:
-        print("API tests timed out (server may not be running)")
-        return False
-    except Exception as e:
-        print(f"Could not run API tests: {e}")
-        return False
+    result = subprocess.run(
+        [sys.executable, "tests/scenarios/scenario_runner.py",
+         "--base-url", base_url],
+        capture_output=True,
+        text=True
+    )
+    
+    print(result.stdout)
+    
+    # Parse summary
+    passed = 0
+    total = 0
+    for line in result.stdout.split('\n'):
+        if 'Scenarios:' in line:
+            match = re.search(r'(\d+)/(\d+)', line)
+            if match:
+                passed = int(match.group(1))
+                total = int(match.group(2))
+    
+    return result.returncode == 0, {"passed": passed, "failed": total - passed, "total": total}
 
-def generate_summary_report(pytest_passed: bool, api_passed: bool):
-    """Generate summary report in docs/."""
+
+def run_llm_eval_suite() -> Tuple[bool, Dict]:
+    """Run LLM-as-Judge evaluation."""
+    print("\n" + "=" * 60)
+    print("RUNNING LLM EVALUATION (Demo Mode)")
+    print("=" * 60 + "\n")
     
-    # Try to read pytest results
-    pytest_summary = {"passed": 0, "failed": 0, "total": 0}
-    if os.path.exists("tests/pytest_results.json"):
-        try:
-            with open("tests/pytest_results.json", "r") as f:
-                data = json.load(f)
-                pytest_summary = {
-                    "passed": data.get("summary", {}).get("passed", 0),
-                    "failed": data.get("summary", {}).get("failed", 0),
-                    "total": data.get("summary", {}).get("total", 0)
-                }
-        except:
-            pass
+    result = subprocess.run(
+        [sys.executable, "tests/llm_eval/evaluator.py", "--demo"],
+        capture_output=True,
+        text=True
+    )
     
+    print(result.stdout[:2000])  # Truncate output
+    
+    return True, {"note": "Demo mode - use with real transcripts for full evaluation"}
+
+
+def run_adversarial_suite(base_url: str) -> Tuple[bool, Dict]:
+    """Run adversarial tests."""
+    print("\n" + "=" * 60)
+    print("RUNNING ADVERSARIAL TESTS")
+    print("=" * 60 + "\n")
+    
+    result = subprocess.run(
+        [sys.executable, "tests/adversarial/safety_regression.py",
+         "--base-url", base_url],
+        capture_output=True,
+        text=True
+    )
+    
+    print(result.stdout)
+    
+    # Parse summary
+    passed = 0
+    total = 0
+    for line in result.stdout.split('\n'):
+        if 'Tests:' in line:
+            match = re.search(r'(\d+)/(\d+)', line)
+            if match:
+                passed = int(match.group(1))
+                total = int(match.group(2))
+    
+    return result.returncode == 0, {"passed": passed, "failed": total - passed, "total": total}
+
+
+def generate_master_report(results: Dict) -> str:
+    """Generate comprehensive test report."""
     timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     
-    report = f"""# Chatbot Test Results Summary
+    report = f"""# Comprehensive Test Results
 
 Generated: {timestamp}
 
-## Overview
+## Executive Summary
 
-| Test Suite | Status | Details |
-|------------|--------|---------|
-| Pytest Unit Tests | {"✅ PASS" if pytest_passed else "⚠️ PARTIAL"} | {pytest_summary['passed']}/{pytest_summary['total']} passed |
-| API Regression Tests | {"✅ PASS" if api_passed else "⏸️ SKIPPED"} | Requires running server |
+| Suite | Status | Passed | Failed | Total |
+|-------|--------|--------|--------|-------|
+"""
+    
+    total_passed = 0
+    total_failed = 0
+    
+    for suite_name, data in results.items():
+        status = "✅" if data.get("success", False) else "❌"
+        stats = data.get("stats", {})
+        passed = stats.get("passed", 0)
+        failed = stats.get("failed", 0)
+        total = stats.get("total", 0)
+        
+        if total > 0:
+            total_passed += passed
+            total_failed += failed
+        
+        report += f"| {suite_name} | {status} | {passed} | {failed} | {total} |\n"
+    
+    overall_total = total_passed + total_failed
+    overall_rate = (total_passed / overall_total * 100) if overall_total > 0 else 0
+    
+    report += f"""
+## Overall Statistics
+
+- **Total Tests:** {overall_total}
+- **Passed:** {total_passed}
+- **Failed:** {total_failed}
+- **Pass Rate:** {overall_rate:.1f}%
 
 ## Test Categories
 
-### Unit Tests (pytest)
-- **Intent Router Tests**: Classification, follow-up detection, stage handling
-- **Events Service Tests**: Date parsing, month filtering, fuzzy matching
-- **Coverage**: Greetings, events, programs, ordinals, dates, safety
+### Unit Tests
+Deterministic tests for individual components:
+- Intent classification
+- Date/month parsing
+- Event filtering
+- Safety guardrails
 
-### API Regression Tests
-- **End-to-end chat scenarios**: Multi-turn conversations
-- **Progressive disclosure**: 3-stage event/program flow
-- **Edge cases**: Date parsing, follow-ups, context preservation
+### Scenario Tests
+End-to-end multi-turn conversation tests:
+- Event queries and follow-ups
+- Program information flow
+- Progressive disclosure (3-stage)
 
-## Critical Test Cases
+### LLM Evaluation
+Response quality scoring using GPT-4o-mini:
+- Accuracy, Relevance, Safety, Tone
+- Brand voice compliance
+- CTA correctness
 
-| Test Case | Status | Description |
-|-----------|--------|-------------|
-| Month Follow-up Queries | ✅ | "What about in May?" correctly returns May events |
-| Date Parsing | ✅ | "April 2026" not parsed as "April 20" |
-| Event vs Program Context | ✅ | Follow-ups stay in correct domain |
-| Ordinal Selection | ✅ | "1", "the first one" work after lists |
+### Adversarial Tests
+Security and safety regression:
+- Prompt injection attempts
+- Jailbreak attempts
+- Safety boundary testing
+- Off-topic handling
 
-## Running Tests
+## Running Individual Suites
 
 ```bash
-# Unit tests only
-python -m pytest tests/test_intent_router.py tests/test_events_service.py -v
-
-# Full regression suite (requires server)
-python tests/chat_regression_suite.py
-
 # All tests
 python tests/run_all_tests.py
+
+# Unit tests only
+python tests/run_all_tests.py --suite unit
+
+# Scenario tests (requires running server)
+python tests/run_all_tests.py --suite scenarios
+
+# LLM evaluation
+python tests/run_all_tests.py --suite llm_eval
+
+# Adversarial tests (requires running server)
+python tests/run_all_tests.py --suite adversarial
 ```
-
-## Adding New Tests
-
-1. **Unit tests**: Add to `tests/test_intent_router.py` or `tests/test_events_service.py`
-2. **API tests**: Add scenarios to `tests/chat_test_scenarios.json`
-3. **Run**: `python tests/run_all_tests.py`
 """
     
+    return report
+
+
+def main():
+    parser = argparse.ArgumentParser(description="Comprehensive Test Runner")
+    parser.add_argument("--suite", choices=["all", "unit", "scenarios", "llm_eval", "adversarial"],
+                        default="all", help="Which test suite to run")
+    parser.add_argument("--base-url", default="http://localhost:5000",
+                        help="Base URL for API tests")
+    args = parser.parse_args()
+    
+    print("\n" + "=" * 60)
+    print("CHATBOT COMPREHENSIVE TEST SUITE")
+    print("=" * 60)
+    print(f"Suite: {args.suite}")
+    print(f"Base URL: {args.base_url}")
+    
+    results = {}
+    
+    # Run selected suites
+    if args.suite in ["all", "unit"]:
+        success, stats = run_pytest_suite()
+        results["Unit Tests"] = {"success": success, "stats": stats}
+    
+    if args.suite in ["all", "scenarios"]:
+        success, stats = run_scenario_suite(args.base_url)
+        results["Scenario Tests"] = {"success": success, "stats": stats}
+    
+    if args.suite in ["all", "llm_eval"]:
+        success, stats = run_llm_eval_suite()
+        results["LLM Evaluation"] = {"success": success, "stats": stats}
+    
+    if args.suite in ["all", "adversarial"]:
+        success, stats = run_adversarial_suite(args.base_url)
+        results["Adversarial Tests"] = {"success": success, "stats": stats}
+    
+    # Generate report
+    report = generate_master_report(results)
+    
+    os.makedirs("tests/reports", exist_ok=True)
+    report_path = "tests/reports/comprehensive_results.md"
+    with open(report_path, "w") as f:
+        f.write(report)
+    
+    # Also update docs
     os.makedirs("docs", exist_ok=True)
     with open("docs/test_results_summary.md", "w") as f:
         f.write(report)
     
-    print(f"\n📄 Report saved to: docs/test_results_summary.md")
-
-
-def main():
+    # Print final summary
     print("\n" + "=" * 60)
-    print("ANNA KITNEY CHATBOT - COMPREHENSIVE TEST SUITE")
+    print("FINAL SUMMARY")
     print("=" * 60)
     
-    # Run pytest
-    pytest_passed = run_pytest_suite()
+    all_passed = all(r.get("success", False) for r in results.values())
     
-    # Run API tests (optional - may not have server running)
-    api_passed = False  # Skip by default
-    # api_passed = run_api_regression_suite()
+    for suite_name, data in results.items():
+        status = "✅" if data.get("success", False) else "❌"
+        stats = data.get("stats", {})
+        if "total" in stats:
+            print(f"{status} {suite_name}: {stats.get('passed', 0)}/{stats.get('total', 0)} passed")
+        else:
+            print(f"{status} {suite_name}: Completed")
     
-    # Generate report
-    generate_summary_report(pytest_passed, api_passed)
+    print(f"\n📄 Report saved to: {report_path}")
+    print(f"📄 Also saved to: docs/test_results_summary.md")
     
-    # Final summary
-    print("\n" + "=" * 60)
-    print("TEST SUMMARY")
-    print("=" * 60)
-    
-    if pytest_passed:
-        print("✅ Pytest unit tests: PASS")
-    else:
-        print("⚠️  Pytest unit tests: SOME FAILURES (check output above)")
-    
-    print("\n📋 See docs/test_results_summary.md for full report")
-    
-    return 0 if pytest_passed else 1
+    return 0 if all_passed else 1
 
 
 if __name__ == "__main__":
