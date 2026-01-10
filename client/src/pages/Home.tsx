@@ -356,6 +356,7 @@ export default function Home() {
                   content: cleanContent,
                   sources: data.sources || [],
                   timestamp: new Date(),
+                  conversationId: data.conversation_id,
                 };
                 setMessages((prev) => [...prev, assistantMessage]);
                 
@@ -454,6 +455,7 @@ export default function Home() {
         content: cleanContent,
         sources: data.sources || [],
         timestamp: new Date(),
+        conversationId: data.conversation_id,
       };
 
       setMessages((prev) => [...prev, assistantMessage]);

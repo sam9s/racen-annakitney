@@ -6,7 +6,8 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
-import { MessageSquare, Users, Clock, ChevronLeft, RefreshCw, Lock, Database, AlertCircle, CheckCircle, Download, Flag } from 'lucide-react';
+import { useToast } from '@/hooks/use-toast';
+import { MessageSquare, Users, Clock, ChevronLeft, RefreshCw, Lock, Database, AlertCircle, CheckCircle, Download, Flag, Copy } from 'lucide-react';
 
 interface DashboardStats {
   totalConversations: number;
@@ -59,6 +60,7 @@ interface DbHealth {
 }
 
 export default function Admin() {
+  const { toast } = useToast();
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [password, setPassword] = useState('');
   const [loginError, setLoginError] = useState('');
@@ -435,18 +437,38 @@ export default function Admin() {
                   {conversationDetail ? 'Conversation' : 'Select a session'}
                 </CardTitle>
                 {conversationDetail && (
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => {
-                      setSelectedSession(null);
-                      setConversationDetail(null);
-                    }}
-                    data-testid="button-close-conversation"
-                  >
-                    <ChevronLeft className="w-4 h-4 mr-1" />
-                    Back
-                  </Button>
+                  <div className="flex gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => {
+                        const text = conversationDetail.messages.map((m: any) => 
+                          `${m.role === 'user' ? 'User' : 'Bot'}: ${m.userMessage || m.botResponse || ''}`
+                        ).join('\n\n');
+                        navigator.clipboard.writeText(text);
+                        toast({
+                          title: "Copied!",
+                          description: "Full conversation copied to clipboard",
+                        });
+                      }}
+                      data-testid="button-copy-conversation"
+                    >
+                      <Copy className="w-4 h-4 mr-1" />
+                      Copy
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => {
+                        setSelectedSession(null);
+                        setConversationDetail(null);
+                      }}
+                      data-testid="button-close-conversation"
+                    >
+                      <ChevronLeft className="w-4 h-4 mr-1" />
+                      Back
+                    </Button>
+                  </div>
                 )}
               </div>
               {conversationDetail && (
