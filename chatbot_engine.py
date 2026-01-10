@@ -173,7 +173,7 @@ PROGRAM URLS (use these exact URLs):
         
         # Post-process: inject program links, apply safety filters
         response_text = inject_program_links(response_text)
-        response_text = filter_response_for_safety(response_text)
+        response_text, _ = filter_response_for_safety(response_text)  # Unpack tuple
         
         print(f"[LLM-FIRST PROGRAM] Generated response (length: {len(response_text)})", flush=True)
         
