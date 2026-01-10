@@ -1005,6 +1005,263 @@ def admin_conversation_detail(session_id):
         return jsonify({"error": str(e)}), 500
 
 
+# ═══════════════════════════════════════════════════════════════════════════
+# CONVERSATION FLAGGING & EXPORT FOR TEST GENERATION
+# ═══════════════════════════════════════════════════════════════════════════
+
+# Rate limiting for flag endpoint (prevent abuse)
+_flag_rate_limit = {}
+FLAG_RATE_LIMIT_WINDOW = 60  # seconds
+FLAG_RATE_LIMIT_MAX = 10  # max flags per session per minute
+
+@app.route("/api/conversation/flag", methods=["POST"])
+def flag_conversation():
+    """Flag a specific bot response for review.
+    
+    Used by end users to report issues with bot responses.
+    Rate-limited to prevent abuse.
+    """
+    data = request.get_json()
+    session_id = data.get("session_id")
+    conversation_id = data.get("conversation_id")
+    reason = data.get("reason", "other")
+    notes = data.get("notes", "")
+    
+    if not session_id or not conversation_id:
+        return jsonify({"error": "Missing session_id or conversation_id"}), 400
+    
+    # Rate limiting
+    import time
+    current_time = time.time()
+    if session_id in _flag_rate_limit:
+        timestamps = [t for t in _flag_rate_limit[session_id] if current_time - t < FLAG_RATE_LIMIT_WINDOW]
+        if len(timestamps) >= FLAG_RATE_LIMIT_MAX:
+            return jsonify({"error": "Rate limit exceeded. Please try again later."}), 429
+        _flag_rate_limit[session_id] = timestamps + [current_time]
+    else:
+        _flag_rate_limit[session_id] = [current_time]
+    
+    if not is_database_available():
+        return jsonify({"error": "Database unavailable"}), 503
+    
+    try:
+        from database import ConversationFlag
+        with get_db_session() as db:
+            if db is None:
+                return jsonify({"error": "Database session unavailable"}), 503
+            
+            # Verify conversation exists
+            conv = db.query(Conversation).filter(Conversation.id == conversation_id).first()
+            if not conv:
+                return jsonify({"error": "Conversation not found"}), 404
+            
+            # Create flag
+            flag = ConversationFlag(
+                conversation_id=conversation_id,
+                session_id=session_id,
+                flag_reason=reason,
+                flag_notes=notes
+            )
+            db.add(flag)
+            db.commit()
+            
+            print(f"[Flag] Conversation {conversation_id} flagged: {reason}", flush=True)
+            return jsonify({"success": True, "flag_id": flag.id})
+    except Exception as e:
+        print(f"Flag conversation error: {e}")
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/api/admin/flags", methods=["GET"])
+def admin_get_flags():
+    """Get all flagged conversations for review."""
+    if not validate_internal_api_key():
+        return jsonify({"error": "Unauthorized"}), 401
+    
+    if not is_database_available():
+        return jsonify({"flags": [], "total": 0})
+    
+    try:
+        from database import ConversationFlag
+        reviewed = request.args.get("reviewed", "all")
+        
+        with get_db_session() as db:
+            if db is None:
+                return jsonify({"flags": [], "total": 0})
+            
+            query = db.query(ConversationFlag)
+            if reviewed == "pending":
+                query = query.filter(ConversationFlag.reviewed == False)
+            elif reviewed == "reviewed":
+                query = query.filter(ConversationFlag.reviewed == True)
+            
+            flags = query.order_by(desc(ConversationFlag.created_at)).limit(100).all()
+            
+            result = []
+            for f in flags:
+                conv = db.query(Conversation).filter(Conversation.id == f.conversation_id).first()
+                result.append({
+                    "id": f.id,
+                    "conversationId": f.conversation_id,
+                    "sessionId": f.session_id,
+                    "reason": f.flag_reason,
+                    "notes": f.flag_notes,
+                    "createdAt": f.created_at.isoformat() if f.created_at else None,
+                    "reviewed": f.reviewed,
+                    "issueCategory": f.issue_category,
+                    "userQuestion": conv.user_question if conv else None,
+                    "botAnswer": conv.bot_answer if conv else None
+                })
+            
+            return jsonify({"flags": result, "total": len(result)})
+    except Exception as e:
+        print(f"Admin get flags error: {e}")
+        return jsonify({"error": str(e)}), 500
+
+
+def _anonymize_pii(text: str) -> str:
+    """Anonymize PII in text for export."""
+    import re
+    import hashlib
+    
+    # Email addresses -> hashed placeholder
+    email_pattern = r'[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}'
+    emails = re.findall(email_pattern, text)
+    for email in emails:
+        hash_val = hashlib.sha256(email.encode()).hexdigest()[:8]
+        text = text.replace(email, f"{{{{email_{hash_val}}}}}")
+    
+    # Phone numbers -> placeholder
+    phone_pattern = r'(?:\+?1[-.\s]?)?(?:\(?\d{3}\)?[-.\s]?)?\d{3}[-.\s]?\d{4}'
+    text = re.sub(phone_pattern, "{{phone}}", text)
+    
+    # Names after common patterns (My name is X, I'm X, I am X)
+    name_pattern = r"(?:my name is|i'm|i am|call me)\s+([A-Z][a-z]+(?:\s+[A-Z][a-z]+)?)"
+    for match in re.finditer(name_pattern, text, re.IGNORECASE):
+        name = match.group(1)
+        text = text.replace(name, "{{user}}")
+    
+    return text
+
+
+def _anonymize_session_id(session_id: str) -> str:
+    """Hash session ID for export."""
+    import hashlib
+    return f"session_{hashlib.sha256(session_id.encode()).hexdigest()[:12]}"
+
+
+@app.route("/api/admin/conversations/export", methods=["GET"])
+def admin_export_conversations():
+    """Export flagged conversations with PII scrubbing for test generation.
+    
+    Returns anonymized conversation data suitable for creating regression tests.
+    """
+    if not validate_internal_api_key():
+        return jsonify({"error": "Unauthorized"}), 401
+    
+    if not is_database_available():
+        return jsonify({"error": "Database unavailable"}), 503
+    
+    try:
+        from database import ConversationFlag
+        from datetime import datetime
+        
+        only_flagged = request.args.get("flagged", "true").lower() == "true"
+        limit = min(int(request.args.get("limit", 100)), 500)  # Max 500 per export
+        
+        with get_db_session() as db:
+            if db is None:
+                return jsonify({"error": "Database session unavailable"}), 503
+            
+            if only_flagged:
+                # Get flagged conversations
+                flags = db.query(ConversationFlag).filter(
+                    ConversationFlag.exported == False
+                ).order_by(desc(ConversationFlag.created_at)).limit(limit).all()
+                
+                conversation_ids = [f.conversation_id for f in flags]
+                conversations = db.query(Conversation).filter(
+                    Conversation.id.in_(conversation_ids)
+                ).all()
+            else:
+                # Get recent conversations
+                from datetime import timedelta
+                cutoff = datetime.utcnow() - timedelta(days=7)
+                conversations = db.query(Conversation).filter(
+                    Conversation.timestamp >= cutoff
+                ).order_by(desc(Conversation.timestamp)).limit(limit).all()
+            
+            # Build export data with PII scrubbing
+            export_data = []
+            session_contexts = {}
+            
+            for conv in conversations:
+                anon_session = _anonymize_session_id(conv.session_id)
+                
+                # Get full conversation context for this session
+                if conv.session_id not in session_contexts:
+                    full_history = db.query(Conversation).filter(
+                        Conversation.session_id == conv.session_id
+                    ).order_by(Conversation.timestamp).all()
+                    session_contexts[conv.session_id] = full_history
+                
+                # Find flag info if exists
+                flag_info = None
+                if only_flagged:
+                    flag = db.query(ConversationFlag).filter(
+                        ConversationFlag.conversation_id == conv.id
+                    ).first()
+                    if flag:
+                        flag_info = {
+                            "reason": flag.flag_reason,
+                            "notes": _anonymize_pii(flag.flag_notes or ""),
+                            "category": flag.issue_category
+                        }
+                        # Mark as exported
+                        flag.exported = True
+                
+                # Build conversation history up to this point
+                history = []
+                for h in session_contexts[conv.session_id]:
+                    if h.timestamp <= conv.timestamp:
+                        history.append({
+                            "role": "user",
+                            "content": _anonymize_pii(h.user_question)
+                        })
+                        history.append({
+                            "role": "assistant",
+                            "content": _anonymize_pii(h.bot_answer)
+                        })
+                    if h.id == conv.id:
+                        break
+                
+                export_data.append({
+                    "id": conv.id,
+                    "anonymizedSessionId": anon_session,
+                    "timestamp": conv.timestamp.isoformat() if conv.timestamp else None,
+                    "userQuestion": _anonymize_pii(conv.user_question),
+                    "botAnswer": _anonymize_pii(conv.bot_answer),
+                    "safetyFlagged": conv.safety_flagged,
+                    "conversationHistory": history,
+                    "flagInfo": flag_info
+                })
+            
+            if only_flagged:
+                db.commit()  # Save exported=True flags
+            
+            # Log export
+            print(f"[Export] Exported {len(export_data)} conversations", flush=True)
+            
+            return jsonify({
+                "exportedAt": datetime.utcnow().isoformat(),
+                "count": len(export_data),
+                "conversations": export_data
+            })
+    except Exception as e:
+        print(f"Admin export error: {e}")
+        return jsonify({"error": str(e)}), 500
+
+
 @app.route("/api/transcribe", methods=["POST"])
 def transcribe_audio():
     """Transcribe audio/video file using OpenAI Whisper API."""

@@ -91,6 +91,25 @@ class ResponseFeedback(Base):
     conversation = relationship("Conversation", back_populates="feedback")
 
 
+class ConversationFlag(Base):
+    """Stores user-reported issues on specific bot responses for review and test generation."""
+    __tablename__ = "conversation_flags"
+    
+    id = Column(Integer, primary_key=True, index=True)
+    conversation_id = Column(Integer, ForeignKey("conversations.id"), index=True)
+    session_id = Column(String(100), index=True)
+    flag_reason = Column(String(100), nullable=False)
+    flag_notes = Column(Text, nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    reviewed = Column(Boolean, default=False)
+    reviewed_at = Column(DateTime, nullable=True)
+    reviewed_by = Column(String(255), nullable=True)
+    issue_category = Column(String(100), nullable=True)
+    exported = Column(Boolean, default=False)
+    
+    conversation = relationship("Conversation")
+
+
 class AnalyticsDaily(Base):
     """Pre-aggregated daily analytics for performance."""
     __tablename__ = "analytics_daily"

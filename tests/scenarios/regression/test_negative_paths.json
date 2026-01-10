@@ -1,0 +1,249 @@
+{
+  "description": "Regression tests for negative paths and edge cases discovered through real-world usage",
+  "category": "regression",
+  "requires_manual_review": false,
+  "scenarios": [
+    {
+      "id": "regression_cta_decline_001",
+      "name": "User declines event page CTA with 'no'",
+      "description": "When user says 'no' to 'Would you like me to take you to the event page?', bot should acknowledge and not show event details again",
+      "category": "cta_decline",
+      "critical": true,
+      "conversation": [
+        {
+          "user": "Tell me about SoulAlign Manifestation Mastery",
+          "expected_patterns": ["SoulAlign", "Would you like"],
+          "unexpected_patterns": []
+        },
+        {
+          "user": "yes",
+          "expected_patterns": ["details", "event"],
+          "unexpected_patterns": []
+        },
+        {
+          "user": "no",
+          "expected_patterns": ["anything else", "help", "let me know"],
+          "unexpected_patterns": ["Here are the details", "SoulAlign", "March", "event"],
+          "notes": "CRITICAL: Bot must NOT show event details when user declines"
+        }
+      ]
+    },
+    {
+      "id": "regression_cta_decline_002",
+      "name": "User declines with 'nope'",
+      "description": "Variation of decline with 'nope'",
+      "category": "cta_decline",
+      "critical": true,
+      "conversation": [
+        {
+          "user": "What events are in Dubai?",
+          "expected_patterns": ["Dubai", "Success Redefined"],
+          "unexpected_patterns": []
+        },
+        {
+          "user": "nope",
+          "expected_patterns": [],
+          "unexpected_patterns": ["Here are the details", "Dubai", "January 25"]
+        }
+      ]
+    },
+    {
+      "id": "regression_cta_decline_003",
+      "name": "User declines with 'not now'",
+      "description": "Variation of decline with 'not now'",
+      "category": "cta_decline",
+      "critical": true,
+      "conversation": [
+        {
+          "user": "Tell me about Identity Switch",
+          "expected_patterns": ["Identity Switch"],
+          "unexpected_patterns": []
+        },
+        {
+          "user": "not now",
+          "expected_patterns": [],
+          "unexpected_patterns": ["Here are the details", "Identity Switch", "March 2026"]
+        }
+      ]
+    },
+    {
+      "id": "regression_cta_decline_004",
+      "name": "User declines with 'maybe later'",
+      "description": "Variation of decline with 'maybe later'",
+      "category": "cta_decline",
+      "critical": true,
+      "conversation": [
+        {
+          "user": "What's the SoulAlign Coach program?",
+          "expected_patterns": ["SoulAlign", "Coach"],
+          "unexpected_patterns": []
+        },
+        {
+          "user": "maybe later",
+          "expected_patterns": [],
+          "unexpected_patterns": ["Here are the details", "enroll", "March"]
+        }
+      ]
+    },
+    {
+      "id": "regression_context_switch_001",
+      "name": "User switches from event to program mid-conversation",
+      "description": "User asks about event, then switches to asking about a program",
+      "category": "context_switch",
+      "critical": false,
+      "conversation": [
+        {
+          "user": "Tell me about the Dubai event",
+          "expected_patterns": ["Dubai", "Success Redefined"],
+          "unexpected_patterns": []
+        },
+        {
+          "user": "Actually, what about Divine Abundance Codes?",
+          "expected_patterns": ["Divine Abundance", "program"],
+          "unexpected_patterns": ["Dubai", "January 25"]
+        }
+      ]
+    },
+    {
+      "id": "regression_context_switch_002",
+      "name": "User switches from program to event",
+      "description": "User asks about program, then switches to event query",
+      "category": "context_switch",
+      "critical": false,
+      "conversation": [
+        {
+          "user": "What is the Divine Feminine?",
+          "expected_patterns": ["Divine Feminine"],
+          "unexpected_patterns": []
+        },
+        {
+          "user": "Never mind, what events are in March?",
+          "expected_patterns": ["March", "event"],
+          "unexpected_patterns": ["Divine Feminine"]
+        }
+      ]
+    },
+    {
+      "id": "regression_date_parse_001",
+      "name": "Month + year parsing (April 2026 vs April 20)",
+      "description": "Ensure 'April 2026' is not parsed as 'April 20, 2026'",
+      "category": "date_parse",
+      "critical": true,
+      "conversation": [
+        {
+          "user": "What events are in April 2026?",
+          "expected_patterns": [],
+          "unexpected_patterns": ["April 20"],
+          "notes": "CRITICAL: Should search for events in April 2026, NOT April 20"
+        }
+      ]
+    },
+    {
+      "id": "regression_date_parse_002",
+      "name": "Month-only follow-up query",
+      "description": "User asks 'What about in May?' as a follow-up",
+      "category": "date_parse",
+      "critical": true,
+      "conversation": [
+        {
+          "user": "What events are happening soon?",
+          "expected_patterns": ["event"],
+          "unexpected_patterns": []
+        },
+        {
+          "user": "What about in May?",
+          "expected_patterns": [],
+          "unexpected_patterns": [],
+          "notes": "Should filter events to May, not fall back to general event list"
+        }
+      ]
+    },
+    {
+      "id": "regression_wrong_event_001",
+      "name": "Correct event identification on confirmation",
+      "description": "When user asks about Dubai then says 'yes', show Dubai event not another event",
+      "category": "wrong_event",
+      "critical": true,
+      "conversation": [
+        {
+          "user": "Tell me about the Dubai event",
+          "expected_patterns": ["Dubai", "Success Redefined"],
+          "unexpected_patterns": []
+        },
+        {
+          "user": "yes",
+          "expected_patterns": ["Dubai", "Success Redefined", "January 25"],
+          "unexpected_patterns": ["Identity Switch", "SoulAlign Coach", "March"]
+        }
+      ]
+    },
+    {
+      "id": "regression_extrapolation_001",
+      "name": "No extrapolation from related content",
+      "description": "Bot should not infer answers from loosely related information",
+      "category": "extrapolation",
+      "critical": true,
+      "conversation": [
+        {
+          "user": "Are there pre-recorded sessions available?",
+          "expected_patterns": ["contact", "team", "don't have specific"],
+          "unexpected_patterns": [],
+          "notes": "Bot should redirect to contact, NOT extrapolate from 'lifetime access to replays'"
+        }
+      ]
+    },
+    {
+      "id": "regression_extrapolation_002",
+      "name": "Unknown topic handled gracefully",
+      "description": "Bot should redirect unknown topics to contact page",
+      "category": "extrapolation",
+      "critical": true,
+      "conversation": [
+        {
+          "user": "What is the refund policy?",
+          "expected_patterns": ["contact", "team"],
+          "unexpected_patterns": [],
+          "notes": "If not explicitly in knowledge base, redirect to contact"
+        }
+      ]
+    },
+    {
+      "id": "regression_affirmative_variations_001",
+      "name": "Affirmative with 'sure'",
+      "description": "User confirms with 'sure' instead of 'yes'",
+      "category": "affirmative",
+      "critical": false,
+      "conversation": [
+        {
+          "user": "Tell me about SoulAlign Heal",
+          "expected_patterns": ["SoulAlign", "Heal"],
+          "unexpected_patterns": []
+        },
+        {
+          "user": "sure",
+          "expected_patterns": ["details", "SoulAlign Heal"],
+          "unexpected_patterns": []
+        }
+      ]
+    },
+    {
+      "id": "regression_affirmative_variations_002",
+      "name": "Affirmative with 'tell me more'",
+      "description": "User confirms with 'tell me more' phrase",
+      "category": "affirmative",
+      "critical": false,
+      "conversation": [
+        {
+          "user": "What's the Identity Switch?",
+          "expected_patterns": ["Identity Switch"],
+          "unexpected_patterns": []
+        },
+        {
+          "user": "tell me more",
+          "expected_patterns": ["Identity Switch", "details"],
+          "unexpected_patterns": []
+        }
+      ]
+    }
+  ]
+}

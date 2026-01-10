@@ -3,7 +3,14 @@ import { useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { ThemeToggle } from "@/components/theme-toggle";
-import { Send, RotateCcw, Loader2, MessageCircle } from "lucide-react";
+import { Send, RotateCcw, Loader2, MessageCircle, Flag, X, Check } from "lucide-react";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { useToast } from "@/hooks/use-toast";
 import logoImage from "@assets/AK_gpt_transparent-removebg-preview_1767940932921.png";
 
 function extractNavigationUrl(content: string): { url: string | null; cleanContent: string } {
@@ -224,7 +231,17 @@ interface Message {
   content: string;
   sources?: string[];
   timestamp: Date;
+  conversationId?: number;
 }
+
+const FLAG_REASONS = [
+  { value: "wrong_answer", label: "Wrong or inaccurate information" },
+  { value: "confusing", label: "Confusing or unclear response" },
+  { value: "not_helpful", label: "Not helpful or relevant" },
+  { value: "repeated_info", label: "Repeated information unnecessarily" },
+  { value: "technical_issue", label: "Technical issue or error" },
+  { value: "other", label: "Other issue" },
+];
 
 export default function Home() {
   const [, setLocation] = useLocation();
@@ -234,6 +251,61 @@ export default function Home() {
   const [sessionId] = useState(() => `anna_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const { toast } = useToast();
+  
+  const [flagDialogOpen, setFlagDialogOpen] = useState(false);
+  const [flaggingMessage, setFlaggingMessage] = useState<Message | null>(null);
+  const [selectedReason, setSelectedReason] = useState("");
+  const [flagNotes, setFlagNotes] = useState("");
+  const [isFlagging, setIsFlagging] = useState(false);
+
+  const handleFlagClick = (message: Message) => {
+    setFlaggingMessage(message);
+    setSelectedReason("");
+    setFlagNotes("");
+    setFlagDialogOpen(true);
+  };
+
+  const submitFlag = async () => {
+    if (!flaggingMessage || !selectedReason) return;
+    
+    setIsFlagging(true);
+    try {
+      const response = await fetch("/api/conversation/flag", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          session_id: sessionId,
+          conversation_id: flaggingMessage.conversationId || 0,
+          reason: selectedReason,
+          notes: flagNotes,
+        }),
+      });
+      
+      if (response.ok) {
+        toast({
+          title: "Thank you for your feedback",
+          description: "We'll review this to improve our responses.",
+        });
+        setFlagDialogOpen(false);
+      } else {
+        const data = await response.json();
+        toast({
+          title: "Couldn't submit feedback",
+          description: data.error || "Please try again later.",
+          variant: "destructive",
+        });
+      }
+    } catch {
+      toast({
+        title: "Connection error",
+        description: "Please try again later.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsFlagging(false);
+    }
+  };
 
   const goToTestRunner = () => {
     sessionStorage.setItem("testRunnerAccess", "true");
@@ -465,45 +537,57 @@ export default function Home() {
           {messages.map((message) => (
             <div
               key={message.id}
-              className={`flex ${message.role === "user" ? "justify-end" : "justify-start"}`}
+              className={`flex ${message.role === "user" ? "justify-end" : "justify-start"} group`}
               data-testid={`message-${message.role}-${message.id}`}
             >
-              <Card
-                className={`max-w-[80%] p-3 ${
-                  message.role === "user"
-                    ? "bg-accent"
-                    : "bg-muted"
-                }`}
-              >
-                <div 
-                  className="text-xs whitespace-pre-wrap leading-relaxed text-justify"
-                  style={{ fontFamily: 'var(--font-serif)' }}
-                >
-                  {message.role === "assistant" 
-                    ? renderMessageContent(message.content)
-                    : message.content}
-                </div>
-                {message.sources && message.sources.length > 0 && (
-                  <div className="mt-2 pt-2 border-t border-border/50">
-                    <p className="text-xs text-muted-foreground">Sources:</p>
-                    <ul className="text-xs mt-1 space-y-0.5">
-                      {message.sources.slice(0, 3).map((source, idx) => (
-                        <li key={idx} className="truncate">
-                          <a
-                            href={source}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="text-primary/80 hover:text-primary hover:underline"
-                            data-testid={`link-source-${idx}`}
-                          >
-                            {source}
-                          </a>
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
+              <div className="flex items-end gap-1">
+                {message.role === "assistant" && (
+                  <button
+                    onClick={() => handleFlagClick(message)}
+                    className="opacity-0 group-hover:opacity-100 transition-opacity p-1 text-muted-foreground/50 hover:text-muted-foreground"
+                    title="Report issue with this response"
+                    data-testid={`button-flag-${message.id}`}
+                  >
+                    <Flag className="w-3 h-3" />
+                  </button>
                 )}
-              </Card>
+                <Card
+                  className={`max-w-[80%] p-3 ${
+                    message.role === "user"
+                      ? "bg-accent"
+                      : "bg-muted"
+                  }`}
+                >
+                  <div 
+                    className="text-xs whitespace-pre-wrap leading-relaxed text-justify"
+                    style={{ fontFamily: 'var(--font-serif)' }}
+                  >
+                    {message.role === "assistant" 
+                      ? renderMessageContent(message.content)
+                      : message.content}
+                  </div>
+                  {message.sources && message.sources.length > 0 && (
+                    <div className="mt-2 pt-2 border-t border-border/50">
+                      <p className="text-xs text-muted-foreground">Sources:</p>
+                      <ul className="text-xs mt-1 space-y-0.5">
+                        {message.sources.slice(0, 3).map((source, idx) => (
+                          <li key={idx} className="truncate">
+                            <a
+                              href={source}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="text-primary/80 hover:text-primary hover:underline"
+                              data-testid={`link-source-${idx}`}
+                            >
+                              {source}
+                            </a>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+                </Card>
+              </div>
             </div>
           ))}
 
@@ -554,6 +638,76 @@ export default function Home() {
           </button>
         </div>
       </div>
+
+      <Dialog open={flagDialogOpen} onOpenChange={setFlagDialogOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="text-base">Report an issue</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <p className="text-sm text-muted-foreground">
+              Help us improve by letting us know what went wrong with this response.
+            </p>
+            <div className="space-y-2">
+              {FLAG_REASONS.map((reason) => (
+                <button
+                  key={reason.value}
+                  onClick={() => setSelectedReason(reason.value)}
+                  className={`w-full text-left px-3 py-2 rounded-md text-sm border transition-colors ${
+                    selectedReason === reason.value
+                      ? "border-primary bg-primary/10"
+                      : "border-border hover:bg-muted"
+                  }`}
+                  data-testid={`flag-reason-${reason.value}`}
+                >
+                  <div className="flex items-center gap-2">
+                    {selectedReason === reason.value ? (
+                      <Check className="w-4 h-4 text-primary" />
+                    ) : (
+                      <div className="w-4 h-4" />
+                    )}
+                    {reason.label}
+                  </div>
+                </button>
+              ))}
+            </div>
+            <div>
+              <label className="text-sm font-medium text-muted-foreground">
+                Additional notes (optional)
+              </label>
+              <textarea
+                value={flagNotes}
+                onChange={(e) => setFlagNotes(e.target.value)}
+                placeholder="Tell us more about what happened..."
+                className="w-full mt-1 px-3 py-2 text-sm rounded-md border border-input bg-background resize-none"
+                rows={2}
+                data-testid="input-flag-notes"
+              />
+            </div>
+            <div className="flex justify-end gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setFlagDialogOpen(false)}
+                data-testid="button-flag-cancel"
+              >
+                Cancel
+              </Button>
+              <Button
+                size="sm"
+                onClick={submitFlag}
+                disabled={!selectedReason || isFlagging}
+                data-testid="button-flag-submit"
+              >
+                {isFlagging ? (
+                  <Loader2 className="w-4 h-4 animate-spin mr-1" />
+                ) : null}
+                Submit
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

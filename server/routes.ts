@@ -543,5 +543,68 @@ export async function registerRoutes(
     }
   });
 
+  // Flag a conversation for review (public endpoint with rate limiting)
+  app.post("/api/conversation/flag", async (req: Request, res: Response) => {
+    try {
+      const response = await fetch(`${FLASK_API_URL}/api/conversation/flag`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(req.body),
+      });
+      if (!response.ok) {
+        const error = await response.json();
+        return res.status(response.status).json(error);
+      }
+      const data = await response.json();
+      res.json(data);
+    } catch (error) {
+      console.error("Error flagging conversation:", error);
+      res.status(500).json({ error: "Failed to flag conversation" });
+    }
+  });
+
+  // Get flagged conversations (admin only)
+  app.get("/api/admin/flags", adminAuthMiddleware, async (req: Request, res: Response) => {
+    try {
+      const reviewed = req.query.reviewed || 'all';
+      const response = await fetch(`${FLASK_API_URL}/api/admin/flags?reviewed=${reviewed}`, {
+        headers: {
+          ...(INTERNAL_API_KEY && { "X-Internal-Api-Key": INTERNAL_API_KEY }),
+        },
+      });
+      if (!response.ok) {
+        return res.status(response.status).json({ error: "Failed to fetch flags" });
+      }
+      const data = await response.json();
+      res.json(data);
+    } catch (error) {
+      console.error("Error fetching flags:", error);
+      res.status(500).json({ error: "Failed to fetch flags" });
+    }
+  });
+
+  // Export conversations for test generation (admin only)
+  app.get("/api/admin/conversations/export", adminAuthMiddleware, async (req: Request, res: Response) => {
+    try {
+      const flagged = req.query.flagged || 'true';
+      const limit = req.query.limit || '100';
+      const response = await fetch(`${FLASK_API_URL}/api/admin/conversations/export?flagged=${flagged}&limit=${limit}`, {
+        headers: {
+          ...(INTERNAL_API_KEY && { "X-Internal-Api-Key": INTERNAL_API_KEY }),
+        },
+      });
+      if (!response.ok) {
+        return res.status(response.status).json({ error: "Failed to export conversations" });
+      }
+      const data = await response.json();
+      res.json(data);
+    } catch (error) {
+      console.error("Error exporting conversations:", error);
+      res.status(500).json({ error: "Failed to export conversations" });
+    }
+  });
+
   return httpServer;
 }

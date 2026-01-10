@@ -147,6 +147,30 @@ Comprehensive dashboard for monitoring and managing the chatbot system. See `doc
     - When negative response detected, returns `IntentType.OTHER` with `declined_cta=True` slot
     - Prevents event details from being re-shown when user declines
 
+18. **Conversation Harvest Pipeline for Test Generation** (Jan 2026):
+    - **Purpose**: Bridge gap between test coverage and real-world bugs by capturing production issues
+    - **Components**:
+      1. **Report Issue Button**: Flag icon on bot messages lets users report problems
+      2. **Flag Reasons**: Wrong answer, Confusing, Not helpful, Repeated info, Technical issue, Other
+      3. **API Endpoints**:
+         - `POST /api/conversation/flag` - Flag a message (rate-limited)
+         - `GET /api/admin/flags` - Get flagged conversations (admin only)
+         - `GET /api/admin/conversations/export` - Export with PII scrubbing
+      4. **Admin Dashboard Export Button**: Downloads flagged conversations as JSON
+      5. **Harvest CLI Tool**: `tests/tools/harvest_conversations.py` - Converts exports to test fixtures
+    - **PII Scrubbing**: Emails hashed, phone numbers redacted, names replaced with placeholders
+    - **Database Table**: `conversation_flags` tracks flagged messages with reason, notes, review status
+    - **Workflow**: User flags issue → Admin exports → CLI generates regression tests
+
+19. **Regression Test Scenarios** (Jan 2026):
+    - Created `tests/scenarios/regression/test_negative_paths.json` with 14 scenarios covering:
+      - CTA decline handling ("no", "nope", "not now", "maybe later")
+      - Context switching (event→program, program→event)
+      - Date parsing edge cases ("April 2026" vs "April 20")
+      - Wrong event identification on confirmation
+      - Extrapolation prevention for unknown topics
+      - Affirmative variations ("sure", "tell me more")
+
 ## Important Technical Notes
 - **Markdown Parsing Order**: Bold-wrapped links `**[text](url)**` must be matched FIRST, then plain links, then bold text.
 - **Two Websites**: annakitney.com (marketing) and annakitneyportal.com (checkout, requires www. prefix)

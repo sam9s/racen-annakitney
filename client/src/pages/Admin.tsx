@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
-import { MessageSquare, Users, Clock, ChevronLeft, RefreshCw, Lock, Database, AlertCircle, CheckCircle } from 'lucide-react';
+import { MessageSquare, Users, Clock, ChevronLeft, RefreshCw, Lock, Database, AlertCircle, CheckCircle, Download, Flag } from 'lucide-react';
 
 interface DashboardStats {
   totalConversations: number;
@@ -71,6 +71,44 @@ export default function Admin() {
   const [checkingAuth, setCheckingAuth] = useState(true);
   const [dbHealth, setDbHealth] = useState<DbHealth | null>(null);
   const [checkingDb, setCheckingDb] = useState(false);
+  const [exporting, setExporting] = useState(false);
+  const [flagCount, setFlagCount] = useState(0);
+
+  const exportConversations = async () => {
+    setExporting(true);
+    try {
+      const res = await fetch('/api/admin/conversations/export?flagged=true&limit=100', { 
+        credentials: 'include' 
+      });
+      if (res.ok) {
+        const data = await res.json();
+        const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `conversations_export_${new Date().toISOString().split('T')[0]}.json`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+      }
+    } catch (error) {
+      console.error('Export failed:', error);
+    }
+    setExporting(false);
+  };
+
+  const fetchFlagCount = async () => {
+    try {
+      const res = await fetch('/api/admin/flags?reviewed=pending', { credentials: 'include' });
+      if (res.ok) {
+        const data = await res.json();
+        setFlagCount(data.total || 0);
+      }
+    } catch {
+      setFlagCount(0);
+    }
+  };
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -110,6 +148,7 @@ export default function Admin() {
   useEffect(() => {
     if (isAuthenticated) {
       fetchData();
+      fetchFlagCount();
     }
   }, [isAuthenticated, timeRange]);
 
@@ -238,6 +277,15 @@ export default function Admin() {
                 </Button>
               ))}
             </div>
+            <Button variant="outline" size="sm" onClick={exportConversations} disabled={exporting} data-testid="button-export">
+              <Download className={`w-4 h-4 mr-2 ${exporting ? 'animate-pulse' : ''}`} />
+              Export
+              {flagCount > 0 && (
+                <Badge variant="secondary" className="ml-2 bg-amber-500 text-white">
+                  {flagCount}
+                </Badge>
+              )}
+            </Button>
             <Button variant="outline" size="sm" onClick={checkDbHealth} disabled={checkingDb} data-testid="button-check-db">
               <Database className={`w-4 h-4 mr-2 ${checkingDb ? 'animate-pulse' : ''}`} />
               Check DB
